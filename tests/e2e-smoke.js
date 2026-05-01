@@ -17,8 +17,10 @@ const fs = require('fs');
 
 const { chromium } = require('./playwright');
 
-const SPA = 'http://localhost:5175';
-const WP = 'http://localhost:8099';
+const SPA = process.env.SPA_URL || 'http://localhost:5175';
+const WP = process.env.WP_URL || 'http://localhost:8099';
+const SMOKE_PRODUCT_SLUG = process.env.SMOKE_PRODUCT_SLUG || 'canvas-tote';
+const SMOKE_PRODUCT_NAME = process.env.SMOKE_PRODUCT_NAME || 'Canvas Tote';
 const SHOTS = path.resolve(__dirname, 'screenshots');
 fs.mkdirSync(SHOTS, { recursive: true });
 for (const f of fs.readdirSync(SHOTS)) {
@@ -124,7 +126,7 @@ async function run() {
 
 	// === 3. Theme toggle ===
 	log('3. theme toggle');
-	await darkPage.locator('.theme-toggle').click();
+	await darkPage.locator('.theme-toggle:visible').first().click();
 	await darkPage.waitForTimeout(300);
 	await shot(darkPage, '03-home-after-toggle');
 
@@ -148,20 +150,20 @@ async function run() {
 
 	// === 5. PDP ===
 	log('5. pdp');
-	await lightPage.goto(`${SPA}/product/canvas-tote`, { waitUntil: 'networkidle' });
+	await lightPage.goto(`${SPA}/product/${SMOKE_PRODUCT_SLUG}`, { waitUntil: 'networkidle' });
 	await lightPage.waitForSelector('h1', { timeout: 10000 });
 	await shot(lightPage, '05-pdp-light');
 	const pdpTitle = await lightPage.locator('h1').first().textContent();
-	assert('pdp shows product name', /Canvas Tote/.test(pdpTitle || ''));
+	assert('pdp shows product name', (pdpTitle || '').includes(SMOKE_PRODUCT_NAME));
 
 	// === 6. Quick-add from home → slide cart opens ===
 	log('6. quick-add → slide cart');
 	await lightPage.goto(SPA, { waitUntil: 'networkidle' });
 	await lightPage.waitForSelector('.store-card', { timeout: 10000 });
 
-	// Add the Canvas Tote specifically so we can assert on it later
-	const toteCard = lightPage.locator('.store-card', { hasText: 'Canvas Tote' });
-	await toteCard.locator('.store-card__add').click();
+	// Add a known product specifically so we can assert on it later.
+	const smokeCard = lightPage.locator('.store-card', { hasText: SMOKE_PRODUCT_NAME }).first();
+	await smokeCard.locator('.store-card__add').click();
 	await lightPage.waitForSelector('.fkcart-modal.fkcart-show', { timeout: 5000 });
 	await lightPage.waitForTimeout(500);
 	await shot(lightPage, '06-cart-open');
@@ -171,8 +173,8 @@ async function run() {
 
 	const itemName = await lightPage.locator('.fkcart-item a').first().textContent();
 	assert(
-		'cart shows Canvas Tote',
-		/Canvas Tote/.test(itemName || ''),
+		`cart shows ${SMOKE_PRODUCT_NAME}`,
+		(itemName || '').includes(SMOKE_PRODUCT_NAME),
 		itemName?.trim()
 	);
 
@@ -224,7 +226,7 @@ async function run() {
 	);
 	assert(
 		'cart contents visible on checkout page',
-		/Canvas Tote/.test(bodyText),
+		bodyText.includes(SMOKE_PRODUCT_NAME),
 		'found product in order review'
 	);
 

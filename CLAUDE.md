@@ -41,6 +41,8 @@ and returns the config payload that drives the SPA.
 | If you need to… | Start reading at |
 |---|---|
 | Understand overall architecture | `docs/architecture.md` |
+| Navigate the doc set | `docs/README.md` |
+| Recreate demo screenshots | `docs/showcase.md` + `./scripts/seed-showcase.sh` |
 | Add / modify an admin setting | `docs/admin-settings-reference.md` + `wp/mu-plugins/wchs-admin/admin-page.php` |
 | Modify a mu-plugin | `docs/mu-plugins-reference.md` (find your plugin there first) |
 | Add a REST endpoint | `wp/mu-plugins/headless-rest-endpoints.php` |
@@ -207,6 +209,7 @@ More: `PROJECT_RULES.md`, `PRETEXT_RULE.md`.
 ## Testing
 
 - **Local dev:** `./scripts/up.sh` (docker-compose) + `./scripts/seed.sh` (installs WP + WooCommerce + seeds products) + `cd spa && npm run dev`.
+- **Showcase seed:** `./scripts/seed-showcase.sh` replaces the local catalog with Northstar Supply demo content and WCHS settings. It refuses non-local `WP_SITE_URL` values by default and deactivates active non-WooCommerce plugins unless `WCHS_SHOWCASE_KEEP_PLUGINS=1`.
 - **Local tests:** `tests/` — Playwright against the dev stack. `node tests/e2e-smoke.js`.
 - **Type check:** `cd spa && npm run check`.
 - **Build:** `cd spa && npm run build` — produces `build/` static files.

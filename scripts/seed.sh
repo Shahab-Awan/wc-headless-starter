@@ -77,7 +77,7 @@ fi
 
 # Variable product with 2 attributes and 4 variations (one out of stock).
 # Idempotent — skipped if already present.
-VARIABLE_EXISTS=$(wp post list --post_type=product --name=variable-test-backpack --format=count 2>/dev/null || echo 0)
+VARIABLE_EXISTS=$(wp eval 'echo ( get_page_by_path( "variable-test-backpack", OBJECT, "product" ) || wc_get_product_id_by_sku( "WCHS-VAR-001" ) ) ? "1" : "0";' 2>/dev/null || echo 0)
 if [[ "$VARIABLE_EXISTS" == "0" ]]; then
   # 1) Create a variable product (requires parent set up before variations)
   PARENT_ID=$(wp wc product create \

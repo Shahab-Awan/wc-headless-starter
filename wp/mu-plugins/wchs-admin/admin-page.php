@@ -77,7 +77,7 @@ class AdminPage {
 			'description'  => 'Omnisend forms + tracking. Prefer the dedicated brand-id field under Integrations; this entry exists for parity.',
 			'src_template' => 'https://omnisnippet1.com/inshop/launcher-v2.js',
 			'params'       => [
-				[ 'key' => 'brand_id', 'label' => 'Brand ID (hex)', 'required' => true, 'type' => 'hex', 'example' => '5ae3f2c8a1b4d609e1234567' ],
+				[ 'key' => 'brand_id', 'label' => 'Brand ID (hex)', 'required' => true, 'type' => 'hex', 'example' => '000000000000000000000000' ],
 			],
 			'attributes'   => [ 'async' => true, 'defer' => false ],
 			'placement'    => 'head',
@@ -92,7 +92,7 @@ class AdminPage {
 			'description'  => 'Klaviyo forms + tracking loader.',
 			'src_template' => 'https://static.klaviyo.com/onsite/js/klaviyo.js',
 			'params'       => [
-				[ 'key' => 'company_id', 'label' => 'Public API Key', 'required' => true, 'type' => 'text', 'example' => 'ABCDEF' ],
+				[ 'key' => 'company_id', 'label' => 'Public API Key', 'required' => true, 'type' => 'text', 'example' => 'PUBLIC_KEY' ],
 			],
 			'attributes'   => [ 'async' => true, 'defer' => false ],
 			'placement'    => 'head',

@@ -38,6 +38,11 @@ will flatten the WordPress install.
 
 ### Secrets (configured via `gh secret set`)
 
+Secrets are repository-local. Public forks do not receive the upstream
+deployment secrets. If you use this repo for a new public project, create
+your own secrets or remove the deploy matrix rows until you are ready to
+deploy.
+
 | Secret | Value |
 |---|---|
 | `SG_SSH_KEY_SITE1` | Full private key contents for site 1 |

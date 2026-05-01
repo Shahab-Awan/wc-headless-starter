@@ -23,6 +23,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   sites using repository secrets.
 - Documentation for local development, deployment, security, integrations,
   mu-plugin ownership, admin settings, architecture, and cutovers.
+- Docs index, showcase guide, generated Northstar Supply demo assets, and
+  local showcase seeding script.
 
 ### Changed
 

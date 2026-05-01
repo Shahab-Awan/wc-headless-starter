@@ -33,6 +33,25 @@ Full feature list + every admin-configurable option:
 
 ---
 
+## Screenshots
+
+The repo includes a local showcase seed called **Northstar Supply**. It is
+generic demo content, not a real store.
+
+<p>
+  <img src="docs/assets/showcase/screenshots/storefront-home-desktop.jpg" alt="Northstar Supply homepage with WebGL hero" width="49%">
+  <img src="docs/assets/showcase/screenshots/storefront-shop-desktop.jpg" alt="Northstar Supply shop grid" width="49%">
+</p>
+<p>
+  <img src="docs/assets/showcase/screenshots/admin-homepage-studio.jpg" alt="WCHS homepage studio in wp-admin" width="49%">
+  <img src="docs/assets/showcase/screenshots/admin-design-tab.jpg" alt="WCHS design tab with product card controls" width="49%">
+</p>
+
+More screenshots, generated demo assets, and the exact reseed commands:
+**[`docs/showcase.md`](docs/showcase.md)**.
+
+---
+
 ## Quickstart
 
 ### Deploy to SiteGround-Style Shared Hosting
@@ -125,6 +144,17 @@ Site: `http://localhost:5175` (SPA) + `http://localhost:8099/wp-admin`
 (WP). Vite proxies `/wp-*` and `/wp-json/*` to the WP container so the
 SPA is same-origin.
 
+Optional polished demo store:
+
+```sh
+./scripts/seed-showcase.sh
+```
+
+This replaces the local product catalog with the Northstar Supply demo,
+loads the generated showcase media, and writes WCHS settings for the admin
+studio. It refuses non-local `WP_SITE_URL` values by default and deactivates
+active non-WooCommerce plugins for clean screenshots.
+
 Ports used: **[`docs/ports.md`](docs/ports.md)**.
 
 ---
@@ -148,6 +178,7 @@ Full list + recommended companion plugins:
 
 ## Modifying the codebase
 
+- **Docs map:** start at **[`docs/README.md`](docs/README.md)**.
 - **Agentic tools (Claude Code, Cursor, Copilot):** read
   **[`CLAUDE.md`](CLAUDE.md)** first. Covers data flow, file ownership,
   extension points, danger zones, worked examples for the most common
@@ -178,6 +209,8 @@ wc-headless-starter/
 ├── docker-compose.yml        local dev (WP + MySQL + Redis)
 ├── docs/                     runbooks, references, specs
 │   ├── siteground-deploy.md       canonical deploy runbook
+│   ├── README.md                  docs map for humans and agents
+│   ├── showcase.md                demo seed, assets, screenshots
 │   ├── starter-checklist.md       per-site onboarding
 │   ├── cutover-checklist.md       domain-swap runbook
 │   ├── stripe-integration.md      payment gateway notes

@@ -130,7 +130,7 @@ route-specific raw meta before serving the same SPA shell. This gives
 products, clean category pages, and WCHS content pages usable raw HTML
 metadata without running a Node SSR server.
 
-This is documented in `INTEGRATIONS.md` under "SEO & Social Sharing".
+This is documented in `docs/integrations.md` under "SEO plugins".
 
 Set in `spa/svelte.config.js`:
 ```js
