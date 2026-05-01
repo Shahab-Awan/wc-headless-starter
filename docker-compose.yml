@@ -1,0 +1,103 @@
+name: wc-headless-starter
+
+# All credentials are sourced from .env at the project root. See
+# .env.example for the shape; cp it to .env and fill in real values.
+# The `${VAR:?}` syntax makes compose fail loudly if a var is missing
+# instead of silently starting with an empty value.
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: wchs-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set in .env}
+      MYSQL_DATABASE: ${MYSQL_DB_NAME:?set in .env}
+      MYSQL_USER: ${MYSQL_DB_USER:?set in .env}
+      MYSQL_PASSWORD: ${MYSQL_DB_PASSWORD:?set in .env}
+    ports:
+      - "127.0.0.1:3316:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+    container_name: wchs-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  wordpress:
+    image: wordpress:6.9.4-php8.2-apache
+    container_name: wchs-wp
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: ${MYSQL_DB_USER:?set in .env}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_DB_PASSWORD:?set in .env}
+      WORDPRESS_DB_NAME: ${MYSQL_DB_NAME:?set in .env}
+      WORDPRESS_DEBUG: 1
+      WORDPRESS_CONFIG_EXTRA: |
+        define( 'WP_MEMORY_LIMIT', '512M' );
+        define( 'WP_MAX_MEMORY_LIMIT', '512M' );
+        define( 'WP_DEBUG', true );
+        define( 'WP_DEBUG_LOG', true );
+        define( 'WP_DEBUG_DISPLAY', false );
+        define( 'SCRIPT_DEBUG', true );
+    ports:
+      - "127.0.0.1:8099:80"
+    volumes:
+      - wp_core:/var/www/html
+      - ./wp/mu-plugins:/var/www/html/wp-content/mu-plugins
+      - ./wp/themes/headless-shim:/var/www/html/wp-content/themes/headless-shim
+      - ./wp/php-overrides.ini:/usr/local/etc/php/conf.d/zz-wchs-overrides.ini:ro
+
+  wpcli:
+    image: wordpress:cli-php8.2
+    container_name: wchs-wpcli
+    depends_on:
+      db:
+        condition: service_healthy
+      wordpress:
+        condition: service_started
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: ${MYSQL_DB_USER:?set in .env}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_DB_PASSWORD:?set in .env}
+      WORDPRESS_DB_NAME: ${MYSQL_DB_NAME:?set in .env}
+      # Heavy admin operations (plugin activation, dashboard loaders) can
+      # push past the 256M CLI default. 1024M matches php-overrides.ini.
+      WP_CLI_PHP_ARGS: "-d memory_limit=1024M"
+    volumes:
+      - wp_core:/var/www/html
+      - ./wp/mu-plugins:/var/www/html/wp-content/mu-plugins
+      - ./wp/themes/headless-shim:/var/www/html/wp-content/themes/headless-shim
+      - ./wp/php-overrides.ini:/usr/local/etc/php/conf.d/zz-wchs-overrides.ini:ro
+    user: "33:33"
+    command: tail -f /dev/null
+
+  # System cron — hits wp-cron.php every 60s for reliable scheduled
+  # task execution (abandoned cart emails, cleanup jobs, etc.).
+  # WP-Cron is left enabled as a fallback; this ensures tasks fire
+  # even with zero site traffic.
+  cron:
+    image: alpine:latest
+    depends_on: [wordpress]
+    restart: unless-stopped
+    command: >
+      sh -c "while true; do
+        wget -qO- http://wordpress/wp-cron.php > /dev/null 2>&1;
+        sleep 60;
+      done"
+
+volumes:
+  db_data:
+  redis_data:
+  wp_core:

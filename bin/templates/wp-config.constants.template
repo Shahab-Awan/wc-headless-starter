@@ -1,0 +1,19 @@
+# ---- Headless WC Starter - per-site configuration ----
+#
+# Append the lines below to your site's wp-config.php (above the
+# "/* That's all, stop editing! */" line).
+#
+# Variables ${BRAND_NAME} and ${SPA_URL} are read from .env via
+# envsubst when the deploy script runs. If you're applying manually, replace
+# them with literal values.
+#
+# To apply: setup-fresh-site.sh handles this idempotently — it greps for
+# the marker comment above and only appends if absent.
+
+define( 'WCHS_BRAND_NAME',       '${BRAND_NAME}' );
+
+// Optional legacy/custom-origin overrides. Normal production sites should
+// stay in same-origin mode and let WCHS follow home/siteurl automatically.
+// define( 'WCHS_SPA_URL',          '${SPA_URL}' );
+// define( 'WCHS_ALLOWED_ORIGINS',  '${SPA_URL}' );
+// define( 'WCHS_RETURN_ORIGINS',   '${SPA_URL}' );

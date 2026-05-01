@@ -1,0 +1,1604 @@
+/*
+ * wc-overrides.css — WooCommerce + wp-login widget overrides
+ * ===========================================================
+ *
+ * Targets: /checkout, /my-account, /cart, wp-login.php, and any
+ * fallback page rendered by the headless-shim theme.
+ *
+ * RULES (see PROJECT_RULES.md for the authoritative version):
+ *   - Mobile-first: base rules target ≤640px, enhanced via min-width.
+ *   - Touch targets ≥44px, input font-size ≥16px on mobile.
+ *   - Tokens only — no hardcoded hex values.
+ *   - No !important except the documented Select2 exception.
+ *   - Breakpoints: 640, 768, 900, 1024.
+ *
+ * TABLE OF CONTENTS
+ *   1. Shell layout
+ *   2. Base typography
+ *   3. Forms — inputs, textarea, select, labels
+ *   4. Buttons
+ *   5. Checkout layout (desktop grid)
+ *   6. Checkout components (table, payment)
+ *   7. Coupon form
+ *   8. Notices — error / info / message
+ *   9. My Account
+ *  10. wp-login.php
+ *  11. Select2 (the lone !important exception)
+ *  12. Password show-toggle
+ *  13. Radio + checkbox custom styling
+ *  14. Floating theme toggle
+ *  15. Back-to-site link
+ *  16. Global hides + utilities
+ */
+
+/* =====================================================================
+ * 0. RESET
+ * Dequeuing WP + WC stylesheets strips the `box-sizing: border-box`
+ * reset every stock theme includes. Without it, `width: 100%` inputs with
+ * padding overflow their containers on mobile. Apply globally.
+ * ===================================================================== */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+/* =====================================================================
+ * 1. SHELL LAYOUT
+ * The shim theme emits <main class="wchs-shell"> for WC pages. We size
+ * it by page type so /checkout + /my-account get a wider canvas.
+ * ===================================================================== */
+
+.wchs-shell {
+	position: relative;
+	max-width: 720px;
+	margin: 0 auto;
+	padding: 32px 20px 120px;
+}
+
+@media (min-width: 640px) {
+	.wchs-shell { padding: 48px 24px 120px; }
+}
+@media (min-width: 900px) {
+	.wchs-shell { padding: 64px 32px 140px; }
+}
+
+/* Wider canvas for multi-column pages */
+body.woocommerce-checkout .wchs-shell {
+	max-width: 1280px;
+}
+body.woocommerce-cart .wchs-shell {
+	max-width: 1120px;
+}
+body.woocommerce-account .wchs-shell {
+	max-width: 1120px;
+}
+
+/* =====================================================================
+ * 2. BASE TYPOGRAPHY
+ * ===================================================================== */
+
+body.woocommerce,
+body.woocommerce-page,
+body.woocommerce-cart,
+body.woocommerce-checkout,
+body.woocommerce-account,
+body.login {
+	background: var(--bg);
+	color: var(--fg);
+	font-family: var(--font-sans);
+	font-size: 14px;
+	line-height: 1.55;
+	letter-spacing: -0.16px;
+	margin: 0;
+	padding: 0;
+}
+
+body.woocommerce a,
+body.woocommerce-page a,
+body.login a {
+	color: inherit;
+	text-decoration: none;
+	transition: color var(--dur-fast, 180ms) var(--ease, ease);
+}
+
+/* Inline prose links — get a subtle underline to stay scannable but
+   stay out of the default-WP look. Excludes buttons, back-link, and
+   containers where the <a> is structural, not textual. */
+.woocommerce-privacy-policy-text a,
+.woocommerce-terms-and-conditions-wrapper a,
+.woocommerce-info a,
+.woocommerce-message a,
+.woocommerce-error a,
+.woocommerce-form-coupon-toggle a,
+.lost_password a,
+#customer_login .woocommerce-LostPassword a,
+.woocommerce-account-fields a,
+.woocommerce-MyAccount-content a:not(.button):not(.wchs-back-link) {
+	border-bottom: 1px solid color-mix(in oklab, var(--fg) 32%, transparent);
+	padding-bottom: 1px;
+	transition:
+		color var(--dur-fast, 180ms) var(--ease, ease),
+		border-color var(--dur-fast, 180ms) var(--ease, ease);
+}
+.woocommerce-privacy-policy-text a:hover,
+.woocommerce-terms-and-conditions-wrapper a:hover,
+.woocommerce-info a:hover,
+.woocommerce-message a:hover,
+.woocommerce-error a:hover,
+.woocommerce-form-coupon-toggle a:hover,
+.lost_password a:hover,
+.woocommerce-MyAccount-content a:not(.button):not(.wchs-back-link):hover {
+	border-bottom-color: var(--fg);
+}
+
+.woocommerce,
+.woocommerce-page {
+	margin: 0 auto;
+}
+
+.wchs-shell h1 {
+	font-family: var(--font-sans);
+	font-size: clamp(32px, 5vw, 48px);
+	font-weight: 500;
+	line-height: 1.02;
+	letter-spacing: -0.028em;
+	margin: 0 0 32px;
+	color: var(--fg);
+}
+
+.woocommerce h1,
+.woocommerce h2,
+.woocommerce h3,
+.woocommerce-page h1,
+.woocommerce-page h2,
+.woocommerce-page h3,
+.woocommerce-account h2 {
+	font-family: var(--font-sans);
+	font-weight: 500;
+	color: var(--fg);
+	letter-spacing: -0.025em;
+	line-height: 1.1;
+	margin: 0 0 18px;
+}
+
+.woocommerce h2,
+.woocommerce-page h2 { font-size: clamp(22px, 4vw, 28px); }
+.woocommerce h3,
+.woocommerce-page h3 { font-size: 15px; letter-spacing: -0.2px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; color: var(--fg-muted); }
+
+/* =====================================================================
+ * 3. FORMS — inputs, textarea, select, labels
+ * ===================================================================== */
+
+.woocommerce form .form-row input.input-text,
+.woocommerce form .form-row textarea,
+.woocommerce form .form-row select,
+.woocommerce-page form .form-row input.input-text,
+.woocommerce-page form .form-row textarea,
+.woocommerce-page form .form-row select,
+.woocommerce-input-wrapper input,
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='tel'],
+input[type='number'],
+input[type='search'],
+input[type='url'],
+textarea,
+select {
+	width: 100%;
+	min-height: 48px;
+	padding: 12px 14px;
+	background: var(--bg);
+	color: var(--fg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	font-family: var(--font-sans);
+	font-size: 16px;
+	line-height: 1.4;
+	letter-spacing: -0.16px;
+	transition:
+		border-color var(--dur-fast, 180ms) var(--ease, ease),
+		box-shadow var(--dur-fast, 180ms) var(--ease, ease);
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+textarea { min-height: 120px; resize: vertical; }
+
+input:focus,
+textarea:focus,
+select:focus {
+	outline: none;
+	border-color: var(--fg);
+	box-shadow: 0 0 0 2px color-mix(in oklab, var(--fg) 20%, transparent);
+}
+
+input::placeholder,
+textarea::placeholder { color: var(--fg-muted); }
+
+.woocommerce form .form-row { margin: 0 0 18px; }
+
+.woocommerce form .form-row label,
+.woocommerce-page form .form-row label,
+.woocommerce-form-row label {
+	display: block;
+	color: var(--fg-muted);
+	font-size: 11px;
+	font-weight: 450;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	margin-bottom: 8px;
+}
+
+.woocommerce form .form-row .required,
+.woocommerce-form-row .required,
+abbr.required,
+label .required {
+	color: var(--fg-muted);
+	text-decoration: none;
+	border: 0;
+	margin-left: 4px;
+	font-weight: 500;
+}
+.woocommerce form .form-row label .optional {
+	color: var(--fg-muted);
+	font-weight: 400;
+	text-transform: none;
+	letter-spacing: 0;
+	margin-left: 4px;
+	font-size: 10px;
+}
+
+/* Validation states */
+.woocommerce-invalid input.input-text,
+.woocommerce-invalid select,
+.woocommerce-invalid textarea,
+.form-row.woocommerce-invalid input,
+.form-row.woocommerce-invalid select {
+	border-color: var(--danger);
+}
+.woocommerce-invalid input.input-text:focus,
+.woocommerce-invalid select:focus {
+	box-shadow: 0 0 0 2px color-mix(in oklab, var(--danger) 25%, transparent);
+}
+.woocommerce form .form-row.woocommerce-validated input.input-text {
+	border-color: var(--fg);
+}
+.woocommerce-input-wrapper { display: block; }
+
+/* Native <select> custom caret */
+.woocommerce form .form-row select,
+.woocommerce-page form .form-row select,
+select {
+	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%237d848e' stroke-width='1.6'><polyline points='5 8 10 13 15 8'/></svg>");
+	background-repeat: no-repeat;
+	background-position: right 14px center;
+	background-size: 16px;
+	padding-right: 40px;
+}
+
+/* =====================================================================
+ * 4. BUTTONS
+ * ===================================================================== */
+
+.woocommerce button.button,
+.woocommerce a.button,
+.woocommerce input.button,
+.woocommerce-page button.button,
+.woocommerce-page a.button,
+.woocommerce-page input.button,
+.woocommerce #respond input#submit,
+.woocommerce-form-login button[type='submit'],
+.woocommerce-form-register button[type='submit'],
+.woocommerce-MyAccount-content button[type='submit'],
+#place_order,
+.button.alt,
+.button.checkout {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	min-height: 52px;
+	padding: 16px 32px;
+	background: var(--accent);
+	color: var(--accent-fg) !important;
+	border: 1px solid var(--accent);
+	border-radius: var(--radius-sm);
+	font-family: var(--font-sans);
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.14em;
+	text-decoration: none !important;
+	cursor: pointer;
+	transition:
+		background var(--dur-fast, 180ms) var(--ease, ease),
+		color var(--dur-fast, 180ms) var(--ease, ease),
+		transform var(--dur-fast, 180ms) var(--ease, ease);
+}
+
+.woocommerce button.button:hover,
+.woocommerce a.button:hover,
+.woocommerce input.button:hover,
+#place_order:hover,
+.button.alt:hover {
+	background: transparent;
+	color: var(--accent) !important;
+}
+
+.woocommerce button.button:active,
+#place_order:active { transform: scale(0.99); }
+
+.woocommerce .button[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+/* =====================================================================
+ * 5. CHECKOUT LAYOUT — desktop grid
+ *
+ * The root form.checkout has these direct children (in order):
+ *   .woocommerce-form-coupon (toggle-shown)
+ *   #customer_details         (.col2-set, contains billing + shipping)
+ *   #order_review_heading     (<h3>)
+ *   #order_review             (table + payment + place-order)
+ *   .woocommerce-notices-wrapper (occasionally)
+ *
+ * We use grid-template-areas to put customer_details in col-1 spanning
+ * all rows, and stack order_heading + order in col-2 top-aligned. This
+ * is the fix for the earlier bug where auto-placement created empty
+ * rows below col-1's tall height before placing order_review.
+ * ===================================================================== */
+
+.woocommerce-checkout form.checkout {
+	display: block;
+	max-width: 1200px;
+	margin: 0 auto;
+}
+
+.woocommerce-checkout .col2-set { display: block; }
+
+@media (min-width: 900px) {
+	.woocommerce-checkout form.checkout {
+		display: grid;
+		grid-template-columns: minmax(0, 1.35fr) minmax(340px, 1fr);
+		grid-template-areas:
+			"notices  notices"
+			"coupon   order-heading"
+			"billing  order"
+			"billing  .";
+		gap: 24px 64px;
+		align-items: start;
+	}
+	.woocommerce-checkout form.checkout > .woocommerce-notices-wrapper,
+	.woocommerce-checkout form.checkout > .woocommerce-error,
+	.woocommerce-checkout form.checkout > .woocommerce-info,
+	.woocommerce-checkout form.checkout > .woocommerce-message {
+		grid-area: notices;
+	}
+	.woocommerce-checkout form.checkout > .checkout_coupon,
+	.woocommerce-checkout form.checkout > .woocommerce-form-coupon,
+	.woocommerce-checkout form.checkout > .woocommerce-info.woocommerce-form-coupon-toggle {
+		grid-area: coupon;
+	}
+	.woocommerce-checkout form.checkout > #customer_details {
+		grid-area: billing;
+	}
+	.woocommerce-checkout form.checkout > #order_review_heading {
+		grid-area: order-heading;
+		margin: 0;
+	}
+	.woocommerce-checkout form.checkout > #order_review {
+		grid-area: order;
+		position: sticky;
+		top: 24px;
+	}
+	/* Hidden inputs / trackers injected by third-party plugins etc. shouldn't
+	   participate in grid placement — keep them out of the flow. */
+	.woocommerce-checkout form.checkout > input[type='hidden'] {
+		display: none;
+	}
+}
+
+/* =====================================================================
+ * 6. CHECKOUT COMPONENTS — customer details, order review, payment
+ * ===================================================================== */
+
+#customer_details .col-1,
+#customer_details .col-2 {
+	width: 100%;
+	float: none;
+}
+
+.woocommerce-billing-fields,
+.woocommerce-additional-fields {
+	margin-bottom: 24px;
+}
+
+.woocommerce-additional-fields h3 {
+	margin-top: 24px;
+}
+
+#order_review {
+	padding: 24px;
+	background: var(--bg-elevated);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-md);
+}
+#order_review_heading {
+	margin: 0;
+	padding-bottom: 16px;
+	font-size: 11px !important;
+	font-weight: 450 !important;
+	text-transform: uppercase;
+	letter-spacing: 0.12em;
+	color: var(--fg-muted) !important;
+}
+
+.woocommerce table.shop_table {
+	border-collapse: collapse;
+	width: 100%;
+	border: 0;
+	background: transparent;
+}
+.woocommerce table.shop_table thead { background: transparent; }
+.woocommerce table.shop_table th,
+.woocommerce table.shop_table td {
+	padding: 12px 0;
+	border-bottom: 1px solid var(--border);
+	text-align: left;
+	font-size: 13px;
+	letter-spacing: -0.16px;
+}
+.woocommerce table.shop_table tr:last-child td {
+	border-bottom: 0;
+}
+.woocommerce table.shop_table th {
+	font-size: 11px;
+	font-weight: 450;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	color: var(--fg-muted);
+}
+.woocommerce table.shop_table .product-name {
+	color: var(--fg);
+	font-weight: 500;
+}
+/* Summary row values — right-aligned tabular numbers */
+.woocommerce table.shop_table .product-total,
+.woocommerce table.shop_table .cart-subtotal td,
+.woocommerce table.shop_table .fee td,
+.woocommerce table.shop_table .tax-rate td,
+.woocommerce table.shop_table .tax-total td,
+.woocommerce table.shop_table .cart-discount td,
+.woocommerce table.shop_table .order-total td {
+	font-variant-numeric: tabular-nums;
+	color: var(--fg);
+	text-align: right;
+}
+/* Summary row labels — uppercase muted, consistent column */
+.woocommerce table.shop_table .cart-subtotal th,
+.woocommerce table.shop_table .order-total th,
+.woocommerce table.shop_table .fee th,
+.woocommerce table.shop_table .tax-rate th,
+.woocommerce table.shop_table .tax-total th,
+.woocommerce table.shop_table .cart-discount th,
+.woocommerce table.shop_table .woocommerce-shipping-totals th {
+	vertical-align: top;
+	font-size: 11px;
+	font-weight: 450;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	color: var(--fg-muted);
+}
+/* Coupon discount — show amount in accent/danger color */
+.woocommerce table.shop_table .cart-discount td {
+	color: var(--success);
+}
+.woocommerce table.shop_table .order-total td {
+	font-weight: 600;
+	font-size: 15px;
+}
+/* Ensure total row border spans full width */
+.woocommerce table.shop_table .order-total td,
+.woocommerce table.shop_table .order-total th {
+	border-top: 1px solid var(--border);
+	border-bottom: 0;
+}
+
+/* Shipping methods — clean up bullet list, right-align to match price column */
+.woocommerce-shipping-methods {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+.woocommerce-shipping-methods li {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	padding: 6px 0;
+	font-size: 13px;
+	font-variant-numeric: tabular-nums;
+}
+.woocommerce-shipping-methods li label {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	cursor: pointer;
+	margin: 0;
+	min-height: 0;
+	padding: 0;
+}
+.woocommerce table.shop_table .woocommerce-shipping-totals td {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	color: var(--fg);
+}
+/* Shipping method label inside the td — override WC's default inline styles */
+.woocommerce table.shop_table .woocommerce-shipping-totals td .woocommerce-Price-amount {
+	font-variant-numeric: tabular-nums;
+}
+
+#payment.woocommerce-checkout-payment {
+	margin-top: 20px;
+	padding: 20px 0 0;
+	border-top: 1px solid var(--border);
+	background: transparent;
+}
+
+#payment ul.payment_methods {
+	list-style: none;
+	padding: 0;
+	margin: 0 0 16px;
+}
+#payment ul.payment_methods li {
+	padding: 12px 0;
+	border-bottom: 1px solid var(--border);
+}
+#payment ul.payment_methods li:last-child { border-bottom: 0; }
+
+#payment ul.payment_methods label {
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	padding: 4px 0;
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 500;
+	margin: 0;
+}
+
+#payment div.payment_box {
+	background: transparent;
+	padding: 8px 0 4px;
+	margin: 4px 0 0 28px;
+	border: 0;
+	font-size: 13px;
+	color: var(--fg-muted);
+}
+#payment div.payment_box::before,
+#payment div.payment_box::after {
+	display: none;
+}
+
+/* Saved payment methods (shown to logged-in users with a stored card) */
+.woocommerce-SavedPaymentMethods {
+	list-style: none;
+	padding: 0;
+	margin: 12px 0;
+}
+.woocommerce-SavedPaymentMethods li {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 14px;
+	margin: 0 0 6px;
+	border: 1px solid var(--border);
+	border-radius: 0;
+	cursor: pointer;
+	transition: border-color var(--dur-fast, 180ms) var(--ease, ease);
+}
+.woocommerce-SavedPaymentMethods li:has(input:checked) {
+	border-color: var(--fg);
+}
+.woocommerce-SavedPaymentMethods-tokenInput {
+	width: 18px !important;
+	height: 18px !important;
+	min-height: 0 !important;
+	flex-shrink: 0;
+}
+.woocommerce-SavedPaymentMethods label {
+	font-family: var(--font-sans);
+	font-size: 13px;
+	font-weight: 450;
+	letter-spacing: -0.01em;
+	color: var(--fg);
+	cursor: pointer;
+	margin: 0;
+	min-height: 0;
+	padding: 0;
+}
+/* "Use a new payment method" link */
+.woocommerce-SavedPaymentMethods-new label {
+	font-weight: 500;
+	color: var(--fg-muted);
+}
+/* Strip all default outlines from payment area */
+#payment *,
+#payment *:focus {
+	outline: none;
+}
+#payment fieldset {
+	border: 0;
+	padding: 0;
+	margin: 0;
+}
+/* Clean saved payment method containers */
+.woocommerce-SavedPaymentMethods li {
+	border: 0;
+	border-bottom: 1px solid var(--border);
+	border-radius: 0;
+}
+.woocommerce-SavedPaymentMethods li:last-child {
+	border-bottom: 0;
+}
+
+/* Stripe card icon — dark mode inversion */
+[data-theme='dark'] #payment ul.payment_methods img.stripe-icon {
+	filter: invert(1) hue-rotate(180deg);
+}
+
+.woocommerce-privacy-policy-text,
+.woocommerce-terms-and-conditions-wrapper {
+	font-size: 12px;
+	line-height: 1.55;
+	color: var(--fg-muted);
+	margin-top: 14px;
+}
+
+/* =====================================================================
+ * 7. COUPON FORM
+ * ===================================================================== */
+
+.woocommerce-form-coupon-toggle {
+	padding: 14px 0;
+	border: 0;
+	border-top: 1px solid var(--border);
+	border-bottom: 1px solid var(--border);
+	background: transparent;
+	color: var(--fg-muted);
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	margin: 0;
+	list-style: none;
+}
+.woocommerce-form-coupon-toggle a,
+.woocommerce-form-coupon-toggle .showcoupon,
+.showcoupon {
+	color: var(--fg);
+	font-weight: 500;
+	text-decoration: none;
+	border: 0;
+	padding: 0;
+}
+.woocommerce-form-coupon-toggle a:hover,
+.showcoupon:hover { color: var(--fg-muted); }
+
+.woocommerce-form-coupon {
+	padding: 18px;
+	border: 1px solid var(--border);
+	background: var(--bg-elevated);
+	border-radius: var(--radius-sm);
+}
+.woocommerce-form-coupon .form-row { margin-bottom: 0; }
+.woocommerce-form-coupon .form-row-first { margin-bottom: 12px; }
+
+/* =====================================================================
+ * 8. NOTICES
+ * ===================================================================== */
+
+.woocommerce-NoticeGroup,
+.woocommerce-notices-wrapper {
+	margin-bottom: 24px;
+}
+.woocommerce-error,
+.woocommerce-info,
+.woocommerce-message {
+	padding: 14px 18px;
+	margin: 0 0 16px;
+	border: 1px solid var(--border);
+	background: var(--bg-muted);
+	color: var(--fg);
+	font-size: 13px;
+	list-style: none;
+	border-radius: var(--radius-sm);
+}
+.woocommerce-error {
+	background: var(--danger-bg);
+	border-color: var(--danger);
+	color: var(--danger);
+}
+.woocommerce-error li { color: var(--danger); }
+.woocommerce-message {
+	background: var(--success-bg);
+	border-color: var(--success);
+	color: var(--success);
+}
+
+/* =====================================================================
+ * 9. MY ACCOUNT
+ * ===================================================================== */
+
+body.woocommerce-account .wchs-shell h1 {
+	text-align: center;
+}
+
+/* Guest login/register pages — narrow centered cards */
+.woocommerce-account .woocommerce-form-login,
+.woocommerce-account .woocommerce-form-register {
+	max-width: 440px;
+	margin: 0 auto 24px;
+	padding: 32px;
+	background: var(--bg-elevated);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-md);
+}
+.woocommerce-account .u-columns.col2-set {
+	max-width: 980px;
+	margin: 0 auto;
+}
+
+body.woocommerce-account .wchs-shell article h2 {
+	text-align: center;
+	margin-bottom: 20px;
+}
+
+/* Logged-in nav — horizontal scroll tabs on mobile */
+.woocommerce-account .woocommerce-MyAccount-navigation {
+	width: 100%;
+	margin-bottom: 24px;
+}
+.woocommerce-MyAccount-navigation ul {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	gap: 4px;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	border-bottom: 1px solid var(--border);
+	scrollbar-width: none;
+}
+.woocommerce-MyAccount-navigation ul::-webkit-scrollbar { display: none; }
+.woocommerce-MyAccount-navigation ul li { flex-shrink: 0; }
+.woocommerce-MyAccount-navigation ul li a {
+	display: inline-block;
+	padding: 12px 16px;
+	min-height: 44px;
+	color: var(--fg-muted);
+	text-decoration: none;
+	font-size: 12px;
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	border-bottom: 2px solid transparent;
+	white-space: nowrap;
+}
+.woocommerce-MyAccount-navigation ul li.is-active a,
+.woocommerce-MyAccount-navigation ul li a:hover {
+	color: var(--fg);
+	border-bottom-color: var(--fg);
+}
+
+/* Desktop sidebar */
+@media (min-width: 768px) {
+	.woocommerce-account .woocommerce-MyAccount-navigation {
+		width: 240px;
+		float: left;
+		margin-bottom: 0;
+	}
+	.woocommerce-MyAccount-navigation ul {
+		display: block;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		overflow: hidden;
+		background: var(--bg-elevated);
+	}
+	.woocommerce-MyAccount-navigation ul li { border-bottom: 1px solid var(--border); }
+	.woocommerce-MyAccount-navigation ul li:last-child { border-bottom: 0; }
+	.woocommerce-MyAccount-navigation ul li a {
+		display: block;
+		padding: 16px 18px;
+		border-bottom: 0;
+		border-left: 2px solid transparent;
+	}
+	.woocommerce-MyAccount-navigation ul li.is-active a,
+	.woocommerce-MyAccount-navigation ul li a:hover {
+		background: var(--bg-muted);
+		border-bottom-color: transparent;
+		border-left-color: var(--fg);
+	}
+	.woocommerce-account .woocommerce-MyAccount-content {
+		margin-left: 280px;
+	}
+}
+
+.woocommerce-account .woocommerce-MyAccount-content { width: 100%; }
+
+/* Orders table — stacked cards on mobile, table on desktop */
+.woocommerce-account .woocommerce-orders-table,
+.woocommerce-account table.my_account_orders {
+	display: block;
+}
+.woocommerce-account .woocommerce-orders-table thead,
+.woocommerce-account table.my_account_orders thead { display: none; }
+.woocommerce-account .woocommerce-orders-table tbody,
+.woocommerce-account .woocommerce-orders-table tr,
+.woocommerce-account .woocommerce-orders-table td,
+.woocommerce-account table.my_account_orders tbody,
+.woocommerce-account table.my_account_orders tr,
+.woocommerce-account table.my_account_orders td {
+	display: block;
+	width: 100%;
+}
+.woocommerce-account .woocommerce-orders-table tr,
+.woocommerce-account table.my_account_orders tr {
+	background: var(--bg-elevated);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-md);
+	padding: 14px 16px;
+	margin-bottom: 10px;
+}
+.woocommerce-account .woocommerce-orders-table td,
+.woocommerce-account table.my_account_orders td {
+	padding: 6px 0;
+	border: 0;
+	font-size: 13px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+.woocommerce-account .woocommerce-orders-table td::before,
+.woocommerce-account table.my_account_orders td::before {
+	content: attr(data-title) ':';
+	color: var(--fg-muted);
+	font-size: 11px;
+	font-weight: 450;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	margin-right: 12px;
+}
+@media (min-width: 768px) {
+	.woocommerce-account .woocommerce-orders-table,
+	.woocommerce-account table.my_account_orders {
+		display: table;
+		background: var(--bg-elevated);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		overflow: hidden;
+	}
+	.woocommerce-account .woocommerce-orders-table thead,
+	.woocommerce-account table.my_account_orders thead { display: table-header-group; }
+	.woocommerce-account .woocommerce-orders-table tbody,
+	.woocommerce-account table.my_account_orders tbody { display: table-row-group; }
+	.woocommerce-account .woocommerce-orders-table tr,
+	.woocommerce-account table.my_account_orders tr {
+		display: table-row;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		padding: 0;
+		margin: 0;
+		border-bottom: 1px solid var(--border);
+	}
+	.woocommerce-account .woocommerce-orders-table tr:last-child,
+	.woocommerce-account table.my_account_orders tr:last-child { border-bottom: 0; }
+	.woocommerce-account .woocommerce-orders-table td,
+	.woocommerce-account table.my_account_orders td {
+		display: table-cell;
+		padding: 14px 16px;
+		justify-content: flex-start;
+	}
+	.woocommerce-account .woocommerce-orders-table td::before,
+	.woocommerce-account table.my_account_orders td::before { display: none; }
+}
+
+/* =====================================================================
+ * 10. wp-login.php
+ * ===================================================================== */
+
+body.login {
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+	padding: 0 0 24px;
+}
+body.login .site-header {
+	position: sticky;
+	top: 0;
+	flex-shrink: 0;
+}
+body.login #login {
+	width: 100%;
+	max-width: 360px;
+	margin: auto;
+	padding: 0 16px;
+}
+@media (min-width: 640px) {
+	body.login #login { max-width: 400px; }
+}
+
+body.login h1 a {
+	background-image: none !important;
+	color: var(--fg);
+	font-family: var(--font-sans);
+	font-size: 22px;
+	font-weight: 500;
+	letter-spacing: -0.4px;
+	text-indent: 0;
+	width: auto;
+	height: auto;
+	margin-bottom: 24px;
+	display: inline-block;
+}
+
+body.login form {
+	background: var(--bg-elevated);
+	border: 1px solid var(--border);
+	border-radius: 0;
+	box-shadow: none;
+	padding: 32px;
+}
+body.login form label {
+	color: var(--fg-muted);
+	font-size: 11px;
+	font-weight: 450;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+}
+body.login form .input,
+body.login form input[type='text'],
+body.login form input[type='password'] {
+	background: var(--bg);
+	color: var(--fg);
+	border: 1px solid var(--border);
+	border-radius: 0;
+	padding: 12px 14px;
+	min-height: 48px;
+	font-family: var(--font-sans);
+	font-size: 16px;
+	letter-spacing: -0.01em;
+	box-shadow: none;
+}
+body.login form .input:focus,
+body.login form input[type='text']:focus,
+body.login form input[type='password']:focus {
+	border-color: var(--fg);
+	box-shadow: 0 0 0 2px color-mix(in oklab, var(--fg) 20%, transparent);
+}
+
+body.login .button-primary {
+	background: var(--accent);
+	color: var(--accent-fg);
+	border: 1px solid var(--accent);
+	border-radius: 0;
+	text-shadow: none;
+	box-shadow: none;
+	width: 100%;
+	min-height: 48px;
+	padding: 12px 20px;
+	font-family: var(--font-sans);
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+}
+body.login .button-primary:hover {
+	background: transparent;
+	color: var(--accent);
+}
+
+body.login #nav,
+body.login #backtoblog {
+	text-align: center;
+	margin-top: 16px;
+}
+body.login #nav a,
+body.login #backtoblog a {
+	color: var(--fg-muted) !important;
+	text-decoration: underline;
+	font-size: 12px;
+	font-family: var(--font-sans);
+	letter-spacing: 0.02em;
+}
+/* Scope to login form links ONLY — do NOT catch the site-header links
+   which must stay --fg for brand consistency. */
+body.login #login a,
+body.login #nav a,
+body.login #backtoblog a,
+body.login .forgetmenot a {
+	color: var(--fg-muted) !important;
+	font-family: var(--font-sans) !important;
+}
+body.login .forgetmenot,
+body.login .forgetmenot label,
+body.login #nav,
+body.login #backtoblog {
+	font-family: var(--font-sans) !important;
+}
+
+body.login .wp-pwd button.button {
+	width: auto;
+	min-height: 0;
+	padding: 0 8px;
+}
+
+/* =====================================================================
+ * 11. SELECT2 — the lone !important exception
+ * Select2 includes inline styles + its own high-specificity CSS we can't
+ * out-cascade cleanly. This is the ONLY section with !important.
+ * ===================================================================== */
+
+.select2-container--default .select2-selection--single {
+	background: var(--bg) !important;
+	border: 1px solid var(--border) !important;
+	border-radius: var(--radius-sm) !important;
+	height: 48px !important;
+	min-height: 48px !important;
+	color: var(--fg) !important;
+	font-family: var(--font-sans) !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+	color: var(--fg) !important;
+	line-height: 46px !important;
+	padding-left: 14px !important;
+	font-size: 16px !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+	height: 46px !important;
+	width: 40px !important;
+	right: 0 !important;
+	top: 0 !important;
+	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%237d848e' stroke-width='1.6'><polyline points='5 8 10 13 15 8'/></svg>") !important;
+	background-repeat: no-repeat !important;
+	background-position: center !important;
+	background-size: 16px !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow b {
+	display: none !important;
+}
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--single {
+	border-color: var(--fg) !important;
+	box-shadow: 0 0 0 2px color-mix(in oklab, var(--fg) 20%, transparent) !important;
+}
+.select2-dropdown {
+	background: var(--bg-elevated) !important;
+	border: 1px solid var(--border) !important;
+	border-radius: var(--radius-sm) !important;
+	color: var(--fg) !important;
+	font-family: var(--font-sans) !important;
+}
+.select2-search--dropdown .select2-search__field {
+	background: var(--bg) !important;
+	border: 1px solid var(--border) !important;
+	border-radius: var(--radius-sm) !important;
+	color: var(--fg) !important;
+	padding: 10px 12px !important;
+	font-size: 14px !important;
+}
+.select2-results__option {
+	padding: 12px 14px !important;
+	color: var(--fg) !important;
+	font-size: 14px !important;
+}
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+	background: var(--bg-muted) !important;
+	color: var(--fg) !important;
+}
+.select2-container--default .select2-results__option[aria-selected='true'] {
+	background: var(--bg-muted) !important;
+}
+
+/* =====================================================================
+ * 12. PASSWORD SHOW-TOGGLE
+ * WP core injects <button class="show-password-input"> inside password
+ * fields with a native 2px outset white border that renders as a grey
+ * dash in dark mode. Replace with a custom SVG eye icon.
+ * ===================================================================== */
+
+.password-input,
+.wp-pwd {
+	position: relative;
+	display: block;
+	width: 100%;
+}
+.password-input input.input-text,
+.wp-pwd input[type='password'],
+.wp-pwd input[type='text'] { width: 100%; padding-right: 52px; }
+
+/* wp-login.php password toggle DOM differs: <button class="wp-hide-pw">
+   with a .dashicons span inside. Align with our .show-password-input. */
+button.wp-hide-pw {
+	position: absolute !important;
+	right: 4px !important;
+	top: 50% !important;
+	transform: translateY(-50%) !important;
+	width: 44px !important;
+	height: 44px !important;
+	min-height: 44px !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	background: transparent !important;
+	border: 0 !important;
+	color: var(--fg-muted) !important;
+	cursor: pointer;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+}
+button.wp-hide-pw .dashicons {
+	color: var(--fg-muted) !important;
+	font-size: 18px !important;
+	width: 18px !important;
+	height: 18px !important;
+	line-height: 1 !important;
+}
+button.wp-hide-pw:hover .dashicons { color: var(--fg) !important; }
+button.wp-hide-pw .text { display: none !important; }
+
+button.show-password-input {
+	position: absolute !important;
+	right: 4px !important;
+	top: 50% !important;
+	transform: translateY(-50%) !important;
+	width: 44px !important;
+	height: 44px !important;
+	min-height: 44px !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	background: transparent !important;
+	border: 0 !important;
+	color: var(--fg-muted) !important;
+	cursor: pointer;
+	text-indent: -9999px;
+	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237d848e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z'/><circle cx='12' cy='12' r='3'/></svg>") !important;
+	background-repeat: no-repeat !important;
+	background-position: center !important;
+	background-size: 18px 18px !important;
+}
+button.show-password-input.display-password {
+	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237d848e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24'/><line x1='1' y1='1' x2='23' y2='23'/></svg>") !important;
+}
+
+/* =====================================================================
+ * 13. RADIO + CHECKBOX CUSTOM STYLING
+ * Native form controls render inconsistently across themes. Replace
+ * them with appearance:none + our own visual via pseudo-elements.
+ * ===================================================================== */
+
+input[type='radio'] {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 18px;
+	height: 18px;
+	margin: 0 10px 0 0;
+	min-height: 0;
+	padding: 0;
+	background: var(--bg);
+	border: 1px solid var(--fg-muted);
+	border-radius: 999px;
+	cursor: pointer;
+	position: relative;
+	flex-shrink: 0;
+	vertical-align: middle;
+}
+input[type='radio']:checked { border-color: var(--fg); }
+input[type='radio']:checked::after {
+	content: '';
+	position: absolute;
+	left: 3px;
+	top: 3px;
+	width: 10px;
+	height: 10px;
+	border-radius: 999px;
+	background: var(--fg);
+}
+
+body.login .forgetmenot,
+.woocommerce-form-login__rememberme,
+.woocommerce form .form-row label.woocommerce-form__label-for-checkbox,
+.woocommerce-page form .form-row label.woocommerce-form__label-for-checkbox,
+label.woocommerce-form__label-for-checkbox {
+	display: inline-flex;
+	align-items: center;
+	gap: 12px;
+	margin: 16px 0;
+	padding: 0;
+	min-height: 44px;
+	cursor: pointer;
+	text-transform: none;
+	letter-spacing: 0;
+	color: var(--fg);
+	font-size: 13px;
+}
+body.login .forgetmenot input[type='checkbox'],
+.woocommerce-form-login__rememberme input[type='checkbox'],
+.woocommerce-form__label-for-checkbox input[type='checkbox'] {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 18px;
+	height: 18px;
+	min-height: 0;
+	padding: 0;
+	margin: 0;
+	background: var(--bg);
+	border: 1px solid var(--fg-muted);
+	border-radius: 3px;
+	cursor: pointer;
+	flex-shrink: 0;
+	position: relative;
+	vertical-align: middle;
+}
+body.login .forgetmenot input[type='checkbox']:checked,
+.woocommerce-form-login__rememberme input[type='checkbox']:checked,
+.woocommerce-form__label-for-checkbox input[type='checkbox']:checked {
+	background: var(--fg);
+	border-color: var(--fg);
+}
+body.login .forgetmenot input[type='checkbox']:checked::after,
+.woocommerce-form-login__rememberme input[type='checkbox']:checked::after,
+.woocommerce-form__label-for-checkbox input[type='checkbox']:checked::after {
+	content: '';
+	position: absolute;
+	left: 5px;
+	top: 1px;
+	width: 5px;
+	height: 10px;
+	border: solid var(--bg);
+	border-width: 0 2px 2px 0;
+	transform: rotate(45deg);
+}
+body.login .forgetmenot label,
+.woocommerce-form-login__rememberme span,
+.woocommerce-form__label-for-checkbox span {
+	display: inline-flex;
+	align-items: center;
+	font-size: 13px;
+	font-weight: 400;
+	color: var(--fg);
+	text-transform: none;
+	letter-spacing: 0;
+	margin: 0;
+	line-height: 1;
+}
+
+/* =====================================================================
+ * 14. SITE HEADER
+ * Moved to standalone header.css (shared with SPA via symlink).
+ * Loaded separately via Assets.php wp_enqueue_style('wchs-ds-header').
+ * ===================================================================== */
+
+/* =====================================================================
+ * 15. BACK-TO-SITE LINK
+ * Now redundant since the header provides full navigation, but kept
+ * for backward compat — hidden by default, visible if no header.
+ * ===================================================================== */
+
+.wchs-back-link {
+	display: none;
+}
+
+/* =====================================================================
+ * 16. GLOBAL HIDES + UTILITIES
+ * ===================================================================== */
+
+.woocommerce-breadcrumb { display: none; }
+
+/* WP wp-login caps-lock warning — hidden until JS toggles it visible.
+   We dequeued login.css which held these rules; restore the essentials. */
+#caps-warning {
+	display: none;
+	margin: 8px 0 16px;
+	padding: 0;
+	color: var(--fg-muted);
+	font-size: 12px;
+	line-height: 1.4;
+}
+#caps-warning.on { display: flex; align-items: center; gap: 8px; }
+#caps-warning .caps-icon { display: inline-flex; width: 14px; height: 14px; }
+#caps-warning .caps-icon svg { width: 14px; height: 14px; fill: currentColor; stroke: currentColor; }
+
+/* WP core screen-reader-only utility — dequeuing WP defaults wiped this
+   and let WC's aria "Required" label render visually. Restore it. */
+.screen-reader-text {
+	border: 0;
+	clip: rect(1px, 1px, 1px, 1px);
+	-webkit-clip-path: inset(50%);
+	clip-path: inset(50%);
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	padding: 0;
+	position: absolute;
+	width: 1px;
+	word-wrap: normal !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.theme-toggle,
+	.site-header__cart,
+	.site-header__burger,
+	.woocommerce button.button,
+	.woocommerce a.button,
+	#place_order {
+		transition-duration: 0.001ms !important;
+	}
+}
+
+/* =====================================================================
+ * 17. MOBILE POLISH — WP NATIVE PAGES
+ * Tightens typography, spacing, and alignment on WP-rendered pages at
+ * mobile widths. WC's own responsive CSS fights us at <640px — these
+ * overrides win via specificity + !important where needed.
+ * ===================================================================== */
+
+@media (max-width: 639px) {
+	/* WC checkout: stack form, full-width inputs, tighter spacing */
+	.woocommerce-checkout .col2-set,
+	.woocommerce-checkout .col2-set .col-1,
+	.woocommerce-checkout .col2-set .col-2 {
+		width: 100% !important;
+		float: none !important;
+		padding: 0 !important;
+	}
+	.woocommerce-checkout #order_review_heading,
+	.woocommerce-checkout .woocommerce-checkout-review-order {
+		margin-top: 24px;
+	}
+	/* Tighter letter-spacing on all form elements at mobile */
+	.woocommerce form .form-row label,
+	.woocommerce-checkout label,
+	.woocommerce-account label,
+	body.login form label {
+		letter-spacing: 0.08em !important;
+	}
+	.woocommerce form input,
+	.woocommerce form textarea,
+	.woocommerce form select,
+	body.login form input {
+		letter-spacing: -0.01em !important;
+		font-family: var(--font-sans) !important;
+	}
+	/* Buttons: full width, proper sizing */
+	.woocommerce button.button,
+	.woocommerce a.button,
+	.woocommerce input.button,
+	#place_order {
+		width: 100%;
+		min-height: 48px;
+		font-family: var(--font-sans) !important;
+		letter-spacing: 0.08em !important;
+	}
+	/* Notices */
+	.woocommerce-info,
+	.woocommerce-message,
+	.woocommerce-error {
+		margin-bottom: 16px;
+		border-radius: 0 !important;
+	}
+	/* Login form: full-width on narrow screens */
+	body.login #login {
+		max-width: 100%;
+		padding: 0 20px;
+	}
+	body.login form {
+		padding: 24px 20px;
+	}
+	/* My-account nav: horizontal scroll tabs */
+	.woocommerce-MyAccount-navigation ul {
+		display: flex;
+		overflow-x: auto;
+		gap: 0;
+		padding: 0;
+		margin: 0 0 20px;
+		list-style: none;
+		border-bottom: 1px solid var(--border);
+		-webkit-overflow-scrolling: touch;
+	}
+	.woocommerce-MyAccount-navigation ul li {
+		flex-shrink: 0;
+	}
+	.woocommerce-MyAccount-navigation ul li a {
+		display: block;
+		padding: 12px 16px;
+		font-size: 11px;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		white-space: nowrap;
+		border-bottom: 2px solid transparent;
+		font-family: var(--font-sans);
+	}
+	.woocommerce-MyAccount-navigation ul li.is-active a,
+	.woocommerce-MyAccount-navigation ul li.woocommerce-MyAccount-navigation-link--dashboard a {
+		border-bottom-color: var(--fg);
+	}
+}
+
+/* =====================================================================
+ * 18. UPSELL OFFER PAGE
+ * Custom one-click upsell (headless-one-click-upsell.php) renders via
+ * get_header()/get_footer() using these .wchs-offer classes.
+ * ===================================================================== */
+
+.wchs-offer {
+	max-width: 640px;
+	padding-top: 48px;
+}
+
+.wchs-offer__hero {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+}
+
+@media (min-width: 640px) {
+	.wchs-offer__hero {
+		flex-direction: row;
+		align-items: flex-start;
+		gap: 32px;
+	}
+}
+
+.wchs-offer__image {
+	flex-shrink: 0;
+}
+
+.wchs-offer__image img {
+	width: 100%;
+	max-width: 280px;
+	height: auto;
+	display: block;
+	border: 1px solid var(--border);
+}
+
+@media (min-width: 640px) {
+	.wchs-offer__image img {
+		width: 240px;
+	}
+}
+
+.wchs-offer__details {
+	flex: 1;
+	min-width: 0;
+}
+
+.wchs-offer__eyebrow {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	color: var(--fg-muted);
+	margin: 0 0 8px;
+}
+
+.wchs-offer__title {
+	font-family: var(--font-sans);
+	font-size: 28px;
+	font-weight: 500;
+	letter-spacing: -0.03em;
+	line-height: 1.15;
+	margin: 0 0 12px;
+	color: var(--fg);
+}
+
+.wchs-offer__price {
+	font-size: 20px;
+	font-weight: 600;
+	color: var(--fg);
+	margin-bottom: 12px;
+}
+
+.wchs-offer__desc {
+	font-size: 14px;
+	line-height: 1.55;
+	color: var(--fg-muted);
+}
+
+.wchs-offer__desc p {
+	margin: 0 0 8px;
+}
+
+.wchs-offer__selection {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--fg);
+	margin: -4px 0 14px;
+}
+
+.wchs-offer__variations {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 12px;
+	margin-top: 16px;
+}
+
+.wchs-offer__variation-field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.wchs-offer__variation-label {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--fg-muted);
+}
+
+.wchs-offer__variation-select {
+	width: 100%;
+	border: 1px solid var(--border);
+	background: var(--bg);
+	color: var(--fg);
+	font-size: 14px;
+	padding: 12px 14px;
+}
+
+.wchs-offer__cta {
+	margin-top: 32px;
+	padding-top: 24px;
+	border-top: 1px solid var(--border);
+	text-align: center;
+}
+
+.wchs-offer__accept-form {
+	margin: 0;
+}
+
+.wchs-offer__cta .wchs-offer__accept,
+.wchs-offer__cta .wchs-offer__accept:hover {
+	display: block;
+	width: 100%;
+	padding: 16px 24px;
+	background: var(--fg);
+	color: var(--bg);
+	border: 0;
+	cursor: pointer;
+	text-decoration: none;
+	font-family: var(--font-sans);
+	font-size: 14px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	text-align: center;
+	transition: opacity var(--dur-fast) var(--ease);
+}
+
+.wchs-offer__cta .wchs-offer__accept:hover {
+	opacity: 0.85;
+}
+
+.wchs-offer__cta .wchs-offer__accept:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.wchs-offer__decline {
+	margin-top: 16px;
+}
+
+.wchs-offer__decline a.wchs-offer__skip {
+	font-size: 13px;
+	color: var(--fg-muted);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.wchs-offer__decline a.wchs-offer__skip:hover {
+	color: var(--fg);
+}

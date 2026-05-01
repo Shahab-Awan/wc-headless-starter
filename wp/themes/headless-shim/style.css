@@ -1,0 +1,92 @@
+/*
+Theme Name: Headless Shim
+Description: Minimal classic theme for the wc-headless-starter. Only styles /cart, /checkout, /my-account so they visually match the SvelteKit SPA. Every other URL is a redirect to the SPA via functions.php.
+Version: 0.1.0
+Author: wchs
+Template:
+*/
+
+/* Everything below is a conservative base so the native pages are readable
+   out of the box. Real styling should be imported from the SPA's compiled
+   CSS bundle (see functions.php::wchs_enqueue_spa_css) so the two sides
+   stay visually in sync. */
+
+:root {
+  --wchs-bg: #ffffff;
+  --wchs-fg: #111111;
+  --wchs-muted: #666666;
+  --wchs-border: #e5e5e5;
+  --wchs-accent: #111111;
+  --wchs-accent-fg: #ffffff;
+  --wchs-radius: 0;
+  --wchs-font:
+    "Geist Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+  --wchs-font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+
+html, body {
+  background: var(--wchs-bg);
+  color: var(--wchs-fg);
+  font-family: var(--wchs-font);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+}
+
+a { color: inherit; text-underline-offset: 3px; }
+
+.wchs-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 24px 120px;
+}
+
+.wchs-shell h1,
+.wchs-shell h2 {
+  font-family: var(--wchs-font-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.wchs-shell button,
+.wchs-shell .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  background: var(--wchs-accent);
+  color: var(--wchs-accent-fg);
+  border: 1px solid var(--wchs-accent);
+  border-radius: var(--wchs-radius);
+  font-family: var(--wchs-font);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.wchs-shell input[type="text"],
+.wchs-shell input[type="email"],
+.wchs-shell input[type="password"],
+.wchs-shell input[type="tel"],
+.wchs-shell select,
+.wchs-shell textarea {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--wchs-bg);
+  color: var(--wchs-fg);
+  border: 1px solid var(--wchs-border);
+  border-radius: var(--wchs-radius);
+  font-family: var(--wchs-font);
+  font-size: 14px;
+}
+
+.wchs-back-link {
+  display: inline-block;
+  margin-bottom: 24px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

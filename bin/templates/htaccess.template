@@ -1,0 +1,127 @@
+# WCHS — WordPress + SvelteKit SPA on same Apache host (Siteground GoGeek)
+# Rules evaluated top-down; first [L] wins. Drop verbatim into public_html/.htaccess
+# Source of truth: docs/siteground-deploy.md § 4
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+
+# 1. Force HTTPS
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# 2. Bare /wp-admin or /wp-admin/ → /wp-admin/index.php so PHP handles it.
+RewriteRule ^wp-admin/?$ /wp-admin/index.php [L]
+
+# 3. Real files on disk served as-is (CSS/JS/images/fonts, the SPA index.html at root)
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# 4. WP paths pass through (index.php handles them via WP rewrite internals)
+RewriteRule ^wp-admin(/.*)?$       - [L]
+RewriteRule ^wp-login\.php$         - [L]
+RewriteRule ^wp-includes(/.*)?$     - [L]
+RewriteRule ^wp-content(/.*)?$      - [L]
+RewriteRule ^xmlrpc\.php$           - [L]
+
+# 5. Cart / checkout / my-account are WP-owned pages under our shim theme
+RewriteRule ^(cart|checkout|my-account)(/.*)?$ /index.php [L]
+
+# 6. WP REST API
+RewriteRule ^wp-json(/.*)?$ /index.php [L]
+
+# 6b. WooCommerce REST Auth (OAuth flow used by Omnisend, Klaviyo, Zapier,
+#     any external app that integrates via WC keys). This endpoint lives at
+#     /wc-auth/v1/authorize NOT /wp-json/wc/... — without this rule the SPA
+#     fallback swallows it and external apps get a 404 mid-authorize.
+RewriteRule ^wc-auth(/.*)?$ /index.php [L]
+
+# 6c. WooCommerce gateway callbacks (path-form): /wc-api/<endpoint>.
+#     Used by some gateways for IPN/webhook delivery. Without this rule
+#     incoming webhooks hit the SPA and payments silently fail.
+RewriteRule ^wc-api(/.*)?$ /index.php [L]
+
+# 6d. WP core sitemaps (since WP 5.5): /wp-sitemap.xml and the dynamic
+#     /wp-sitemap-posts-*.xml subpages. Google + other crawlers fetch these;
+#     without the rule they get the SPA shell and your indexing breaks.
+RewriteRule ^wp-sitemap(-[a-z0-9-]+)?\.xml$ /index.php [L]
+RewriteRule ^wp-sitemap\.xsl$ /index.php [L]
+
+# 6e. RSS feeds — harmless to route even if no one subscribes; aggregators,
+#     SEO tools, and "latest posts" scrapers hit these. Route to WP so they
+#     work rather than serving the SPA.
+RewriteRule ^feed(/.*)?$ /index.php [L]
+RewriteRule ^comments/feed(/.*)?$ /index.php [L]
+
+# 6f. WCHS SEO endpoints — mu-plugin headless-seo.php generates /sitemap.xml
+#     and /robots.txt from WC products + WCHS pages. Route to WP's index.php
+#     so the init hook fires and the plugin emits XML/text before any
+#     SPA fallback catches the request.
+RewriteRule ^sitemap\.xml$ /index.php [L]
+RewriteRule ^robots\.txt$  /index.php [L]
+
+# 6g. Old Shopify product URLs. Many Shopify themes use /products/<handle>;
+#     WCHS canonical PDPs are /product/<slug>. Redirect
+#     before the SPA fallback so indexed links land on real product pages
+#     instead of the client-side 404 shell.
+RewriteRule ^products/?$ /shop [R=301,L]
+RewriteRule ^products/([^/]+)/?$ /product/$1 [R=301,L,NE]
+
+# 6h. Clean category URLs. Older WCHS builds linked category filters as
+#     /shop?cat=<slug> or /shop?category=<slug>; canonical category pages are
+#     /shop/<slug> so indexable category landings are not query-param URLs.
+RewriteCond %{QUERY_STRING} (^|&)cat=([A-Za-z0-9_-]+)(&|$) [NC]
+RewriteRule ^shop/?$ /shop/%2? [R=301,L,NE]
+RewriteCond %{QUERY_STRING} (^|&)category=([A-Za-z0-9_-]+)(&|$) [NC]
+RewriteRule ^shop/?$ /shop/%2? [R=301,L,NE]
+
+# 6i. Legacy category paths need PHP because Shopify collection handles can
+#     map to different Woo category slugs per site. headless-legacy-redirects.php
+#     validates targets and emits the 301.
+RewriteRule ^collections(/.*)?$ /index.php [L]
+RewriteRule ^product-category(/.*)?$ /index.php [L]
+
+# 6j. SEO-sensitive SPA routes go through WordPress first so
+#     headless-seo-shell.php can replace the static fallback head block with
+#     route-specific raw SEO tags before the Svelte app hydrates. The emitted
+#     body is still the same SPA shell; checkout/cart/WP endpoints above stay
+#     WordPress-owned and are not affected.
+RewriteRule ^shop(/.*)?$ /index.php [L]
+RewriteRule ^product(/.*)?$ /index.php [L]
+RewriteRule ^account(/.*)?$ /index.php [L]
+RewriteRule ^order-received(/.*)?$ /index.php [L]
+RewriteRule ^[A-Za-z0-9_-]+/?$ /index.php [L]
+
+# 7. WC AJAX (?wc-ajax=...), WC API callbacks (?wc-api=...), and the legacy
+#    /?rest_route= REST fallback — all bare-/ query-string requests that
+#    MUST go to WP, not the SPA. ?wc-api= is how classic gateway plugins
+#    deliver webhooks.
+RewriteCond %{QUERY_STRING} (^|&)(wc-ajax|wc-api|rest_route)=
+RewriteRule ^$ /index.php [L]
+
+# 8. Everything else with no matching file → SPA fallback
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
+</IfModule>
+
+DirectoryIndex index.html index.php
+Options -Indexes
+
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+</IfModule>
+
+<IfModule mod_headers.c>
+  # SPA shell (index.html) must NEVER be cached by SiteGround's NGINX Dynamic Cache.
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+
+  # Content-hashed SPA bundles are immutable — aggressive caching is correct.
+  <FilesMatch "\.(js|css|woff2?|svg|png|jpg|webp|avif|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>

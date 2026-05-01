@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="color-scheme" content="light dark" />
+		<!-- Static SEO fallback.
+		     The deploy workflow replaces this block with per-site metadata from
+		     /wp-json/wchs/v1/config. Keep generic defaults here so a blocked or
+		     failed config request can never leak starter branding into SERPs. -->
+		<!-- STATIC_SEO_START -->
+		<title data-static-seo="title">Online Store</title>
+		<meta data-static-seo="description" name="description" content="Browse products, review your cart, and checkout securely." />
+		<meta data-static-seo="robots" name="robots" content="index,follow" />
+		<!-- STATIC_SEO_END -->
+		<!-- Favicon + touch icons. /favicon.ico is a real file at the webroot
+		     (drop the site's square logo there so browsers that auto-request
+		     /favicon.ico get the brand mark instead of the SPA shell).
+		     apple-touch-icon covers iOS home-screen bookmarks. -->
+		<link rel="icon" href="/favicon.ico" sizes="any" />
+		<link rel="icon" type="image/png" href="/favicon.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<!-- Web app manifest — powers "Add to Home Screen" on mobile + lifts
+		     Lighthouse PWA score. Generated per-site during deploy from
+		     bin/templates/site.webmanifest.template. -->
+		<link rel="manifest" href="/site.webmanifest" />
+		<meta name="theme-color" content="#06b6d4" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#0e7490" media="(prefers-color-scheme: dark)" />
+		<!-- Fonts from Bunny (GDPR-safer drop-in for Google Fonts).
+		     Inter is the default for all body/UI copy. Extra weights 300/700/800/900
+		     are loaded so admins picking "Extra Bold" or "Black" for the hero
+		     (when Inter is the selected headline font) render correctly.
+		     Non-Inter hero fonts are loaded dynamically in +layout.svelte via loadHeroFont(). -->
+		<link rel="preconnect" href="https://fonts.bunny.net" crossorigin />
+		<link rel="stylesheet" href="https://fonts.bunny.net/css?family=inter:300,400,450,500,600,700,800,900&display=swap" />
+		<!-- Apply saved / system theme BEFORE any CSS paints to prevent flash.
+		     Reads cookie first (shared cross-port with native WP pages),
+		     then localStorage, then prefers-color-scheme. -->
+		<script>
+			(function () {
+				try {
+					// URL param wins when set — admin preview iframe uses
+					// ?theme=light|dark to force a specific theme regardless
+					// of the user's cookie/localStorage preference.
+					var urlTheme = null;
+					var urlMatch = location.search.match(/[?&]theme=(light|dark)(?:&|$)/);
+					if (urlMatch) urlTheme = urlMatch[1];
+					var cookieTheme = null;
+					var m = document.cookie.match(/(?:^|; )wchs_theme=([^;]*)/);
+					if (m) cookieTheme = decodeURIComponent(m[1]);
+					var stored = urlTheme || cookieTheme || localStorage.getItem('wchs_theme');
+					var theme =
+						stored === 'light' || stored === 'dark'
+							? stored
+							: window.matchMedia('(prefers-color-scheme: dark)').matches
+								? 'dark'
+								: 'light';
+					document.documentElement.setAttribute('data-theme', theme);
+					document.documentElement.style.colorScheme = theme;
+				} catch (e) {
+					document.documentElement.setAttribute('data-theme', 'light');
+				}
+			})();
+		</script>
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>

@@ -1,0 +1,41 @@
+# Dependencies
+**/node_modules/
+**/.svelte-kit/
+**/build/
+**/.vite/
+
+# Plugin sources — not committed here (install via wp-admin or wp-cli on target site)
+wp/plugins/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Test artifacts — regenerable with `node tests/*.js`
+tests/screenshots/
+tests/critique/
+tests/e2e/screenshots/
+tests/*/_report.json
+tests/*/_run-report.txt
+spa/tests/screenshots/
+spa/tests/**/*.png
+
+# Local planning scratchpads
+PHASE1-PLAN.md
+
+# Docker volume data (if it ever leaks in)
+tmp/
+db-backups/

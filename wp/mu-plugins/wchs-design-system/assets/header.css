@@ -1,0 +1,487 @@
+/* =====================================================================
+ * SHARED HEADER CSS
+ * Single source of truth for both the SPA (+layout.svelte) and WP
+ * (HeaderRenderer.php). Changes here apply to BOTH implementations.
+ *
+ * The SPA imports this via symlink at spa/src/lib/styles/header.css.
+ * The WP design system loads it as part of wc-overrides.css via @import
+ * or directly in Assets.php.
+ *
+ * Class names are shared between Svelte markup and PHP markup —
+ * both render .site-header, .site-header__brand, etc.
+ * ===================================================================== */
+
+.site-header {
+	position: sticky;
+	top: 0;
+	z-index: 100;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 16px;
+	background: color-mix(in oklab, var(--bg) 92%, transparent);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	border-bottom: 1px solid var(--border);
+	gap: 12px;
+	font-family: var(--font-sans);
+}
+
+/* Inverted header — dark on light, light on dark */
+.site-header--inverted {
+	--bg: #0c0c0c;
+	--fg: #ffffff;
+	--fg-muted: #a0a0a0;
+	--border: #3a3a3f;
+	background: color-mix(in oklab, var(--bg) 95%, transparent);
+}
+[data-theme='dark'] .site-header--inverted {
+	--bg: #ffffff;
+	--fg: #0c0c0c;
+	--fg-muted: #767d88;
+	--border: #c9ccd1;
+}
+@media (min-width: 640px) {
+	.site-header { padding: 10px 24px; gap: 16px; }
+}
+@media (min-width: 900px) {
+	.site-header { padding: 12px 28px; }
+}
+
+/* Logo-size padding compensators — desktop only. As the logo grows, shrink
+   vertical padding so total header height doesn't balloon. Horizontal
+   padding is untouched; mobile is unaffected (mobile logo is always 24px).
+   Approx totals with these adjustments:
+     compact   (24px) + 16px = 56px
+     standard  (32px) + 12px = 56px  (baseline — no override)
+     prominent (40px) + 10px = 60px
+     xl        (56px) +  6px = 68px */
+@media (min-width: 640px) {
+	.site-header[data-logo-size='compact']   { padding-top: 16px; padding-bottom: 16px; }
+	.site-header[data-logo-size='prominent'] { padding-top: 10px; padding-bottom: 10px; }
+	.site-header[data-logo-size='xl']        { padding-top:  6px; padding-bottom:  6px; }
+
+	/* Centered desktop brand — absolute-positioned inside the sticky header
+	   (sticky establishes a positioning context). Nav becomes the only
+	   flex child, so we switch the header to flex-end to keep nav pinned
+	   right. max-width reserves space on both sides so the logo doesn't
+	   visually collide with nav items when nav grows. */
+	.site-header[data-brand-position='center'] {
+		justify-content: flex-end;
+	}
+	.site-header[data-brand-position='center'] .site-header__brand {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		max-width: calc(100% - 320px);
+		text-align: center;
+		justify-content: center;
+	}
+}
+
+/* Logo — rendered left of the brand text when custom_logo is set */
+.site-header__logo {
+	height: 24px;
+	width: auto;
+	margin-right: 8px;
+	vertical-align: middle;
+	display: inline-block;
+}
+@media (min-width: 640px) {
+	/* Desktop size presets. Admin picks one via config.data.logo_size.
+	   Mobile stays at 24px above for tap-target spacing regardless. */
+	.site-header__logo { height: 28px; } /* fallback if no preset class present */
+	.site-header__logo--size-compact   { height: 24px; }
+	.site-header__logo--size-standard  { height: 32px; }
+	.site-header__logo--size-prominent { height: 40px; }
+	.site-header__logo--size-xl        { height: 56px; }
+}
+/* Auto-invert gated by .site-header__logo--auto-invert (set from
+   config.data.logo_invert_on_dark). Off by default when the admin
+   disables the toggle — useful for multi-color logos. */
+[data-theme='dark'] .site-header__logo--auto-invert {
+	filter: invert(1);
+}
+
+/* Dark-variant swap — CSS-only toggle based on [data-theme] on <html>.
+   Both <img> tags live in DOM; display flips on theme change. When the
+   admin uploads a dark-mode logo, the light variant is hidden in dark
+   mode and the dark variant is revealed (no filter, never inverted). */
+.site-header__logo--dark-variant { display: none; }
+[data-theme='dark'] .site-header__logo--light-variant { display: none; }
+[data-theme='dark'] .site-header__logo--dark-variant { display: inline-block; }
+
+.site-header__brand {
+	font-size: 13px;
+	font-weight: 600;
+	text-decoration: none;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--fg);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+	flex-shrink: 1;
+}
+@media (min-width: 640px) {
+	.site-header__brand { font-size: 14px; letter-spacing: 0.12em; }
+}
+
+.site-header__nav {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	flex-shrink: 0;
+}
+@media (min-width: 640px) { .site-header__nav { gap: 22px; } }
+@media (min-width: 900px) { .site-header__nav { gap: 28px; } }
+
+.site-header__nav-link {
+	font-size: 12px;
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	text-decoration: none;
+	color: var(--fg);
+	transition: color var(--dur-fast, 180ms) var(--ease, ease);
+}
+.site-header__nav-link:hover { color: var(--fg-muted); }
+.site-header__nav-link.is-accent {
+	color: var(--accent);
+}
+.site-header__nav-link.is-accent:hover {
+	opacity: 0.7;
+	color: var(--accent);
+}
+
+/* Theme toggle in header */
+/* Theme toggle — default (no accent) */
+.site-header .theme-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	background: transparent;
+	color: var(--fg);
+	border: 1px solid var(--border);
+	border-radius: 0;
+	cursor: pointer;
+	transition:
+		background var(--dur-fast, 180ms) var(--ease, ease),
+		color var(--dur-fast, 180ms) var(--ease, ease),
+		border-color var(--dur-fast, 180ms) var(--ease, ease);
+}
+.site-header .theme-toggle:hover {
+	background: var(--fg);
+	color: var(--bg);
+	border-color: var(--fg);
+}
+/* Theme toggle — accent variant */
+.is-accent-toggle .theme-toggle {
+	color: var(--accent);
+	border-color: var(--accent);
+}
+.is-accent-toggle .theme-toggle:hover {
+	background: var(--accent);
+	color: var(--accent-fg);
+	border-color: var(--accent);
+}
+.theme-toggle svg { display: block; }
+.theme-toggle .theme-toggle__sun { display: none; }
+.theme-toggle .theme-toggle__moon { display: block; }
+[data-theme='dark'] .theme-toggle .theme-toggle__sun { display: block; }
+[data-theme='dark'] .theme-toggle .theme-toggle__moon { display: none; }
+
+/* Icon link — default (no accent) */
+.site-header__icon-link {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-width: 36px;
+	height: 36px;
+	padding: 0 6px;
+	background: transparent;
+	color: var(--fg);
+	border: 1px solid var(--border);
+	border-radius: 0;
+	text-decoration: none;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	cursor: pointer;
+	transition:
+		background var(--dur-fast, 180ms) var(--ease, ease),
+		color var(--dur-fast, 180ms) var(--ease, ease),
+		border-color var(--dur-fast, 180ms) var(--ease, ease);
+}
+.site-header__icon-link:hover {
+	background: var(--fg);
+	color: var(--bg);
+	border-color: var(--fg);
+}
+/* Icon link — accent variant */
+.site-header__icon-link.is-accent {
+	color: var(--accent);
+	border-color: var(--accent);
+}
+.site-header__icon-link.is-accent:hover {
+	background: var(--accent);
+	color: var(--accent-fg);
+	border-color: var(--accent);
+}
+
+/* Borderless variant -- removes outlines from icon links + cart */
+.site-header--borderless .site-header__icon-link {
+	border-color: transparent;
+}
+.site-header--borderless .site-header__icon-link:hover {
+	border-color: var(--fg);
+}
+.site-header--borderless .site-header__icon-link.is-accent:hover {
+	border-color: var(--accent);
+}
+.site-header--borderless .site-header__cart {
+	border-color: transparent;
+}
+.site-header--borderless .site-header__cart:hover {
+	border-color: var(--fg);
+}
+.site-header--borderless .site-header__cart.is-accent {
+	border-color: transparent;
+}
+.site-header--borderless .site-header__cart.is-accent:hover {
+	border-color: var(--accent);
+}
+
+/* Cart button — default (no accent) */
+.site-header__cart {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 9px 3px;
+	border: 1px solid var(--fg);
+	border-radius: 0;
+	background: transparent;
+	color: var(--fg);
+	font-family: var(--font-sans);
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.09em;
+	text-decoration: none;
+	white-space: nowrap;
+	flex-shrink: 0;
+	cursor: pointer;
+	transition:
+		background var(--dur-fast, 180ms) var(--ease, ease),
+		color var(--dur-fast, 180ms) var(--ease, ease),
+		border-color var(--dur-fast, 180ms) var(--ease, ease),
+		transform var(--dur-med, 280ms) var(--ease-out, ease);
+}
+@media (min-width: 640px) { .site-header__cart { padding: 10px 3px; } }
+.site-header__cart:hover { background: var(--fg); color: var(--bg); }
+/* Cart button — accent variant */
+.site-header__cart.is-accent {
+	color: var(--accent);
+	border-color: var(--accent);
+}
+.site-header__cart.is-accent:hover {
+	background: var(--accent);
+	color: var(--accent-fg);
+	border-color: var(--accent);
+}
+.site-header__cart:active { transform: scale(0.96); }
+.site-header__cart-count { opacity: 0.7; font-weight: 450; }
+
+/* =====================================================================
+ * Hamburger button + drawer — mobile-only.
+ *
+ * Rendered in markup always (both desktop and mobile), but hidden on
+ * desktop and when data-hamburger-side='off'. The button is 40×40,
+ * unstyled container matches the cart/icon-link border system.
+ * ===================================================================== */
+.site-header__burger {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	background: transparent;
+	color: var(--fg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm, 0);
+	cursor: pointer;
+	transition:
+		background var(--dur-fast, 180ms) var(--ease, ease),
+		border-color var(--dur-fast, 180ms) var(--ease, ease);
+}
+.site-header__burger:hover {
+	background: var(--bg-muted);
+	border-color: var(--fg);
+}
+.site-header__burger .site-header__burger-close { display: none; }
+.site-header__burger[aria-expanded='true'] .site-header__burger-open { display: none; }
+.site-header__burger[aria-expanded='true'] .site-header__burger-close { display: block; }
+
+/* Desktop nav inline wrapper — uses display:contents so the children
+   participate directly in the outer flex. Hidden on mobile when a
+   hamburger is active. */
+.site-header__nav-inline {
+	display: contents;
+}
+
+/* Pinned nav cluster — up to 3 items rendered inline on mobile when
+   the hamburger is active. Hidden on desktop and on mobile when
+   hamburger is 'off'. */
+.site-header__nav-group--pinned {
+	display: inline-flex;
+	align-items: center;
+	gap: inherit;
+}
+
+/* Drawer container — rendered after the header but positioned fixed
+   below it. Hidden by default; shown when aria-expanded on the burger
+   flips to true.
+   Offset accounts for optional admin bar (32px) and mode banner (+28px
+   stacked, total 60px) — rules below override the base top value. */
+.site-header-drawer {
+	position: fixed;
+	top: 55px;
+	left: 0;
+	right: 0;
+	z-index: 99;
+	background: color-mix(in oklab, var(--bg) 94%, transparent);
+	backdrop-filter: blur(16px);
+	-webkit-backdrop-filter: blur(16px);
+	border-bottom: 1px solid var(--border);
+	display: flex;
+	flex-direction: column;
+	padding: 12px 0;
+	animation: site-drawer-in var(--dur-med, 280ms) var(--ease-out, ease);
+}
+
+/* Push the drawer below the admin bar when it's visible. `has-mode-banner`
+   must come after `has-admin-bar` because when both apply (admin in a
+   non-open access mode) the banner+bar stack is 60px tall. */
+body.has-admin-bar .site-header-drawer {
+	top: calc(55px + 32px);
+}
+body.has-mode-banner .site-header-drawer {
+	top: calc(55px + 60px);
+}
+.site-header-drawer[hidden] { display: none; }
+.site-header-drawer__item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 16px 24px;
+	color: var(--fg);
+	text-decoration: none;
+	font-family: var(--font-sans);
+	font-size: 13px;
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	border: 0;
+	background: transparent;
+	text-align: left;
+	cursor: pointer;
+	border-bottom: 1px solid var(--border-faint, var(--border));
+	width: 100%;
+}
+.site-header-drawer__item:last-child { border-bottom: 0; }
+.site-header-drawer__item:hover { background: var(--bg-muted); }
+.site-header-drawer__item svg { flex-shrink: 0; }
+.site-header-drawer__item.is-accent { color: var(--accent); }
+@keyframes site-drawer-in {
+	from { opacity: 0; transform: translateY(-8px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Desktop: hamburger button + drawer + pinned cluster are all hidden.
+   Only the nav-inline wrapper renders items. */
+@media (min-width: 640px) {
+	.site-header__burger,
+	.site-header-drawer,
+	.site-header__nav-group--pinned { display: none !important; }
+}
+
+@media (max-width: 639px) {
+	/* Text-only nav links still hide on mobile — they're ugly and
+	   overflow fast. The drawer shows their labels instead. */
+	.site-header__nav-link { display: none; }
+
+	/* Brand absolute-centered. Reserve space on BOTH sides so the
+	   logo doesn't crowd the hamburger or pinned group. */
+	.site-header {
+		justify-content: space-between;
+	}
+	.site-header__brand {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		max-width: calc(100% - 220px);
+		text-align: center;
+		justify-content: center;
+	}
+
+	/* With hamburger='off': nav-inline renders all items on the right.
+	   Pinned cluster + burger + drawer don't exist. Wider brand max-width. */
+	.site-header[data-hamburger-side='off'] {
+		justify-content: flex-end;
+	}
+	.site-header[data-hamburger-side='off'] .site-header__brand {
+		max-width: calc(100% - 120px);
+	}
+	.site-header[data-hamburger-side='off'] .site-header__burger,
+	.site-header[data-hamburger-side='off'] .site-header-drawer,
+	.site-header[data-hamburger-side='off'] .site-header__nav-group--pinned {
+		display: none !important;
+	}
+
+	/* With hamburger active: hide the full inline list. Only pinned
+	   cluster + burger render in the header; everything else goes
+	   into the drawer. */
+	.site-header[data-hamburger-side='left']  .site-header__nav-inline,
+	.site-header[data-hamburger-side='right'] .site-header__nav-inline {
+		display: none;
+	}
+
+	/* Nav grows to fill remaining width so burger + pinned cluster
+	   land at opposite ends. Without this, they'd clump together on
+	   the left because `.site-header__nav` is `flex-shrink: 0` and
+	   has no internal justify-content. */
+	.site-header[data-hamburger-side='left']  .site-header__nav,
+	.site-header[data-hamburger-side='right'] .site-header__nav {
+		flex: 1;
+		justify-content: space-between;
+	}
+
+	/* With hamburger='left', put the burger on the left and pinned
+	   group on the right. Flex order is explicit so markup order
+	   doesn't matter. */
+	.site-header[data-hamburger-side='left'] .site-header__burger { order: 0; }
+	.site-header[data-hamburger-side='left'] .site-header__nav-group--pinned { order: 2; }
+
+	/* With hamburger='right', pinned group left, burger right. */
+	.site-header[data-hamburger-side='right'] .site-header__nav-group--pinned { order: 0; }
+	.site-header[data-hamburger-side='right'] .site-header__burger { order: 2; }
+}
+
+/* Cart bump animation (SPA only — the button is interactive in SPA) */
+.site-header__cart.is-bumping {
+	animation: wchs-bump var(--dur-med, 280ms) var(--ease-out, ease);
+}
+@keyframes wchs-bump {
+	0%   { transform: scale(1); }
+	30%  { transform: scale(1.12); }
+	100% { transform: scale(1); }
+}

@@ -1,0 +1,127 @@
+{
+  "_comment": "Baseline seed for the 5 wchs_* WP options. envsubst replaces ${VAR} placeholders from .env. After import, log into wp-admin → WCHS Settings to refine. All values here are intentionally conservative defaults — empty strings, sane fallbacks, no live API keys.",
+
+  "wchs_site_settings": {
+    "access_mode": 3,
+    "accent_color": null,
+
+    "gtm_id": "${GTM_ID}",
+    "omnisend_brand_id": "${OMNISEND_BRAND_ID}",
+    "klaviyo_public_key": "${KLAVIYO_PUBLIC_KEY}",
+    "meta_pixel_id": "${META_PIXEL_ID}",
+    "tiktok_pixel_id": "${TIKTOK_PIXEL_ID}",
+    "pinterest_tag_id": "${PINTEREST_TAG_ID}",
+    "clarity_project_id": "${CLARITY_PROJECT_ID}",
+    "hotjar_site_id": "${HOTJAR_SITE_ID}",
+    "google_ads_conversion_id": "${GOOGLE_ADS_CONVERSION_ID}",
+    "google_ads_conversion_label": "${GOOGLE_ADS_CONVERSION_LABEL}",
+
+    "bump_variation_id": 0,
+    "upsell_enabled": false,
+    "bump_product_id": 0,
+
+    "google_maps_api_key": "${GOOGLE_MAPS_API_KEY}",
+    "easypost_api_key": "${EASYPOST_API_KEY}",
+    "address_validation_enabled": false,
+    "address_validation_mode": "moderate",
+
+    "abandoned_cart_enabled": true,
+    "review_provider": "woocommerce",
+    "review_provider_keys": [],
+
+    "anti_bot_enabled": false,
+    "turnstile_site_key": "${TURNSTILE_SITE_KEY}",
+    "turnstile_secret_key": "${TURNSTILE_SECRET_KEY}",
+    "internal_rate_limit_enabled": true,
+
+    "header_links": [
+      { "label": "Shop",    "url": "/shop",    "display": "text", "icon": "",     "accent": false, "mobile_pin": false },
+      { "label": "Account", "url": "/account", "display": "icon", "icon": "user", "accent": true,  "mobile_pin": false }
+    ],
+    "header_toggle_accent": true,
+    "header_cart_accent": true,
+    "header_inverted": false,
+    "header_borderless": false,
+    "mobile_hamburger_side": "right",
+    "header_show_toggle": true,
+    "header_toggle_mobile_pin": false,
+    "header_cart_mobile_pin": true,
+
+    "seo_nosnippet_products": false,
+    "seo_block_cart_checkout": false,
+
+    "reg_require_email_verify": false,
+    "reg_require_address": false,
+    "reg_require_name": false,
+    "reg_require_phone": false,
+
+    "gate_modal": {
+      "enabled": false,
+      "strict": false,
+      "title": "",
+      "content": "",
+      "confirm_text": "Enter Site",
+      "decline_text": "",
+      "decline_url": "",
+      "version": 1
+    },
+
+    "footer": { "columns": [] }
+  },
+
+  "wchs_homepage_config": {
+    "hero": {
+      "headline": "${BRAND_NAME}",
+      "headline_size": "l",
+      "headline_weight": "medium",
+      "headline_font": "inter",
+      "text_color_mode": "theme",
+      "subheadline": "Welcome. Edit this copy in wp-admin → WCHS Settings → Homepage.",
+      "subheadline_size": "m",
+      "cta_text": "Enter the shop",
+      "cta_link": "/shop",
+      "variant": "webgl-noise",
+      "layout": "left",
+      "image_desktop": "",
+      "image_mobile": "",
+      "image_position_x": 50,
+      "image_position_y": 50,
+      "image_position_mobile_x": 50,
+      "image_position_mobile_y": 80,
+      "image_zoom": 100,
+      "image_zoom_mobile": 100,
+      "show_eyebrow": true,
+      "show_rating": false,
+      "rating_text": "",
+      "trust_items": []
+    },
+    "modules": [
+      {
+        "type": "product_slider",
+        "visibility": "all",
+        "config": {
+          "title": "Featured",
+          "source": "all",
+          "category": null,
+          "product_ids": []
+        }
+      }
+    ]
+  },
+
+  "wchs_pdp_config": {
+    "show_reviews": true,
+    "modules": []
+  },
+
+  "wchs_pages_config": {
+    "pages": []
+  },
+
+  "wchs_shop_config": {
+    "modules": [],
+    "cols_min": 2,
+    "cols_max": 4,
+    "edge_to_edge": false
+  }
+}

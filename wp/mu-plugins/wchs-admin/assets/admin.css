@@ -1,0 +1,2286 @@
+/* WCHS Admin — editorial styling scoped to .wchs-admin */
+
+:root {
+	/* Easing — sourced from iOS/Material/shadcn */
+	--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-snappy: cubic-bezier(0.2, 0, 0, 1);
+	/* Colors — sourced from shadcn/ui */
+	--wchs-text: #0f172a;
+	--wchs-text-secondary: #334155;
+	--wchs-text-muted: #64748b;
+	--wchs-border: #e2e8f0;
+	--wchs-border-hover: #cbd5e1;
+	--wchs-accent: #18181b;
+	--wchs-hover: #f1f5f9;
+	--wchs-focus-ring: 0 0 0 3px rgba(24, 24, 27, 0.08);
+	--wchs-success: #16a34a;
+	--wchs-error: #dc2626;
+}
+
+.wchs-admin {
+	max-width: 800px;
+	font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	color: var(--wchs-text);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Custom Controls — checkbox, radio, toggle, button
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── Custom Checkbox ─── */
+/* Important: must override .wchs-field label { display: block; font-size: 11px } */
+label.wchs-check,
+label.wchs-radio,
+label.wchs-toggle {
+	display: inline-flex !important;
+	align-items: center !important;
+	font-size: 13px !important;
+	font-weight: 400 !important;
+	text-transform: none !important;
+	letter-spacing: 0 !important;
+	margin-bottom: 0 !important;
+}
+.wchs-check {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	cursor: pointer;
+	user-select: none;
+	font-size: 13px;
+	font-weight: 400;
+	color: var(--wchs-text-secondary);
+	text-transform: none;
+	letter-spacing: 0;
+}
+.wchs-check input[type="checkbox"] {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+.wchs-check__box {
+	width: 18px;
+	height: 18px;
+	border-radius: 4px;
+	border: 2px solid var(--wchs-border);
+	background: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	transition:
+		background-color 0.2s var(--ease-snappy),
+		border-color 0.2s var(--ease-snappy),
+		transform 0.15s var(--ease-spring);
+}
+.wchs-check:hover .wchs-check__box { border-color: var(--wchs-border-hover); }
+.wchs-check input:checked + .wchs-check__box {
+	background: var(--wchs-accent);
+	border-color: var(--wchs-accent);
+}
+.wchs-check input:active + .wchs-check__box { transform: scale(0.9); }
+.wchs-check input:focus-visible + .wchs-check__box { box-shadow: var(--wchs-focus-ring); }
+.wchs-check__svg {
+	width: 12px;
+	height: 12px;
+	stroke: #fff;
+	stroke-width: 2.5;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	fill: none;
+	stroke-dasharray: 16;
+	stroke-dashoffset: 16;
+	transition: stroke-dashoffset 0.25s var(--ease-spring) 0.05s;
+}
+.wchs-check input:checked + .wchs-check__box .wchs-check__svg {
+	stroke-dashoffset: 0;
+}
+
+/* ─── Custom Radio ─── */
+.wchs-radio {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	cursor: pointer;
+	user-select: none;
+	font-size: 13px;
+	color: var(--wchs-text-secondary);
+	text-transform: none;
+	letter-spacing: 0;
+}
+.wchs-radio input[type="radio"] {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+.wchs-radio__circle {
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	border: 2px solid var(--wchs-border);
+	background: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	transition: border-color 0.2s var(--ease-snappy);
+}
+.wchs-radio__dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--wchs-accent);
+	transform: scale(0);
+	transition: transform 0.25s var(--ease-spring);
+}
+.wchs-radio:hover .wchs-radio__circle { border-color: var(--wchs-border-hover); }
+.wchs-radio input:checked + .wchs-radio__circle { border-color: var(--wchs-accent); }
+.wchs-radio input:checked + .wchs-radio__circle .wchs-radio__dot { transform: scale(1); }
+.wchs-radio input:active + .wchs-radio__circle .wchs-radio__dot { transform: scale(0.8); }
+.wchs-radio input:focus-visible + .wchs-radio__circle { box-shadow: var(--wchs-focus-ring); }
+
+/* ─── Toggle Switch ─── */
+/* Label sits on the left taking all remaining width; track pinned right via
+   `order:2`. In narrow rails (hero content panel, module modals) the track
+   never bisects the label — which used to produce "Brand eyebrow" → "Brar"
+   type visual bugs when the label wrapped around the vertically-centered
+   track. */
+.wchs-toggle {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	min-width: 0;
+	cursor: pointer;
+	user-select: none;
+	font-size: 13px;
+	color: var(--wchs-text-secondary);
+}
+.wchs-toggle > span:not([class]) {
+	flex: 1;
+	min-width: 0;
+	order: 1;
+	overflow-wrap: break-word;
+}
+.wchs-toggle .wchs-toggle__track {
+	order: 2;
+}
+.wchs-toggle input[type="checkbox"] {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+.wchs-toggle__track {
+	width: 40px;
+	height: 22px;
+	border-radius: 11px;
+	background: var(--wchs-border);
+	position: relative;
+	flex-shrink: 0;
+	transition: background-color 0.25s var(--ease-snappy);
+}
+.wchs-toggle__thumb {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+	transition:
+		transform 0.25s var(--ease-spring),
+		width 0.15s ease;
+}
+.wchs-toggle:hover .wchs-toggle__track { background: var(--wchs-border-hover); }
+.wchs-toggle:active .wchs-toggle__thumb { width: 22px; }
+.wchs-toggle input:checked + .wchs-toggle__track { background: var(--wchs-accent); }
+.wchs-toggle input:checked + .wchs-toggle__track .wchs-toggle__thumb { transform: translateX(18px); }
+.wchs-toggle:active input:checked + .wchs-toggle__track .wchs-toggle__thumb { transform: translateX(14px); }
+.wchs-toggle input:focus-visible + .wchs-toggle__track { box-shadow: var(--wchs-focus-ring); }
+
+/* ─── Polished Buttons ─── */
+.wchs-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	height: 36px;
+	padding: 0 16px;
+	border-radius: 6px;
+	font-size: 13px;
+	font-weight: 500;
+	border: none;
+	cursor: pointer;
+	position: relative;
+	transition:
+		background-color 0.15s ease,
+		box-shadow 0.15s ease,
+		transform 0.1s var(--ease-snappy);
+	user-select: none;
+}
+.wchs-btn--primary {
+	background: var(--wchs-accent);
+	color: #fafafa;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.wchs-btn--primary:hover { background: #27272a; }
+.wchs-btn--primary:active {
+	transform: scale(0.97);
+	box-shadow: 0 0 0 rgba(0, 0, 0, 0), inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+.wchs-btn--secondary {
+	background: #fff;
+	color: var(--wchs-text);
+	border: 1px solid var(--wchs-border);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.wchs-btn--secondary:hover { background: #f8fafc; border-color: var(--wchs-border-hover); }
+.wchs-btn--secondary:active {
+	transform: scale(0.97);
+	background: var(--wchs-hover);
+	box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.wchs-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #3b82f6; }
+.wchs-btn svg { width: 16px; height: 16px; }
+
+/* Save button three-state (idle → saving → saved) */
+.wchs-btn--save .wchs-btn__text,
+.wchs-btn--save .wchs-btn__spinner,
+.wchs-btn--save .wchs-btn__check {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: opacity 0.2s ease, transform 0.2s var(--ease-out);
+}
+.wchs-btn--save .wchs-btn__spinner,
+.wchs-btn--save .wchs-btn__check { position: absolute; opacity: 0; transform: scale(0.5); }
+.wchs-btn--save.is-saving .wchs-btn__text { opacity: 0; transform: scale(0.8); }
+.wchs-btn--save.is-saving .wchs-btn__spinner { opacity: 1; transform: scale(1); }
+.wchs-btn--save.is-saved { background: var(--wchs-success); }
+.wchs-btn--save.is-saved .wchs-btn__text { opacity: 0; transform: scale(0.8); }
+.wchs-btn--save.is-saved .wchs-btn__check { opacity: 1; transform: scale(1); }
+@keyframes wchs-spin { to { transform: rotate(360deg); } }
+.wchs-btn__spinner svg { animation: wchs-spin 0.6s linear infinite; }
+
+/* ─── Toast Notifications ─── */
+.wchs-toast-container {
+	position: fixed;
+	bottom: 24px;
+	right: 24px;
+	display: flex;
+	flex-direction: column-reverse;
+	gap: 8px;
+	z-index: 99999;
+	pointer-events: none;
+}
+.wchs-toast {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 16px;
+	background: var(--wchs-accent);
+	color: #fafafa;
+	border-radius: 8px;
+	font-size: 13px;
+	font-weight: 500;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	pointer-events: auto;
+	animation: wchs-toast-in 0.4s var(--ease-out) forwards;
+	position: relative;
+	overflow: hidden;
+}
+.wchs-toast.is-leaving { animation: wchs-toast-out 0.3s ease forwards; }
+.wchs-toast--success { background: var(--wchs-success); }
+.wchs-toast--error { background: var(--wchs-error); }
+.wchs-toast svg { width: 16px; height: 16px; flex-shrink: 0; }
+.wchs-toast__progress {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	height: 3px;
+	background: rgba(255, 255, 255, 0.3);
+	border-radius: 0 0 8px 8px;
+	animation: wchs-toast-progress 3s linear forwards;
+}
+@keyframes wchs-toast-in {
+	from { opacity: 0; transform: translateY(16px) scale(0.95); }
+	to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes wchs-toast-out {
+	to { opacity: 0; transform: translateY(-8px) scale(0.95); }
+}
+@keyframes wchs-toast-progress {
+	from { width: 100%; }
+	to { width: 0%; }
+}
+
+/* ─── Icon Buttons (edit, delete, drag) ─── */
+.wchs-icon-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 6px;
+	border: none;
+	background: transparent;
+	color: var(--wchs-text-muted);
+	cursor: pointer;
+	transition: background 0.15s ease, color 0.15s ease, transform 0.1s var(--ease-snappy);
+}
+.wchs-icon-btn:hover { background: var(--wchs-hover); color: var(--wchs-text); }
+.wchs-icon-btn:active { transform: scale(0.9); }
+.wchs-icon-btn--danger:hover { background: #fef2f2; color: var(--wchs-error); }
+.wchs-icon-btn svg { width: 14px; height: 14px; }
+/* When canvas is active, admin takes full width */
+.wchs-admin--has-canvas {
+	max-width: 100%;
+	margin-left: 0;
+	margin-right: 0;
+}
+.wchs-admin h1 {
+	font-size: 24px;
+	font-weight: 500;
+	letter-spacing: -0.02em;
+	margin: 0 0 24px;
+}
+.wchs-admin h2 {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--wchs-text-muted);
+	margin: 24px 0 12px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid var(--wchs-border);
+}
+
+/* Tabs */
+.wchs-tabs {
+	display: flex;
+	gap: 0;
+	border-bottom: 1px solid #e5e7eb;
+	margin-bottom: 24px;
+}
+.wchs-tabs a {
+	padding: 10px 20px;
+	font-size: 12px;
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	text-decoration: none;
+	color: #767d88;
+	border-bottom: 2px solid transparent;
+	margin-bottom: -1px;
+}
+.wchs-tabs a.active {
+	color: #1a1a1a;
+	border-bottom-color: #1a1a1a;
+}
+
+/* Page index selector */
+.wchs-page-index {
+	/* Sticky inside .wchs-editor__panel-body. The panel has padding: 20px 16px,
+	   and sticky pins relative to the content box — so `top: -20px` backs it
+	   up under the panel's top padding, while negative horizontal margins +
+	   matching horizontal padding give it a full-width bleed. Background and
+	   padding cover the dead zone so scrolled rows don't show between the
+	   dropdown and the toolbar above. */
+	margin: -20px -16px 16px;
+	position: sticky;
+	top: -20px;
+	z-index: 5;
+	background: #fff;
+	padding: 20px 16px 12px;
+	border-bottom: 1px solid #e5e7eb;
+}
+.wchs-page-selector {
+	width: 100%;
+	height: 32px;
+	padding: 0 28px 0 10px;
+	font-size: 13px;
+	font-weight: 500;
+	border: 1px solid #d1d5db;
+	border-radius: 6px;
+	background: #fff;
+	color: #374151;
+	appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 8px center;
+	cursor: pointer;
+}
+.wchs-page-selector:focus {
+	border-color: #6366f1;
+	box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+	outline: none;
+}
+
+/* Form elements */
+.wchs-field {
+	margin-bottom: 14px;
+}
+.wchs-field label {
+	display: block;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--wchs-text-muted);
+	margin-bottom: 4px;
+}
+.wchs-field input[type="text"],
+.wchs-field input[type="number"],
+.wchs-field input[type="url"],
+.wchs-field input[type="email"],
+.wchs-field select,
+.wchs-field textarea {
+	width: 100%;
+	height: 36px;
+	padding: 0 12px;
+	border: 1px solid var(--wchs-border);
+	border-radius: 6px;
+	font-family: inherit;
+	font-size: 14px;
+	color: var(--wchs-text);
+	background: #fff;
+	box-sizing: border-box;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.wchs-field textarea {
+	height: auto;
+	min-height: 72px;
+	padding: 8px 12px;
+	resize: vertical;
+}
+.wchs-field input:hover,
+.wchs-field select:hover,
+.wchs-field textarea:hover {
+	border-color: var(--wchs-border-hover);
+}
+.wchs-field input:focus,
+.wchs-field select:focus,
+.wchs-field textarea:focus {
+	outline: none;
+	border-color: var(--wchs-accent);
+	box-shadow: var(--wchs-focus-ring);
+}
+.wchs-field input::placeholder,
+.wchs-field textarea::placeholder {
+	color: #94a3b8;
+}
+.wchs-field .wchs-hint {
+	font-size: 11px;
+	color: #94a3b8;
+	margin-top: 4px;
+	line-height: 1.4;
+}
+
+/* Radio group */
+.wchs-radios {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.wchs-radios label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	font-weight: 400;
+	text-transform: none;
+	letter-spacing: 0;
+	color: #1a1a1a;
+	cursor: pointer;
+}
+/* Native radio accent — only for radios NOT wrapped in .wchs-radio */
+.wchs-radios input[type="radio"]:not(.wchs-radio input) {
+	accent-color: #1a1a1a;
+}
+.wchs-radio--danger {
+	color: #b91c1c;
+	font-weight: 600;
+}
+.wchs-radio--danger input[type="radio"] {
+	accent-color: #b91c1c;
+}
+
+/* Collapsible sections — borderless. Spacing alone separates sections. */
+.wchs-section {
+	margin-bottom: 0;
+}
+.wchs-section__toggle {
+	cursor: pointer;
+	user-select: none;
+	padding: 12px 4px;
+	margin: 0;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--wchs-text);
+	background: transparent;
+	border: none;
+	transition: color 0.15s ease;
+}
+.wchs-section__toggle:hover {
+	color: var(--wchs-accent);
+}
+.wchs-section__toggle::after {
+	content: '';
+	display: block;
+	width: 7px;
+	height: 7px;
+	margin-left: auto; /* push chevron to the right; keep title + hint icon flush left */
+	border-right: 2px solid var(--wchs-text-muted);
+	border-bottom: 2px solid var(--wchs-text-muted);
+	transform: rotate(45deg);
+	transition: transform 0.3s var(--ease-spring);
+	flex-shrink: 0;
+}
+.wchs-section--collapsed .wchs-section__toggle::after {
+	transform: rotate(-135deg);
+}
+.wchs-section__body {
+	padding: 16px;
+}
+.wchs-section--collapsed .wchs-section__body {
+	display: none;
+}
+
+/* Accent color swatches */
+.wchs-swatches {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+.wchs-swatch {
+	width: 36px;
+	height: 36px;
+	border: 2px solid transparent;
+	cursor: pointer;
+	transition: border-color 0.15s;
+	padding: 0;
+	background: none;
+}
+.wchs-swatch:hover {
+	border-color: #9ca3af;
+}
+.wchs-swatch.active {
+	border-color: #1a1a1a;
+}
+.wchs-swatch__color {
+	width: 100%;
+	height: 100%;
+	display: block;
+}
+.wchs-swatch--none {
+	position: relative;
+}
+.wchs-swatch--none .wchs-swatch__color {
+	border: 1px solid #d1d5db;
+	background: #fff;
+}
+.wchs-swatch--none .wchs-swatch__color::after {
+	content: '—';
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	font-size: 14px;
+	color: #9ca3af;
+}
+
+/* Info box */
+.wchs-info {
+	background: #f9fafb;
+	border: 1px solid #e5e7eb;
+	padding: 12px 16px;
+	font-size: 12px;
+	color: #6b7280;
+	margin-bottom: 24px;
+	line-height: 1.5;
+}
+.wchs-info a {
+	color: #2563eb;
+}
+
+/* Module cards */
+.wchs-module {
+	border: 1px solid #e5e7eb;
+	padding: 16px;
+	margin-bottom: 12px;
+	background: #fff;
+}
+.wchs-module__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
+}
+.wchs-module__arrows {
+	display: flex;
+	gap: 4px;
+}
+.wchs-module__arrows button,
+.wchs-module__remove {
+	padding: 4px 8px;
+	border: 1px solid #d1d5db;
+	background: #fff;
+	cursor: pointer;
+	font-size: 12px;
+	color: #6b7280;
+}
+.wchs-module__arrows button:hover,
+.wchs-module__remove:hover {
+	border-color: #1a1a1a;
+	color: #1a1a1a;
+}
+.wchs-module__remove {
+	color: #dc2626;
+	border-color: #fecaca;
+}
+.wchs-module__remove:hover {
+	border-color: #dc2626;
+}
+.wchs-module__fields {
+	display: grid;
+	/* Auto-fit so fields size by content, not by column count. Previously
+	   forced 1fr 1fr on every module template — which wastes half the modal
+	   on modules like accordion (Title + tall Items list) where the items
+	   list needs the full row. */
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 12px;
+}
+.wchs-module__fields .wchs-field {
+	margin-bottom: 0;
+}
+/* Opt-in helper for fields that should always span the full modal width
+   (tall repeaters: accordion items, gallery items, split-features items,
+   trust-bar items, contact-form fields, text-block content). */
+.wchs-module__fields .wchs-field--full {
+	grid-column: 1 / -1;
+}
+/* Common-field strip (Visibility / Vertical spacing / Width / Center header)
+   that renders at the bottom of every module modal. Sticky-pinned to the
+   body's bottom so it's always visible regardless of content height — tall
+   modules (accordion with many items) used to push it out of view. Breaks
+   out of the body's horizontal padding via negative margins + own padding
+   so its background extends to the modal edges. */
+.wchs-modal__common-fields {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: 12px;
+	margin: 16px -24px 0;
+	padding: 16px 24px 24px;
+	border-top: 1px solid var(--wchs-border);
+	background: #fff;
+	position: sticky;
+	bottom: 0;
+	z-index: 2;
+}
+.wchs-modal__common-fields .wchs-field {
+	margin-bottom: 0;
+}
+
+/* Select */
+.wchs-field select {
+	width: 100%;
+	padding: 10px 14px;
+	border: 1px solid #d1d5db;
+	border-radius: 0;
+	font-family: inherit;
+	font-size: 14px;
+	/* Explicit line-height — without this, inherited WP admin line-height
+	   (28px) exceeds the select's available content area (36px - 20px
+	   padding = 16px), rendering the text so its bottom half gets clipped
+	   by the select box. Matches the font metrics naturally. */
+	line-height: 1.2;
+	color: #1a1a1a;
+	background: #fff;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+/* Buttons */
+.wchs-btn {
+	padding: 10px 20px;
+	font-family: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	cursor: pointer;
+	border: 1px solid;
+}
+.wchs-btn--primary {
+	background: #1a1a1a;
+	color: #fff;
+	border-color: #1a1a1a;
+}
+.wchs-btn--primary:hover {
+	background: transparent;
+	color: #1a1a1a;
+}
+.wchs-btn--secondary {
+	background: #fff;
+	color: #1a1a1a;
+	border-color: #d1d5db;
+}
+.wchs-btn--secondary:hover {
+	border-color: #1a1a1a;
+}
+
+/* Product search picker */
+.wchs-product-picker {
+	position: relative;
+}
+.wchs-product-search {
+	width: 100%;
+	padding: 10px 14px;
+	border: 1px solid #d1d5db;
+	border-radius: 0;
+	font-family: inherit;
+	font-size: 14px;
+	color: #1a1a1a;
+	background: #fff;
+	box-sizing: border-box;
+}
+.wchs-product-results {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	background: #fff;
+	border: 1px solid #d1d5db;
+	border-top: 0;
+	z-index: 100;
+	max-height: 240px;
+	overflow-y: auto;
+}
+.wchs-product-results:empty {
+	display: none;
+}
+.wchs-product-result {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 12px;
+	cursor: pointer;
+	font-size: 13px;
+}
+.wchs-product-result:hover {
+	background: #f3f4f6;
+}
+.wchs-product-result.is-added {
+	opacity: 0.5;
+	cursor: default;
+}
+.wchs-product-result img {
+	width: 32px;
+	height: 32px;
+	object-fit: cover;
+	border: 1px solid #e5e7eb;
+}
+.wchs-product-result__price {
+	margin-left: auto;
+	color: #6b7280;
+	font-size: 12px;
+}
+.wchs-product-result__added {
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: #059669;
+	margin-left: 8px;
+}
+.wchs-product-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	list-style: none;
+	padding: 0;
+	margin: 8px 0 0;
+}
+.wchs-product-tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	background: #f3f4f6;
+	border: 1px solid #e5e7eb;
+	font-size: 12px;
+	color: #1a1a1a;
+}
+.wchs-product-tag__remove {
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: 14px;
+	color: #9ca3af;
+	padding: 0 2px;
+	line-height: 1;
+}
+.wchs-product-tag__remove:hover {
+	color: #dc2626;
+}
+
+/* Media picker field */
+.wchs-media-field {
+	display: flex;
+	gap: 6px;
+}
+.wchs-media-field .wchs-media-url {
+	flex: 1;
+	min-width: 0;
+}
+.wchs-media-field .wchs-btn {
+	flex-shrink: 0;
+	padding: 10px 14px;
+}
+.wchs-media-preview {
+	display: block;
+	max-width: 320px;
+	max-height: 120px;
+	object-fit: cover;
+	margin-top: 8px;
+	border: 1px solid #e5e7eb;
+}
+
+/* Accordion items in admin */
+.wchs-accordion-items {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.wchs-accordion-item {
+	display: grid;
+	/* Question spans full width on top; Answer (textarea) takes content column
+	   with Remove button beside it on the second row. Previous 1fr 1fr layout
+	   left Question narrow-left with the tall WYSIWYG on the right, wasting
+	   space below the Question input. */
+	grid-template-columns: 1fr auto;
+	grid-template-rows: auto auto;
+	gap: 8px;
+	align-items: start;
+}
+.wchs-accordion-item > input[type="text"]:first-of-type {
+	grid-column: 1 / -1;
+	grid-row: 1;
+}
+.wchs-accordion-item > textarea {
+	grid-column: 1;
+	grid-row: 2;
+}
+.wchs-accordion-item > .wchs-accordion-item__remove {
+	grid-column: 2;
+	grid-row: 2;
+	align-self: start;
+}
+.wchs-accordion-item input,
+.wchs-accordion-item textarea {
+	width: 100%;
+	padding: 8px 12px;
+	border: 1px solid #d1d5db;
+	border-radius: 0;
+	font-family: inherit;
+	font-size: 13px;
+	color: #1a1a1a;
+	background: #fff;
+	box-sizing: border-box;
+}
+.wchs-accordion-item textarea {
+	min-height: 60px;
+	resize: vertical;
+}
+.wchs-accordion-item__remove {
+	padding: 8px;
+	border: 1px solid #fecaca;
+	background: #fff;
+	color: #dc2626;
+	cursor: pointer;
+	font-size: 12px;
+	line-height: 1;
+}
+.wchs-accordion-item__remove:hover {
+	border-color: #dc2626;
+}
+
+/* Gateway presets */
+.wchs-gateway-presets {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin-bottom: 8px;
+}
+
+/* Page cards */
+.wchs-page-card {
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+	padding: 16px;
+	margin-bottom: 12px;
+	transition: box-shadow 0.15s ease;
+}
+.wchs-page-card:hover {
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* ─── Module Manager: compact list ───────────────────────────── */
+
+.wchs-modlist {
+	margin: 16px 0;
+}
+.wchs-modlist__items {
+	min-height: 40px;
+}
+.wchs-modlist__items:empty::after {
+	content: 'No modules added yet.';
+	display: block;
+	padding: 20px;
+	text-align: center;
+	color: #999;
+	font-size: 13px;
+}
+.wchs-modlist__row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 12px;
+	margin-bottom: 4px;
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+	cursor: grab;
+	transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+.wchs-modlist__row:hover {
+	background: #fafbfc;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.wchs-modlist__row:active {
+	cursor: grabbing;
+	transform: scale(0.99);
+}
+.wchs-modlist__row.is-dragging {
+	opacity: 0.4;
+}
+.wchs-modlist__row.is-drag-over {
+	border-top: 2px solid #1a1a1a;
+}
+.wchs-modlist__drag {
+	color: #cbd5e1;
+	font-size: 14px;
+	cursor: grab;
+	flex-shrink: 0;
+}
+.wchs-modlist__type {
+	font-size: 12px;
+	font-weight: 600;
+	color: #0f172a;
+	min-width: 80px;
+}
+.wchs-modlist__title {
+	font-size: 12px;
+	color: #64748b;
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.wchs-modlist__title:empty::after {
+	content: '(untitled)';
+	color: #bbb;
+	font-style: italic;
+}
+.wchs-modlist__vis {
+	font-size: 10px;
+	color: #94a3b8;
+	padding: 2px 6px;
+	background: #f1f5f9;
+	border-radius: 4px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+/* Edit and remove buttons are now icon buttons (styled by .wchs-icon-btn) */
+.wchs-modlist__edit,
+.wchs-modlist__remove {
+	flex-shrink: 0;
+}
+.wchs-modlist__add {
+	margin-top: 10px;
+}
+
+/* ─── Module Manager: modal overlay ──────────────────────────── */
+
+.wchs-modal-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.5);
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+	overflow-y: auto;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.15s ease;
+}
+.wchs-modal-backdrop.is-open {
+	opacity: 1;
+	pointer-events: auto;
+}
+.wchs-modal {
+	background: #fff;
+	border-radius: 8px;
+	width: 75vw;
+	max-width: 960px;
+	max-height: 85vh;
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+	position: relative;
+	transform: scale(0.96) translateY(8px);
+	opacity: 0;
+	transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
+}
+.wchs-modal-backdrop.is-open .wchs-modal {
+	transform: scale(1) translateY(0);
+	opacity: 1;
+}
+.wchs-modal__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 20px;
+	border-bottom: 1px solid #e0e0e0;
+}
+.wchs-modal__header h3 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: #1a1a1a;
+}
+.wchs-modal__close {
+	background: none;
+	border: none;
+	font-size: 22px;
+	cursor: pointer;
+	color: #999;
+	line-height: 1;
+	padding: 0 4px;
+}
+.wchs-modal__close:hover {
+	color: #333;
+}
+.wchs-modal__body {
+	padding: 24px 24px 0;
+	overflow-y: auto;
+	flex: 1;
+	min-height: 0;
+	/* Body padding-bottom is 0 here because .wchs-modal__common-fields is
+	   sticky-pinned to the body's bottom — it draws its own background and
+	   absorbs the bottom spacing. Without sticky, tall modals (accordion
+	   with many items, gallery etc.) pushed the common-fields strip out of
+	   view and users couldn't reach Visibility/Spacing/Width without scrolling. */
+	scroll-padding-bottom: 100px;
+}
+.wchs-modal__footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	padding: 14px 20px;
+	border-top: 1px solid #e0e0e0;
+}
+
+/* ─── Module Manager: type picker grid ───────────────────────── */
+
+.wchs-type-picker {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 8px;
+	padding: 8px 0;
+}
+.wchs-type-picker__btn {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 14px;
+	background: #fafafa;
+	border: 1px solid #e0e0e0;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+	color: #333;
+	text-align: left;
+	transition: border-color 0.15s, background 0.15s;
+}
+.wchs-type-picker__btn:hover {
+	border-color: #999;
+	background: #f0f0f0;
+}
+
+/* ─── Icon picker (trigger + popover) ────────────────────── */
+
+.wchs-icon-picker {
+	position: relative;
+	display: inline-block;
+}
+.wchs-icon-picker__trigger {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	background: #fff;
+	cursor: pointer;
+	font-size: 12px;
+	color: #555;
+	min-width: 52px;
+	height: 34px;
+}
+.wchs-icon-picker__trigger:hover {
+	border-color: #999;
+}
+.wchs-icon-picker__preview {
+	display: flex;
+	align-items: center;
+}
+.wchs-icon-picker__arrow {
+	font-size: 9px;
+	color: #999;
+}
+.wchs-icon-picker__popover {
+	display: none;
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	z-index: 50;
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 6px;
+	box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+	padding: 6px;
+	flex-wrap: wrap;
+	gap: 3px;
+	width: 234px;
+	opacity: 0;
+	transform: translateY(-4px);
+	transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.wchs-icon-picker__popover.is-open {
+	display: flex;
+	opacity: 1;
+	transform: translateY(0);
+}
+.wchs-icon-picker__btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	border: 2px solid transparent;
+	border-radius: 3px;
+	background: #fafafa;
+	cursor: pointer;
+	padding: 0;
+	color: #555;
+	transition: border-color 0.1s, color 0.1s, background 0.1s;
+}
+.wchs-icon-picker__btn:hover {
+	border-color: #999;
+	color: #1a1a1a;
+	background: #f0f0f0;
+}
+.wchs-icon-picker__btn.is-selected {
+	border-color: #1a1a1a;
+	color: #1a1a1a;
+	background: #e8e8e8;
+}
+.wchs-icon-picker__btn--none {
+	color: #bbb;
+}
+.wchs-icon-picker__btn--none.is-selected {
+	color: #999;
+}
+
+/* Trust bar item layout inside modal */
+.wchs-trust-item {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 12px;
+	border: 1px solid #e0e0e0;
+	border-radius: 4px;
+	background: #fafafa;
+	position: relative;
+}
+.wchs-trust-item .wchs-icon-picker {
+	max-width: 100%;
+}
+.wchs-trust-item > input[type="text"] {
+	width: 100%;
+}
+.wchs-trust-item > .wchs-accordion-item__remove {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Canvas Toolbar
+   ═══════════════════════════════════════════════════════════ */
+.wchs-canvas-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	height: 44px;
+	padding: 0 16px;
+	background: #fff;
+	border-bottom: 1px solid #e5e7eb;
+}
+.wchs-canvas-toolbar__title {
+	font-size: 15px !important;
+	font-weight: 600 !important;
+	letter-spacing: -0.01em !important;
+	margin: 0 !important;
+	white-space: nowrap;
+}
+.wchs-canvas-toolbar__devices {
+	display: flex;
+	gap: 2px;
+	background: #f4f5f7;
+	border-radius: 6px;
+	padding: 2px;
+	margin-left: auto;
+}
+.wchs-device-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 28px;
+	border: none;
+	background: transparent;
+	border-radius: 4px;
+	cursor: pointer;
+	color: #767d88;
+	transition: all 0.15s ease;
+}
+.wchs-device-btn:hover {
+	color: #1a1a1a;
+	background: rgba(0, 0, 0, 0.04);
+}
+.wchs-device-btn.is-active {
+	color: #1a1a1a;
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+/* Theme preview toggle — same segmented-control pattern as device buttons */
+.wchs-canvas-toolbar__theme {
+	display: flex;
+	gap: 2px;
+	background: #f4f5f7;
+	border-radius: 6px;
+	padding: 2px;
+}
+.wchs-theme-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	background: transparent;
+	border-radius: 4px;
+	cursor: pointer;
+	color: #767d88;
+	transition: all 0.15s ease;
+}
+.wchs-theme-btn:hover {
+	color: #1a1a1a;
+	background: rgba(0, 0, 0, 0.04);
+}
+.wchs-theme-btn.is-active {
+	color: #1a1a1a;
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.wchs-canvas-toolbar__zoom {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.wchs-zoom-btn {
+	width: 24px;
+	height: 24px;
+	border: 1px solid #e5e7eb;
+	background: #fff;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 14px;
+	font-weight: 500;
+	color: #767d88;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.15s ease;
+}
+.wchs-zoom-btn:hover {
+	border-color: #c9ccd1;
+	color: #1a1a1a;
+}
+.wchs-zoom-label {
+	font-size: 11px;
+	font-weight: 500;
+	color: #767d88;
+	min-width: 36px;
+	text-align: center;
+	letter-spacing: 0.02em;
+}
+.wchs-canvas-toolbar__open {
+	display: flex;
+	align-items: center;
+	color: #767d88;
+	transition: color 0.15s ease;
+}
+.wchs-canvas-toolbar__open:hover {
+	color: #1a1a1a;
+}
+
+/* Global save button — sits at the top of the icon rail, above the
+   Homepage tab, so it's visible from every WCHS settings tab and hard
+   to miss. Matches the rail's 36×36 button style. Four states driven
+   by data-state: idle (muted), dirty (accent-pulsing), saving (spinner),
+   saved (green check briefly). */
+.wchs-global-save {
+	position: relative;
+	width: 36px;
+	height: 36px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: none;
+	border-left: 2px solid transparent;
+	border-radius: 0 6px 6px 0;
+	background: transparent;
+	color: #9ca3af;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	margin-bottom: 6px;
+}
+.wchs-global-save::before {
+	/* Thin divider between save button and the tab list below. */
+	content: '';
+	position: absolute;
+	left: 6px; right: 6px; bottom: -4px;
+	height: 1px;
+	background: #e5e7eb;
+}
+.wchs-global-save:hover { color: #374151; background: rgba(0, 0, 0, 0.04); }
+
+.wchs-global-save__spinner,
+.wchs-global-save__check {
+	display: none;
+	position: absolute;
+	inset: 0;
+	margin: auto;
+}
+
+.wchs-global-save[data-state="idle"] { opacity: 0.5; }
+.wchs-global-save[data-state="idle"]:hover { opacity: 1; }
+
+.wchs-global-save[data-state="dirty"] {
+	color: #fff;
+	background: #3b82f6;
+	border-left-color: #1d4ed8;
+	animation: wchs-save-pulse 2.4s ease-in-out infinite;
+}
+.wchs-global-save[data-state="dirty"]:hover { background: #2563eb; color: #fff; }
+
+.wchs-global-save[data-state="saving"] .wchs-global-save__icon { display: none; }
+.wchs-global-save[data-state="saving"] .wchs-global-save__spinner { display: block; animation: wchs-save-spin 0.9s linear infinite; color: #3b82f6; }
+.wchs-global-save[data-state="saving"] { color: #3b82f6; }
+
+.wchs-global-save[data-state="saved"] .wchs-global-save__icon { display: none; }
+.wchs-global-save[data-state="saved"] .wchs-global-save__check { display: block; color: #16a34a; }
+.wchs-global-save[data-state="saved"] { color: #16a34a; background: #ecfdf5; border-left-color: #16a34a; }
+
+/* Tooltip like the rail buttons have */
+.wchs-global-save::after {
+	content: attr(title);
+	position: absolute;
+	left: calc(100% + 8px);
+	top: 50%;
+	transform: translateY(-50%);
+	padding: 4px 8px;
+	background: #1f2937;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 500;
+	white-space: nowrap;
+	border-radius: 4px;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.12s ease;
+	z-index: 10;
+}
+.wchs-global-save:hover::after { opacity: 1; }
+
+@keyframes wchs-save-pulse {
+	0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.45); }
+	50%      { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+}
+@keyframes wchs-save-spin {
+	to { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Split-Pane Editor Layout
+   ═══════════════════════════════════════════════════════════ */
+.wchs-editor {
+	display: flex;
+	height: calc(100vh - 32px - 44px); /* viewport - WP admin bar - toolbar */
+	overflow: hidden;
+}
+
+/* Settings panel (left) — now flex-row: icon rail + body */
+/* Main definition is below icon rail rules */
+/* ─── Vertical icon rail (replaces horizontal tabs) ─── */
+.wchs-icon-rail {
+	width: 44px;
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	padding: 8px 0;
+	background: #f8f9fa;
+	border-right: 1px solid #e5e7eb;
+	overflow-y: auto;
+	scrollbar-width: none;
+}
+.wchs-icon-rail::-webkit-scrollbar { display: none; }
+.wchs-icon-rail__btn {
+	position: relative;
+	width: 36px;
+	height: 36px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	border-left: 2px solid transparent;
+	border-radius: 0 6px 6px 0;
+	background: transparent;
+	color: #9ca3af;
+	cursor: pointer;
+	text-decoration: none;
+	transition: all 0.15s ease;
+}
+.wchs-icon-rail__btn:hover {
+	color: #374151;
+	background: rgba(0, 0, 0, 0.04);
+}
+.wchs-icon-rail__btn.is-active {
+	color: #1a1a1a;
+	background: #fff;
+	border-left-color: #6366f1;
+	box-shadow: 1px 0 4px rgba(0, 0, 0, 0.04);
+}
+/* Tooltip on hover */
+.wchs-icon-rail__btn::after {
+	content: attr(title);
+	position: absolute;
+	left: calc(100% + 8px);
+	top: 50%;
+	transform: translateY(-50%);
+	padding: 4px 8px;
+	background: #1f2937;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 500;
+	white-space: nowrap;
+	border-radius: 4px;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.15s ease;
+	z-index: 100;
+}
+.wchs-icon-rail__btn:hover::after {
+	opacity: 1;
+}
+/* Panel now uses flex-row with icon rail */
+.wchs-editor__panel {
+	width: 380px;
+	min-width: 280px;
+	max-width: 600px;
+	display: flex;
+	flex-direction: row;
+	background: #fff;
+	border-right: 1px solid #e5e7eb;
+	flex-shrink: 0;
+}
+/* No-canvas layout */
+.wchs-editor--no-canvas {
+	display: flex;
+	min-height: calc(100vh - 32px - 44px);
+}
+.wchs-editor__panel-body--full {
+	flex: 1;
+	overflow-y: auto;
+	padding: 20px 24px;
+	max-width: 800px;
+}
+.wchs-editor__panel-body {
+	flex: 1;
+	overflow-y: auto;
+	padding: 20px 16px;
+	scrollbar-width: thin;
+	scrollbar-color: #c9ccd1 transparent;
+}
+.wchs-editor__panel-body::-webkit-scrollbar { width: 6px; }
+.wchs-editor__panel-body::-webkit-scrollbar-thumb { background: #c9ccd1; border-radius: 3px; }
+
+/* Override settings max-width inside the panel */
+.wchs-editor__panel-body .wchs-admin { max-width: 100%; }
+.wchs-editor__panel-body form { max-width: 100%; }
+
+/* ─── Input containment: prevent overflow in narrow panel ─── */
+.wchs-editor__panel-body *,
+.wchs-editor__panel-body *::before,
+.wchs-editor__panel-body *::after { box-sizing: border-box; }
+
+.wchs-editor__panel-body input[type="text"],
+.wchs-editor__panel-body input[type="number"],
+.wchs-editor__panel-body input[type="url"],
+.wchs-editor__panel-body input[type="email"],
+.wchs-editor__panel-body select,
+.wchs-editor__panel-body textarea {
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
+}
+
+/* Polished input styling for sidebar context */
+.wchs-editor__panel-body .wchs-field input[type="text"],
+.wchs-editor__panel-body .wchs-field input[type="number"],
+.wchs-editor__panel-body .wchs-field input[type="url"],
+.wchs-editor__panel-body .wchs-field input[type="email"],
+.wchs-editor__panel-body .wchs-field select {
+	height: 32px;
+	padding: 0 10px;
+	font-size: 13px;
+	border: 1px solid #d1d5db;
+	border-radius: 6px;
+	font-family: inherit;
+	color: #1a1a1a;
+	background: #fff;
+}
+.wchs-editor__panel-body .wchs-field textarea {
+	padding: 8px 10px;
+	font-size: 13px;
+	border: 1px solid #d1d5db;
+	border-radius: 6px;
+	min-height: 64px;
+}
+.wchs-editor__panel-body .wchs-field input:focus,
+.wchs-editor__panel-body .wchs-field select:focus,
+.wchs-editor__panel-body .wchs-field textarea:focus {
+	border-color: #6366f1;
+	box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+	outline: none;
+}
+/* Tighter field spacing in sidebar */
+.wchs-editor__panel-body .wchs-field {
+	margin-bottom: 12px;
+}
+.wchs-editor__panel-body .wchs-field label {
+	font-size: 11px;
+	margin-bottom: 4px;
+}
+/* Flex rows in sidebar — wrap to prevent overflow */
+.wchs-editor__panel-body div[style*="display:flex"],
+.wchs-editor__panel-body div[style*="display: flex"] {
+	flex-wrap: wrap !important;
+}
+
+/* Resizable divider */
+.wchs-editor__divider {
+	width: 4px;
+	cursor: col-resize;
+	background: #e5e7eb;
+	position: relative;
+	flex-shrink: 0;
+	transition: background 0.15s ease;
+	z-index: 10;
+}
+.wchs-editor__divider::after {
+	content: '';
+	position: absolute;
+	inset: 0 -4px;
+}
+.wchs-editor__divider:hover,
+.wchs-editor__divider.is-dragging {
+	background: #6366f1;
+}
+
+/* Canvas (right) — light gray with dot grid */
+.wchs-editor__canvas {
+	flex: 1;
+	background-color: #f3f4f6;
+	background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+	background-size: 20px 20px;
+	overflow: hidden;
+	position: relative;
+	cursor: default;
+	/* Contain iframe reflows. Without this, SPA height changes from live
+	   preview (WebGL variants, CTA toggle, theme swap) bubble up through
+	   the admin flex tree and jostle the outer WP layout. */
+	contain: layout;
+}
+.wchs-editor__canvas.is-space-held { cursor: grab; }
+.wchs-editor__canvas.is-panning { cursor: grabbing; }
+.wchs-editor__canvas.is-panning .wchs-editor__canvas-surface { transition: none; }
+/* Canvas surface — absolutely positioned, camera-transformed */
+.wchs-editor__canvas-surface {
+	position: absolute;
+	top: 0;
+	left: 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-content: flex-start;
+	gap: 40px;
+	padding: 60px;
+	transform-origin: 0 0;
+	will-change: transform;
+}
+
+/* ─── Artboard ─── */
+.wchs-artboard {
+	flex-shrink: 0;
+	position: relative;
+}
+.wchs-artboard__label {
+	font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	font-size: 11px;
+	font-weight: 500;
+	color: #6b7280;
+	margin-bottom: 8px;
+	white-space: nowrap;
+	letter-spacing: 0.01em;
+}
+.wchs-artboard__frame {
+	overflow: hidden;
+	border-radius: 8px;
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.06);
+	background: #fff;
+	transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+				height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+				box-shadow 0.15s ease;
+}
+.wchs-artboard:hover .wchs-artboard__frame {
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1),
+				0 0 0 1px rgba(0, 0, 0, 0.06),
+				0 0 0 2px var(--accent, #6366f1);
+}
+.wchs-artboard__label {
+	cursor: pointer;
+	transition: color 0.15s ease;
+}
+.wchs-artboard:hover .wchs-artboard__label {
+	color: var(--accent, #6366f1);
+}
+.wchs-artboard__iframe {
+	border: none;
+	display: block;
+	transform-origin: 0 0;
+	pointer-events: none;
+	background: #fff;
+}
+
+/* ─── Tracker chip row below label ─── */
+.wchs-artboard {
+	--chip-analytics:  #1f2937;
+	--chip-pixel:      #0a66c2;
+	--chip-marketing:  #06b6d4;
+	--chip-consent:    #b45309;
+	--chip-chat:       #7c3aed;
+	--chip-other:      #6b7280;
+}
+.wchs-artboard__meta {
+	display: flex;
+	gap: 4px;
+	margin: -4px 0 8px 0;
+	min-height: 18px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+.wchs-chip-tracker {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 18px;
+	padding: 0 7px;
+	border-radius: 9px;
+	font-family: 'Geist Mono', 'SF Mono', ui-monospace, monospace;
+	font-size: 10px;
+	font-weight: 500;
+	line-height: 1;
+	letter-spacing: 0.02em;
+	background: color-mix(in oklch, var(--chip-color, #6b7280) 10%, transparent);
+	color: var(--chip-color, #6b7280);
+	cursor: default;
+	transition: background 0.15s ease;
+	white-space: nowrap;
+}
+.wchs-chip-tracker:hover {
+	background: color-mix(in oklch, var(--chip-color, #6b7280) 20%, transparent);
+}
+.wchs-chip-tracker__dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--chip-color, #6b7280);
+	flex-shrink: 0;
+}
+.wchs-chip-tracker--analytics  { --chip-color: var(--chip-analytics); }
+.wchs-chip-tracker--pixel      { --chip-color: var(--chip-pixel); }
+.wchs-chip-tracker--marketing  { --chip-color: var(--chip-marketing); }
+.wchs-chip-tracker--consent    { --chip-color: var(--chip-consent); }
+.wchs-chip-tracker--chat       { --chip-color: var(--chip-chat); }
+.wchs-chip-tracker--other      { --chip-color: var(--chip-other); }
+.wchs-chip-tracker--overflow {
+	--chip-color: var(--chip-other);
+}
+.wchs-chip-tracker--overflow .wchs-chip-tracker__dot { display: none; }
+
+/* ─── Pages-tab focus drill-in highlight ─── */
+.wchs-page-card.is-focused {
+	animation: wchs-focus-pulse 2s ease-out;
+	border-radius: 8px;
+}
+@keyframes wchs-focus-pulse {
+	0%   { box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.6); }
+	100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Chip Bar — page toggle chips in canvas toolbar
+   ═══════════════════════════════════════════════════════════ */
+.wchs-chip-bar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	overflow-x: auto;
+	scrollbar-width: none;
+	flex: 1;
+	min-width: 0;
+	padding: 0 8px;
+}
+.wchs-chip-bar::-webkit-scrollbar { display: none; }
+
+.wchs-chip {
+	display: inline-flex;
+	align-items: center;
+	height: 28px;
+	padding: 0 12px;
+	border-radius: 14px;
+	border: 1px solid #e2e8f0;
+	background: transparent;
+	color: #64748b;
+	font-family: inherit;
+	font-size: 11px;
+	font-weight: 500;
+	white-space: nowrap;
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: all 0.15s ease;
+}
+.wchs-chip:hover { background: #f1f5f9; border-color: #cbd5e1; color: #334155; }
+.wchs-chip.is-active {
+	background: #18181b;
+	border-color: #18181b;
+	color: #fafafa;
+}
+.wchs-chip--preset {
+	border-style: dashed;
+	font-size: 10px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	height: 24px;
+	padding: 0 10px;
+	border-radius: 12px;
+}
+.wchs-chip--preset.is-active { border-style: solid; }
+.wchs-chip-divider {
+	width: 1px;
+	height: 16px;
+	background: #e2e8f0;
+	flex-shrink: 0;
+}
+.wchs-chip-count {
+	font-size: 11px;
+	color: #94a3b8;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Override swatches — per-module accent overrides (Phase 2 loop)
+   Visually quieter than the Design tab accent swatches so merchants
+   read the primary site accent as the default and overrides as
+   exceptions, not replacements.
+   ═══════════════════════════════════════════════════════════ */
+.wchs-override-swatches {
+	align-items: center;
+}
+.wchs-override-swatch {
+	border-radius: 3px;
+	transition: border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+}
+.wchs-override-swatch:hover {
+	transform: scale(1.08);
+}
+.wchs-override-swatch.active {
+	border-color: var(--wchs-text, #0f172a);
+	box-shadow: 0 0 0 2px var(--wchs-bg, #fff), 0 0 0 3px var(--wchs-text, #0f172a);
+}
+.wchs-override-swatch--default.active {
+	box-shadow: 0 0 0 2px var(--wchs-bg, #fff), 0 0 0 3px var(--wchs-text, #0f172a);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Hint icon — hover-revealed tooltip replacing the .wchs-info boxes
+   and long .wchs-hint blocks that cluttered section tops. The icon
+   sits adjacent to a heading or field label; hover shows the copy
+   that used to live as body text.
+   ═══════════════════════════════════════════════════════════ */
+.wchs-section__head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.wchs-hint-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 15px;
+	height: 15px;
+	border-radius: 50%;
+	border: 1px solid #94a3b8;
+	color: #64748b;
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: 10px;
+	font-style: italic;
+	font-weight: 600;
+	line-height: 1;
+	cursor: help;
+	position: relative;
+	flex-shrink: 0;
+	transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.wchs-hint-icon:hover,
+.wchs-hint-icon:focus-visible {
+	background: #0f172a;
+	border-color: #0f172a;
+	color: #fff;
+	outline: none;
+}
+/* Body-portal tooltip — see wchs-hint-tip. The icon itself no longer
+   carries the tooltip via ::after since that gets clipped by ancestor
+   overflow:auto containers (e.g. the narrow editor panel). */
+
+.wchs-hint-tip {
+	position: fixed;
+	top: 0;
+	left: 0;
+	transform: translate(var(--wchs-tip-x, 0), var(--wchs-tip-y, 0));
+	padding: 10px 12px;
+	max-width: 280px;
+	background: #0f172a;
+	color: #e2e8f0;
+	font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	font-size: 12px;
+	font-weight: 400;
+	line-height: 1.45;
+	letter-spacing: 0.005em;
+	border-radius: 6px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+	pointer-events: none;
+	opacity: 0;
+	visibility: hidden;
+	z-index: 100003;  /* above insert menu (100001) + toast (100002) */
+	transition: opacity 0.15s ease;
+}
+.wchs-hint-tip.is-visible {
+	opacity: 1;
+	visibility: visible;
+}
+/* Measuring state: make tooltip layout-visible for getBoundingClientRect
+   but keep it invisible to the eye until position is committed. */
+.wchs-hint-tip.is-measuring {
+	opacity: 0;
+	visibility: visible;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Unsaved-changes affordances — dirty banner + save-button cue.
+   The `.is-dirty` class is toggled on each .wchs-admin form by
+   admin.js whenever the serialized form diverges from its on-load
+   snapshot. Reset on submit.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Sticky banner: only renders when form is dirty. Users know some
+   module edit ("Apply"d to the form) hasn't hit the DB yet. */
+.wchs-admin form.is-dirty::before {
+	content: 'You have unsaved changes — click Save at the bottom to apply them.';
+	display: block;
+	position: sticky;
+	top: 0;
+	z-index: 100;
+	margin: -8px -16px 16px;
+	padding: 10px 20px;
+	background: #fef3c7;
+	color: #78350f;
+	border-bottom: 1px solid #f59e0b;
+	font-family: 'Inter', system-ui, sans-serif;
+	font-size: 13px;
+	font-weight: 500;
+	letter-spacing: 0.01em;
+}
+
+/* Dot indicator next to the primary Save button. Pure CSS, visible
+   only when the form is dirty, sits at the top-right of the button. */
+.wchs-admin form.is-dirty .wchs-btn--primary[type="submit"]::after {
+	content: '';
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	margin-left: 8px;
+	border-radius: 50%;
+	background: #f59e0b;
+	box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+	animation: wchs-pulse 1.8s ease-in-out infinite;
+	vertical-align: middle;
+}
+@keyframes wchs-pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.55; }
+}
+
+/* Success toast: flashes briefly after ?updated=1 redirect. */
+.wchs-save-toast {
+	position: fixed;
+	bottom: 24px;
+	left: 50%;
+	transform: translateX(-50%) translateY(12px);
+	padding: 10px 18px;
+	background: #0f172a;
+	color: #fff;
+	border-radius: 8px;
+	font-family: 'Inter', system-ui, sans-serif;
+	font-size: 13px;
+	font-weight: 500;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+	opacity: 0;
+	transition: opacity 0.25s ease, transform 0.3s var(--ease-out);
+	z-index: 9999;
+	pointer-events: none;
+}
+.wchs-save-toast.is-visible {
+	opacity: 1;
+	transform: translateX(-50%) translateY(0);
+}
+
+/* Module-list row focus ring (Cmd+C/V target) */
+.wchs-modlist__row {
+	outline: none;
+}
+.wchs-modlist__row:focus,
+.wchs-modlist__row:focus-visible {
+	box-shadow: inset 0 0 0 2px var(--wp-admin-theme-color, #2271b1);
+	background: rgba(34, 113, 177, 0.04);
+}
+
+/* Slash-style insert menu */
+.wchs-insert-menu {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 320px;
+	max-height: 360px;
+	background: #fff;
+	border: 1px solid #ccd0d4;
+	border-radius: 6px;
+	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+	z-index: 100001;
+	display: none;
+	flex-direction: column;
+	overflow: hidden;
+	font-family: -apple-system, system-ui, sans-serif;
+}
+.wchs-insert-menu.is-open {
+	display: flex;
+}
+.wchs-insert-menu__filter {
+	border: 0;
+	border-bottom: 1px solid #e5e5e5;
+	padding: 10px 12px;
+	font-size: 13px;
+	outline: none;
+	background: #fafafa;
+}
+.wchs-insert-menu__filter:focus {
+	background: #fff;
+}
+.wchs-insert-menu__list {
+	flex: 1;
+	overflow-y: auto;
+	padding: 4px 0;
+}
+.wchs-insert-menu__group {
+	padding: 8px 12px 4px;
+	font-size: 10px;
+	font-weight: 600;
+	color: #8a8a8a;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+.wchs-insert-menu__row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 7px 12px;
+	font-size: 13px;
+	cursor: pointer;
+	color: #1d2327;
+}
+.wchs-insert-menu__row:hover,
+.wchs-insert-menu__row.is-active {
+	background: rgba(34, 113, 177, 0.08);
+}
+.wchs-insert-menu__name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.wchs-insert-menu__hint {
+	font-size: 11px;
+	color: #8a8a8a;
+	flex-shrink: 0;
+}
+.wchs-insert-menu__del {
+	background: transparent;
+	border: 0;
+	font-size: 16px;
+	line-height: 1;
+	color: #b0b0b0;
+	padding: 2px 6px;
+	cursor: pointer;
+	border-radius: 3px;
+}
+.wchs-insert-menu__del:hover {
+	background: rgba(220, 53, 69, 0.12);
+	color: #dc3545;
+}
+
+/* Lightweight toast (copy/paste/preset feedback) */
+.wchs-toast {
+	position: fixed;
+	bottom: 24px;
+	left: 50%;
+	transform: translateX(-50%) translateY(4px);
+	background: #1f2937;
+	color: #fff;
+	padding: 8px 16px;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: 0.02em;
+	pointer-events: none;
+	z-index: 100002;
+	opacity: 0;
+	transition: opacity 0.15s ease, transform 0.2s ease;
+}
+.wchs-toast.is-visible {
+	opacity: 1;
+	transform: translateX(-50%) translateY(0);
+}
+.wchs-toast[data-kind="error"] {
+	background: #991b1b;
+}
+
+.wchs-cutover-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 14px;
+	margin-top: 14px;
+}
+
+.wchs-cutover-card,
+.wchs-cutover-legacy,
+.wchs-cutover-copy-row {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 10px;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.wchs-cutover-card {
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.wchs-cutover-card__label {
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: #6b7280;
+}
+
+.wchs-cutover-card strong {
+	font-size: 14px;
+	line-height: 1.45;
+	color: #111827;
+	word-break: break-word;
+}
+
+.wchs-cutover-card p,
+.wchs-cutover-legacy p {
+	margin: 0;
+	color: #4b5563;
+	font-size: 12px;
+	line-height: 1.55;
+}
+
+.wchs-cutover-legacy {
+	margin-top: 14px;
+	padding: 16px;
+}
+
+.wchs-cutover-legacy strong {
+	display: block;
+	margin-bottom: 8px;
+}
+
+.wchs-cutover-copy-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) auto;
+	align-items: center;
+	gap: 14px;
+	padding: 14px 16px;
+	margin-top: 12px;
+}
+
+.wchs-cutover-copy-row__meta {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.wchs-cutover-copy-row__meta strong {
+	font-size: 13px;
+	color: #111827;
+}
+
+.wchs-cutover-copy-row__meta span {
+	font-size: 12px;
+	line-height: 1.5;
+	color: #6b7280;
+}
+
+.wchs-cutover-copy-row code {
+	display: block;
+	padding: 10px 12px;
+	background: #f8fafc;
+	border: 1px solid #e5e7eb;
+	border-radius: 8px;
+	color: #111827;
+	font-size: 12px;
+	line-height: 1.55;
+	word-break: break-all;
+}
+
+.wchs-cutover-check {
+	align-items: flex-start;
+}
+
+.wchs-cutover-check span:last-child {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.wchs-cutover-check strong {
+	font-size: 13px;
+	color: #111827;
+}
+
+.wchs-cutover-check small {
+	color: #6b7280;
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.wchs-cutover-guide {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.wchs-cutover-guide p {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.65;
+	color: #374151;
+}
+
+@media (max-width: 960px) {
+	.wchs-cutover-copy-row {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* Keyboard shortcut help overlay */
+.wchs-shortcut-help {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+}
+.wchs-shortcut-help__row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 4px;
+	border-bottom: 1px solid #f0f0f0;
+	font-size: 13px;
+}
+.wchs-shortcut-help__row:last-child {
+	border-bottom: 0;
+}
+.wchs-shortcut-help__keys {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 11px;
+	padding: 3px 8px;
+	background: #f6f7f7;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	color: #1d2327;
+}
+.wchs-shortcut-help__action {
+	color: #50575e;
+}
