@@ -503,6 +503,31 @@ does NOT own, and gotchas worth knowing before you modify it.
 
 ---
 
+## headless-legacy-redirects
+
+**Owns:**
+- Server-side 301s for legacy Shopify collection/product URLs before the SPA shell handles them.
+- `/products/<handle>` redirects to `/product/<slug>` only after confirming the product exists or resolving a configured alias.
+- `/collections/<collection>/products/<handle>` product redirects, with fallback to the collection/category landing.
+- Per-site product aliases from the `wchs_legacy_product_redirects` option plus the `wchs_legacy_product_redirects` filter.
+
+**Depends on:** `.htaccess` routing `/products`, `/collections`, and `/product-category` to `/index.php`; WooCommerce product/category data; `home_url()` for canonical origins.
+
+**Per-site product aliases:**
+```bash
+wp option update wchs_legacy_product_redirects '{"old-product-handle":"canonical-product-slug"}' --format=json
+```
+
+The option must stay site-specific. Do not bake one merchant's aliases into `bin/templates/htaccess.template` or the default plugin map.
+
+**Gotchas:**
+- Unknown `/products/<handle>` links redirect to `/shop` instead of producing a dead `/product/<handle>` shell.
+- `/product/<handle>` and bare `/<handle>` are redirected only when the handle is configured as an alias; normal product/page routing is left alone.
+- Tracking query parameters (`utm_*`, `gclid`, `fbclid`, `msclkid`) are preserved.
+- File: `wp/mu-plugins/headless-legacy-redirects.php`
+
+---
+
 ## headless-seo
 
 **Owns:**

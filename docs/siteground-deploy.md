@@ -432,9 +432,10 @@ RewriteRule ^comments/feed(/.*)?$ /index.php [L]
 RewriteRule ^sitemap\.xml$ /index.php [L]
 RewriteRule ^robots\.txt$  /index.php [L]
 
-# 6g. Old Shopify product URLs. WCHS canonical PDPs are /product/<slug>.
-RewriteRule ^products/?$ /shop [R=301,L]
-RewriteRule ^products/([^/]+)/?$ /product/$1 [R=301,L,NE]
+# 6g. Old Shopify product URLs. Route through WordPress so
+#     headless-legacy-redirects.php can validate real products and apply
+#     per-site product alias maps before emitting canonical 301s.
+RewriteRule ^products(/.*)?$ /index.php [L]
 
 # 6h. Clean category URLs. Older WCHS builds linked category filters as
 #     /shop?cat=<slug> or /shop?category=<slug>; canonical category pages are
