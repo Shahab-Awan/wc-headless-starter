@@ -207,6 +207,6 @@ cleanly without needing `!important`.
 
 - `PRETEXT_RULE.md` - the text rendering rule (component-level)
 - `docs/architecture.md` - headless WC architecture brief
-- `docs/per-site-deploy.md` - multi-site deployment guide
+- `docs/per-site-deploy.md` - Alyve isolation and deploy ownership guide
 - `wp/mu-plugins/wchs-design-system/README.md` - design system plugin docs
 - [Runway design reference](../dev/skills/reference/awesome-design-md/design-md/runwayml/DESIGN.md) - aesthetic inspiration

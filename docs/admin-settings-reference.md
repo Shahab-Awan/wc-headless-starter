@@ -438,4 +438,6 @@ Full shape in `spa/src/lib/config.svelte.ts` `type ConfigData`.
 5. `spa/src/lib/config.svelte.ts` — add to `type ConfigData` + `defaultConfig` constant.
 6. Consume `config.data.<your_key>` in the SPA component that needs it.
 
-Deploy via GitHub Actions by pushing to `main`, or from a generated site folder run `./scripts/purge-and-rebuild.sh`. The new option's default seeds automatically via `wp_parse_args` — no migration needed.
+Deploy to Alyve by pushing deployable code to `main`, or from a generated site
+folder with `./scripts/purge-and-rebuild.sh`. The new option's default seeds
+automatically via `wp_parse_args` - no migration needed.

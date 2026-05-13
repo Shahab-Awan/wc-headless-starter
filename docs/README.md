@@ -50,9 +50,13 @@ Agents should read these before making code changes:
 
 ## Alignment Notes
 
-- Public docs should not name real sites using this starter.
+- Upstream public docs should not name real sites using this starter. This
+  fork may name Alyve in deployment ownership docs because it is the Alyve
+  production deployment fork.
 - Runtime credentials belong in `.env`, `wp-config.php`, WordPress admin
   settings, or GitHub Actions secrets, never in committed docs.
+- Do not add unrelated client sites to this fork's deploy workflow. Use a
+  separate fork or workflow with its own single-site secrets.
 - If you add an admin setting, update `admin-settings-reference.md`,
   `CLAUDE.md` if the ownership path changes, and the SPA config type when
   the setting is emitted through `/wp-json/wchs/v1/config`.

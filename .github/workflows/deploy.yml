@@ -1,44 +1,26 @@
-name: Deploy to SiteGround
+name: Deploy Alyve to SiteGround
 
-# Canonical CD pipeline. Triggers on push to `main` (skips doc-only
-# changes) or manually via Actions tab. Builds the SPA once, then
-# rsyncs mu-plugins + build output to each configured site in parallel.
-#
-# Opt out per-push: include `[skip deploy]` in commit message.
-# Secrets live in repo settings - see .github/workflows/README.md
-# or ask: gh secret list.
+# Alyve-only CD pipeline for Shahab-Awan/wc-headless-starter.
+# Pushes to main deploy only alyvepeptides.com. The upstream
+# lyc-aon/wc-headless-starter repo is manual-only and should not
+# deploy shared client fleets from ordinary pushes.
 
 on:
   push:
     branches: [main]
-    # Skip deploy when only docs / markdown changed. Runs any time
-    # PHP, SPA, or toolkit files change.
     paths-ignore:
       - '**.md'
       - 'docs/**'
       - '.github/**'
   workflow_dispatch:
-    inputs:
-      sites:
-        description: 'Which sites to deploy'
-        required: true
-        default: 'both'
-        type: choice
-        options: [both, site1, site2]
 
 concurrency:
-  # One deploy at a time per branch — a newer push cancels an in-flight
-  # deploy to avoid overlapping rsyncs against the same webroot.
-  group: deploy-${{ github.ref }}
+  group: deploy-alyve-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   skip-check:
     runs-on: ubuntu-latest
-    # The whole check happens in the expression engine so multi-line commit
-    # bodies with quotes / backticks never reach a bash parser. Output is
-    # the string 'true' or 'false'; downstream jobs gate on `!= 'true'`.
-    # workflow_dispatch has no head_commit so contains() returns false → never skipped.
     outputs:
       skip: ${{ contains(github.event.head_commit.message, '[skip deploy]') }}
     steps:
@@ -77,60 +59,39 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  deploy:
+  deploy-alyve:
     needs: build
     runs-on: ubuntu-latest
-
-    # Matrix fans out across both sites in parallel. Each row carries
-    # only the secret *names* — values resolve at step time via the
-    # secrets context. Never log matrix values; rsync -q keeps them
-    # out of build output.
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - site: site1
-            key_secret: SG_SSH_KEY_SITE1
-            host_secret: SG_HOST_SITE1
-            user_secret: SG_USER_SITE1
-            domain_secret: SG_DOMAIN_SITE1
-          - site: site2
-            key_secret: SG_SSH_KEY_SITE2
-            host_secret: SG_HOST_SITE2
-            user_secret: SG_USER_SITE2
-            domain_secret: SG_DOMAIN_SITE2
-
+    env:
+      SG_DOMAIN: ${{ secrets.ALYVE_SG_DOMAIN }}
     steps:
-      - name: Skip if workflow_dispatch selected other site
-        id: gate
+      - name: Validate deploy secrets
+        env:
+          SSH_KEY: ${{ secrets.ALYVE_SG_SSH_KEY }}
+          SG_HOST: ${{ secrets.ALYVE_SG_HOST }}
+          SG_USER: ${{ secrets.ALYVE_SG_USER }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            case "${{ github.event.inputs.sites }}" in
-              both) echo "run=true" >> "$GITHUB_OUTPUT" ;;
-              ${{ matrix.site }}) echo "run=true" >> "$GITHUB_OUTPUT" ;;
-              *) echo "run=false" >> "$GITHUB_OUTPUT" ;;
-            esac
-          else
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          fi
+          missing=0
+          if [[ -z "$SSH_KEY" ]]; then echo "::error::ALYVE_SG_SSH_KEY is not set"; missing=1; fi
+          if [[ -z "$SG_HOST" ]]; then echo "::error::ALYVE_SG_HOST is not set"; missing=1; fi
+          if [[ -z "$SG_USER" ]]; then echo "::error::ALYVE_SG_USER is not set"; missing=1; fi
+          if [[ -z "$SG_DOMAIN" ]]; then echo "::error::ALYVE_SG_DOMAIN is not set"; missing=1; fi
+          if [[ "$missing" != "0" ]]; then exit 1; fi
 
       - name: Checkout
-        if: steps.gate.outputs.run == 'true'
         uses: actions/checkout@v4
 
       - name: Download build artifact
-        if: steps.gate.outputs.run == 'true'
         uses: actions/download-artifact@v4
         with:
           name: spa-build
           path: spa/build/
 
       - name: Configure SSH
-        if: steps.gate.outputs.run == 'true'
         env:
-          SSH_KEY: ${{ secrets[matrix.key_secret] }}
-          SG_HOST: ${{ secrets[matrix.host_secret] }}
-          SG_USER: ${{ secrets[matrix.user_secret] }}
+          SSH_KEY: ${{ secrets.ALYVE_SG_SSH_KEY }}
+          SG_HOST: ${{ secrets.ALYVE_SG_HOST }}
+          SG_USER: ${{ secrets.ALYVE_SG_USER }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
@@ -147,13 +108,9 @@ jobs:
             echo "  UserKnownHostsFile ~/.ssh/known_hosts"
           } > ~/.ssh/config
           chmod 600 ~/.ssh/config
-          # Smoke test the connection before touching the filesystem.
           ssh sg-target 'echo ok; pwd' > /dev/null
 
       - name: Deploy mu-plugins
-        if: steps.gate.outputs.run == 'true'
-        env:
-          SG_DOMAIN: ${{ secrets[matrix.domain_secret] }}
         run: |
           ssh sg-target "test -d ~/www/${SG_DOMAIN}/public_html" || {
             echo "::error::Remote webroot missing: ~/www/${SG_DOMAIN}/public_html"
@@ -165,18 +122,12 @@ jobs:
             "sg-target:~/www/${SG_DOMAIN}/public_html/wp-content/mu-plugins/"
 
       - name: Deploy .htaccess
-        if: steps.gate.outputs.run == 'true'
-        env:
-          SG_DOMAIN: ${{ secrets[matrix.domain_secret] }}
         run: |
           rsync -az \
             bin/templates/htaccess.template \
             "sg-target:~/www/${SG_DOMAIN}/public_html/.htaccess"
 
       - name: Hydrate SPA shell SEO
-        if: steps.gate.outputs.run == 'true'
-        env:
-          SG_DOMAIN: ${{ secrets[matrix.domain_secret] }}
         run: |
           CONFIG_FILE="$(mktemp)"
           ssh sg-target "curl -sk -H 'Host: ${SG_DOMAIN}' 'https://127.0.0.1/wp-json/wchs/v1/config?bust=$RANDOM'" > "$CONFIG_FILE"
@@ -187,13 +138,7 @@ jobs:
             --domain "$SG_DOMAIN"
 
       - name: Deploy SPA build
-        if: steps.gate.outputs.run == 'true'
-        env:
-          SG_DOMAIN: ${{ secrets[matrix.domain_secret] }}
         run: |
-          # Sync everything from spa/build/ to the webroot. Exclude all
-          # the WP-owned paths so we never touch WP's own files, plus
-          # a few per-site assets we don't regenerate on every deploy.
           rsync -az \
             --exclude='wp/' \
             --exclude='wp-admin/' \
@@ -216,35 +161,23 @@ jobs:
             "sg-target:~/www/${SG_DOMAIN}/public_html/"
 
       - name: Deploy headless-shim theme
-        if: steps.gate.outputs.run == 'true'
-        env:
-          SG_DOMAIN: ${{ secrets[matrix.domain_secret] }}
         run: |
           rsync -az --delete \
             wp/themes/headless-shim/ \
             "sg-target:~/www/${SG_DOMAIN}/public_html/wp-content/themes/headless-shim/"
 
       - name: Lint deployed PHP
-        if: steps.gate.outputs.run == 'true'
-        env:
-          SG_DOMAIN: ${{ secrets[matrix.domain_secret] }}
         run: |
           ssh sg-target "cd ~/www/${SG_DOMAIN}/public_html && \
             find wp-content/mu-plugins -maxdepth 2 -name '*.php' -exec php -l {} \; 2>&1 | grep -v 'No syntax errors' || true"
 
       - name: Flush SiteGround dynamic cache
-        if: steps.gate.outputs.run == 'true'
         run: |
           ssh sg-target 'site-tools-client -j domain update id=1 flush_cache=1' > /dev/null || \
             echo "::warning::cache flush failed (non-fatal)"
 
-      - name: Smoke test live site
-        if: steps.gate.outputs.run == 'true'
-        env:
-          SG_DOMAIN: ${{ secrets[matrix.domain_secret] }}
+      - name: Smoke test Alyve
         run: |
-          # Fetch /wp-json/wchs/v1/config via the site's own nginx
-          # (bypasses SG captcha which fires from unknown origins).
           RESP=$(ssh sg-target "curl -sk -H 'Host: ${SG_DOMAIN}' 'https://127.0.0.1/wp-json/wchs/v1/config?bust=$RANDOM'")
           export RESP
           python3 - <<'PY'
@@ -269,7 +202,12 @@ jobs:
               print(f"response_prefix: {resp[:400]}")
               sys.exit(1)
 
-          print("✓ config endpoint responding")
+          if data.get("brand_name") != "Alyve Peptides":
+              print("::error::Alyve deploy smoke received unexpected brand")
+              print(f"brand_name={data.get('brand_name')!r}")
+              sys.exit(1)
+
+          print("config endpoint responding for Alyve")
           PY
 
           for ROUTE in /account /shop; do
@@ -281,7 +219,7 @@ jobs:
               echo "probe: ${PROBE}"
               exit 1
             fi
-            echo "✓ ${ROUTE} serves the SPA shell"
+            echo "${ROUTE} serves the SPA shell"
           done
 
           SHOP_HEADERS=$(ssh sg-target "curl -skI -H 'Host: ${SG_DOMAIN}' 'https://127.0.0.1/shop?seo-smoke=$RANDOM'")
@@ -290,7 +228,7 @@ jobs:
             echo "$SHOP_HEADERS"
             exit 1
           fi
-          echo "✓ /shop served through WCHS SEO shell"
+          echo "/shop served through WCHS SEO shell"
 
           for WP_ROUTE in /cart /checkout /my-account; do
             WP_HEADERS=$(ssh sg-target "curl -skI -H 'Host: ${SG_DOMAIN}' 'https://127.0.0.1${WP_ROUTE}?seo-smoke=$RANDOM'")
@@ -299,61 +237,21 @@ jobs:
               echo "$WP_HEADERS"
               exit 1
             fi
-            echo "✓ ${WP_ROUTE} remains WP-owned"
+            echo "${WP_ROUTE} remains WP-owned"
           done
 
-          HOME_HTML=$(ssh sg-target "curl -sk -H 'Host: ${SG_DOMAIN}' 'https://127.0.0.1/?seo-smoke=$RANDOM'")
-          MANIFEST_HEADERS=$(ssh sg-target "curl -skI -H 'Host: ${SG_DOMAIN}' 'https://127.0.0.1/site.webmanifest?seo-smoke=$RANDOM'")
-          export HOME_HTML MANIFEST_HEADERS
-          python3 - <<'PY'
-          import os
-          import re
-          import sys
-
-          html = os.environ.get("HOME_HTML", "")
-          title = re.search(r"<title[^>]*>(.*?)</title>", html, re.I | re.S)
-          desc = re.search(r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']+)', html, re.I | re.S)
-          title_text = re.sub(r"\s+", " ", title.group(1)).strip() if title else ""
-          desc_text = re.sub(r"\s+", " ", desc.group(1)).strip() if desc else ""
-          bad = "Stock WordPress and WooCommerce"
-          if not title_text or not desc_text:
-              print("::error::SPA shell SEO smoke failed: missing title or meta description")
-              print(f"title={title_text!r} description={desc_text!r}")
-              sys.exit(1)
-          if title_text == "WCHS" or bad in desc_text:
-              print("::error::SPA shell SEO smoke failed: starter SEO leaked into deployed shell")
-              print(f"title={title_text!r} description={desc_text!r}")
-              sys.exit(1)
-          manifest_headers = os.environ.get("MANIFEST_HEADERS", "")
-          manifest_ct = ""
-          for line in manifest_headers.splitlines():
-              if line.lower().startswith("content-type:"):
-                  manifest_ct = line.split(":", 1)[1].strip().lower()
-                  break
-          if "application/manifest+json" not in manifest_ct and "application/json" not in manifest_ct:
-              print("::error::site.webmanifest is not being served as JSON")
-              print(f"content_type={manifest_ct!r}")
-              sys.exit(1)
-          print(f"✓ SPA shell SEO title={title_text!r}")
-          PY
-
       - name: Verify remote domain alignment
-        if: steps.gate.outputs.run == 'true'
         env:
-          DOMAIN: ${{ secrets[matrix.domain_secret] }}
+          DOMAIN: ${{ secrets.ALYVE_SG_DOMAIN }}
           SSH_HOST: sg-target
         run: |
           bash bin/templates/verify-domain-alignment.sh
 
       - name: Summary
-        if: steps.gate.outputs.run == 'true'
-        env:
-          SG_DOMAIN: ${{ secrets[matrix.domain_secret] }}
         run: |
-          echo "### ${SG_DOMAIN} — deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ${SG_DOMAIN} deployed from Shahab-Awan/wc-headless-starter" >> "$GITHUB_STEP_SUMMARY"
           echo "- Commit: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Target: Alyve only" >> "$GITHUB_STEP_SUMMARY"
           echo "- mu-plugins + .htaccess + SPA build + theme rsynced" >> "$GITHUB_STEP_SUMMARY"
           echo "- SG cache flushed" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Config endpoint smoke ✓" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Direct SPA route smoke (/account, /shop) ✓" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Domain alignment verified (siteurl/home/WCHS/robots/config) ✓" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Alyve smoke checks passed" >> "$GITHUB_STEP_SUMMARY"

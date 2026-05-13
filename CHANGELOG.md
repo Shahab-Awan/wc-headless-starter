@@ -4,6 +4,15 @@ All notable public changes are tracked here.
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Changed
+
+- This fork is documented as the Alyve-only deployment repo. Pushes to `main`
+  deploy `alyvepeptides.com` through fork-local `ALYVE_SG_*` secrets.
+- Deployment docs now warn against adding unrelated client sites to this fork's
+  workflow.
+
 ## [1.0.0] - 2026-05-01
 
 ### Added

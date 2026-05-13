@@ -5,6 +5,11 @@ on the frontend, WordPress + WooCommerce on the backend. It is built for
 single-origin deployments where Apache serves the SPA and WordPress still
 owns checkout, accounts, admin, and REST.
 
+This fork is the Alyve production deployment fork. Pushes to `main` deploy
+`alyvepeptides.com` only through the fork-local Alyve SiteGround secrets.
+Shared starter changes should still flow from `lyc-aon/wc-headless-starter`
+when they are not Alyve-specific.
+
 ---
 
 ## What you get
@@ -60,7 +65,7 @@ More screenshots, generated demo assets, and the exact reseed commands:
    to your `~/.ssh/config`.
 2. **Clone** this repo locally:
    ```sh
-   git clone https://github.com/lyc-aon/wc-headless-starter.git
+   git clone https://github.com/Shahab-Awan/wc-headless-starter.git
    cd wc-headless-starter
    ```
 3. **Generate a per-site snapshot** of the deploy toolkit:
@@ -94,8 +99,9 @@ runbook).
 
 Primary path: configure the GitHub Actions secrets documented in
 [`.github/workflows/README.md`](.github/workflows/README.md), then push to
-`main`. The workflow builds from the repository checkout and deploys with
-guarded rsync excludes. Do not build or sync from the live webroot.
+`main`. This fork's workflow builds from the repository checkout and deploys
+to Alyve only, with guarded rsync excludes. Do not build or sync from the live
+webroot.
 
 Manual path from a generated site folder:
 

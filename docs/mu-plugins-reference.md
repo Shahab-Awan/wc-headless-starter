@@ -736,6 +736,6 @@ Priority conventions in this codebase:
 4. Register your hooks — no activation step, no register_activation_hook (mu-plugins don't activate).
 5. If you need admin UI: extend the existing WCHS admin tabs (`wchs-admin/admin-page.php`) rather than adding a new WP admin menu.
 6. If you need REST routes: add them to `headless-rest-endpoints.php` under the `wchs/v1` namespace (or create a new namespaced route in your file).
-7. Deploy via GitHub Actions, or from a generated site folder run `./scripts/purge-and-rebuild.sh`.
+7. Deploy to Alyve by pushing deployable code to `main`, or from a generated site folder with `./scripts/purge-and-rebuild.sh`.
 
 Document your new plugin in this file under the alphabetical position.

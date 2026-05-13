@@ -13,6 +13,10 @@ safe when you preserve the workflow's explicit excludes for every
 WP-owned path. A raw `rsync spa/build/ .../public_html/` can flatten the
 site.
 
+CI/CD ownership: this fork's GitHub Actions workflow deploys Alyve only.
+Pushes to `main` target `alyvepeptides.com` through repo-local `ALYVE_SG_*`
+secrets.
+
 After any restore, emergency repair, or suspicious live change, run the
 repo's broader integrity audit:
 

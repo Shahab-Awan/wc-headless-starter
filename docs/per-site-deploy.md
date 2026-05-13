@@ -5,8 +5,10 @@ WooCommerce sites. Target pattern: **one shared codebase, one SPA build,
 N isolated WP installs** - each with its own database, its own brand,
 its own origin.
 
-This matches the deploy model where you push code once and many sites
-update without touching each other's config.
+This fork uses that isolation model for one production target:
+`alyvepeptides.com`. Pushes to `main` deploy Alyve only through the fork-local
+`ALYVE_SG_*` secrets. Do not add unrelated client sites to this workflow; use a
+separate fork or workflow with its own single-site secrets.
 
 ---
 

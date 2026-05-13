@@ -36,11 +36,6 @@ class AdminPage {
 	 *   category     one of ['analytics','pixel','marketing','consent','chat','other'].
 	 *                Drives the tracker-chip color in the canvas preview.
 	 *   mark         1–3 char display mark for the tracker chip (e.g. 'GTM', 'K', 'CB').
-	 *   inline       OPTIONAL. Admin-curated raw JS executed as an inline script
-	 *                before any external tag for this id (same placement/surfaces).
-	 *   inline_only  OPTIONAL. When true, the resolver omits the external <script src>
-	 *                tag — use when the inline snippet loads its own remote file
-	 *                (e.g. CustomerLabs).
 	 *
 	 * Shop_manager can never edit these fields. They can only set
 	 * wchs_site_settings['active_scripts'][*].enabled + params.
