@@ -13,6 +13,7 @@
  * the SPA surface.
  */
 
+import { config } from '$lib/config.svelte';
 import { priceAsNumber } from '$lib/utils/format';
 
 declare global {
@@ -56,10 +57,23 @@ let initialized = false;
 let omnisendInitialized = false;
 let pendingOmnisendPushes: unknown[][] = [];
 
+function drainOmnisendPendingInto(queue: { push(cmd: unknown[]): void }): void {
+	if (!pendingOmnisendPushes.length) return;
+	for (const command of pendingOmnisendPushes) {
+		queue.push(command);
+	}
+	pendingOmnisendPushes = [];
+}
+
 function pushOmnisend(command: unknown[]): void {
 	if (typeof window === 'undefined') return;
 	const queue = window.omnisend;
 	if (queue && typeof queue.push === 'function') {
+		const canDrain =
+			omnisendInitialized || Array.isArray(queue);
+		if (pendingOmnisendPushes.length && canDrain) {
+			drainOmnisendPendingInto(queue as { push(cmd: unknown[]): void });
+		}
 		queue.push(command);
 		return;
 	}
@@ -68,10 +82,9 @@ function pushOmnisend(command: unknown[]): void {
 
 function flushPendingOmnisend(): void {
 	if (typeof window === 'undefined' || !window.omnisend) return;
-	for (const command of pendingOmnisendPushes) {
-		window.omnisend.push(command);
-	}
-	pendingOmnisendPushes = [];
+	const q = window.omnisend;
+	if (typeof q.push !== 'function') return;
+	drainOmnisendPendingInto(q as { push(cmd: unknown[]): void });
 }
 
 /**
@@ -109,8 +122,8 @@ export function initOmnisend(brandId: string): void {
  * for session tracking and campaign attribution.
  */
 export function trackOmnisendPageViewed(): void {
-	if (!omnisendInitialized || typeof window === 'undefined') return;
-	window.omnisend?.push(['track', '$pageViewed']);
+	if (typeof window === 'undefined' || !config.data.omnisend_brand_id) return;
+	pushOmnisend(['track', '$pageViewed']);
 }
 
 /**
