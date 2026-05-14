@@ -698,6 +698,21 @@ export function trackGoogleAdsConversion(o: PixelOrder, conversionId: string, co
 
 type CLScalar = { t: 'string' | 'number'; v: string };
 
+const CL_ZERO_DECIMAL = new Set([
+	'BIF', 'CLP', 'DJF', 'GNF', 'ISK', 'JPY', 'KMF', 'KRW', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+]);
+const CL_THREE_DECIMAL = new Set(['BHD', 'IQD', 'JOD', 'KWD', 'LYD', 'OMR', 'TND']);
+
+function clResolveMinorUnit(explicit: number | undefined | null, currencyCode: string): number {
+	if (typeof explicit === 'number' && Number.isFinite(explicit) && explicit >= 0 && explicit <= 4) {
+		return Math.round(explicit);
+	}
+	const c = (currencyCode || 'USD').toUpperCase();
+	if (CL_ZERO_DECIMAL.has(c)) return 0;
+	if (CL_THREE_DECIMAL.has(c)) return 3;
+	return 2;
+}
+
 function clStr(v: string): CLScalar {
 	const s = v.replace(/[\u0000-\u001F<>"'`\\]/g, ' ').trim();
 	return { t: 'string', v: s.slice(0, 2000) };
@@ -710,6 +725,15 @@ function clNumMajor(minorStr: string, meta: Pick<CurrencyMeta, 'currency_minor_u
 	return { t: 'number', v };
 }
 
+function clMajorFromMinor(
+	minorStr: string,
+	currencyCode: string,
+	explicitMinor?: number | null,
+): CLScalar {
+	const mu = clResolveMinorUnit(explicitMinor, currencyCode);
+	return clNumMajor(minorStr, { currency_minor_unit: mu });
+}
+
 function clPageUrl(): CLScalar {
 	if (typeof window === 'undefined') return { t: 'string', v: '' };
 	return clStr(window.location.href.split('#')[0]);
@@ -719,34 +743,21 @@ function clProductPropsRow(p: {
 	id: number;
 	name: string;
 	priceMinor: string;
-	currency_minor_unit: number;
+	currency_minor_unit?: number | null;
+	currency_code: string;
 	quantity?: number;
 	image?: string;
 	variantLabel?: string;
 }): Record<string, CLScalar> {
-	const meta = { currency_minor_unit: p.currency_minor_unit };
 	const row: Record<string, CLScalar> = {
 		product_id: { t: 'number', v: String(p.id) },
 		product_name: clStr(p.name),
-		product_price: clNumMajor(p.priceMinor, meta),
+		product_price: clMajorFromMinor(p.priceMinor, p.currency_code, p.currency_minor_unit),
 	};
 	if (p.quantity != null) row.product_quantity = { t: 'number', v: String(Math.max(0, Math.round(p.quantity))) };
 	if (p.image) row.product_image = clStr(p.image);
 	if (p.variantLabel) row.product_variant = clStr(p.variantLabel);
 	return row;
-}
-
-function clCoupenFromCart(cart: StoreApiCart): CLScalar | null {
-	const parts: string[] = [];
-	for (const c of cart.coupons ?? []) {
-		if (typeof c === 'string' && c.trim()) parts.push(c.trim());
-		else if (c && typeof c === 'object' && 'code' in c) {
-			const code = String((c as { code: unknown }).code).trim();
-			if (code) parts.push(code);
-		}
-	}
-	const s = parts.join(',');
-	return s ? clStr(s) : null;
 }
 
 let customerLabsNavigationCount = 0;
@@ -786,20 +797,23 @@ export function trackCustomerLabsProductViewed(product: {
 	if (typeof window === 'undefined') return;
 	const pageUrl = product.permalink || window.location.href.split('#')[0];
 	const currency = product.prices.currency_code || config.data.currency_code;
-	window._cl?.trackClick?.('Product viewed', {
+	window._cl?.trackClick?.('Product Viewed', {
 		productProperties: [
 			clProductPropsRow({
 				id: product.id,
 				name: product.name,
 				priceMinor: product.prices.price,
 				currency_minor_unit: product.prices.currency_minor_unit,
+				currency_code: currency,
 				quantity: 1,
 				image: product.images?.[0]?.src,
 			}),
 		],
 		customProperties: {
 			page_url: clStr(pageUrl),
+			product_name: clStr(product.name),
 			currency: clStr(currency),
+			value: clMajorFromMinor(product.prices.price, currency, product.prices.currency_minor_unit),
 		},
 	});
 }
@@ -823,14 +837,17 @@ export function trackCustomerLabsProductClickedFromListing(p: {
 				name: p.name,
 				priceMinor: p.prices.price,
 				currency_minor_unit: p.prices.currency_minor_unit,
+				currency_code: currency,
 				quantity: 1,
 				image: p.image,
 			}),
 		],
 		customProperties: {
 			page_url: clStr(pageUrl),
+			product_name: clStr(p.name),
 			clicked_from: clStr(p.listingSource),
 			currency: clStr(currency),
+			value: clMajorFromMinor(p.prices.price, currency, p.prices.currency_minor_unit),
 		},
 	});
 }
@@ -848,25 +865,25 @@ export function trackCustomerLabsAddedToCart(item: {
 	if (typeof window === 'undefined') return;
 	const pageUrl = item.permalink || window.location.href.split('#')[0];
 	const currency = item.currency_code || config.data.currency_code;
-	window._cl?.trackClick?.('Added to cart', {
+	const lineMinor = String(
+		Math.round((Number(item.price) || 0) * Math.max(1, Math.round(item.quantity))),
+	);
+	window._cl?.trackClick?.('Added to Cart', {
 		productProperties: [
 			clProductPropsRow({
 				id: item.id,
 				name: item.name,
 				priceMinor: item.price,
 				currency_minor_unit: item.currency_minor_unit,
+				currency_code: currency,
 				quantity: item.quantity,
 				image: item.image,
 			}),
 		],
 		customProperties: {
 			page_url: clStr(pageUrl),
-			clicked_from: clStr('storefront'),
 			currency: clStr(currency),
-			value: clNumMajor(
-				String(Math.round((Number(item.price) || 0) * Math.max(1, Math.round(item.quantity)))),
-				{ currency_minor_unit: item.currency_minor_unit },
-			),
+			value: clMajorFromMinor(lineMinor, currency, item.currency_minor_unit),
 		},
 	});
 }
@@ -874,43 +891,42 @@ export function trackCustomerLabsAddedToCart(item: {
 export function trackCustomerLabsCheckoutMade(cart: StoreApiCart): void {
 	if (typeof window === 'undefined' || !cart.items?.length) return;
 	const currency = cart.totals.currency_code || config.data.currency_code;
-	const minorMeta = { currency_minor_unit: cart.totals.currency_minor_unit };
 	const customProperties: Record<string, CLScalar> = {
 		page_url: clPageUrl(),
 		currency: clStr(currency),
-		value: clNumMajor(cart.totals.total_price, minorMeta),
+		value: clMajorFromMinor(cart.totals.total_price, currency, cart.totals.currency_minor_unit),
 	};
-	const coupen = clCoupenFromCart(cart);
-	if (coupen) customProperties.coupen = coupen;
 
 	const productProperties = cart.items.map((li) => {
 		const variantLabel =
 			li.variation?.map((v) => `${v.attribute}: ${v.value}`).join(', ') || undefined;
+		const lineCurrency = li.prices.currency_code || currency;
 		return clProductPropsRow({
 			id: li.id,
 			name: li.name,
 			priceMinor: li.prices.price,
 			currency_minor_unit: li.prices.currency_minor_unit,
+			currency_code: lineCurrency,
 			quantity: li.quantity,
 			image: li.images?.[0]?.src,
 			variantLabel,
 		});
 	});
 
-	window._cl?.trackClick?.('Checkout made', { productProperties, customProperties });
+	window._cl?.trackClick?.('Checkout Made', { productProperties, customProperties });
 }
 
 export function trackCustomerLabsPurchased(order: StoreOrder): void {
 	if (typeof window === 'undefined') return;
 	const t = order.totals;
-	const minorMeta = { currency_minor_unit: t.currency_minor_unit };
+	const currency = t.currency_code || config.data.currency_code;
 	const customProperties: Record<string, CLScalar> = {
 		transaction_id: clStr(String(order.id)),
-		currency: clStr(t.currency_code || config.data.currency_code),
-		subtotal: clNumMajor(t.total_items, minorMeta),
-		tax: clNumMajor(t.total_tax, minorMeta),
-		shipping: clNumMajor(t.total_shipping, minorMeta),
-		value: clNumMajor(t.total_price, minorMeta),
+		currency: clStr(currency),
+		subtotal: clMajorFromMinor(t.total_items, currency, t.currency_minor_unit),
+		tax: clMajorFromMinor(t.total_tax, currency, t.currency_minor_unit),
+		shipping: clMajorFromMinor(t.total_shipping, currency, t.currency_minor_unit),
+		value: clMajorFromMinor(t.total_price, currency, t.currency_minor_unit),
 	};
 
 	const productProperties = order.items.map((li) => {
@@ -921,6 +937,7 @@ export function trackCustomerLabsPurchased(order: StoreOrder): void {
 			name: li.name,
 			priceMinor: unitMinor,
 			currency_minor_unit: t.currency_minor_unit,
+			currency_code: currency,
 			quantity: li.quantity,
 			image: li.images?.[0]?.src,
 		});
