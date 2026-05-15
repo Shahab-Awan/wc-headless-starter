@@ -156,14 +156,15 @@ async function run() {
 	const pdpTitle = await lightPage.locator('h1').first().textContent();
 	assert('pdp shows product name', (pdpTitle || '').includes(SMOKE_PRODUCT_NAME));
 
-	// === 6. Quick-add from home → slide cart opens ===
-	log('6. quick-add → slide cart');
+	// === 6. Select from home → PDP add → slide cart opens ===
+	log('6. select → PDP add → slide cart');
 	await lightPage.goto(SPA, { waitUntil: 'networkidle' });
 	await lightPage.waitForSelector('.store-card', { timeout: 10000 });
 
-	// Add a known product specifically so we can assert on it later.
 	const smokeCard = lightPage.locator('.store-card', { hasText: SMOKE_PRODUCT_NAME }).first();
-	await smokeCard.locator('.store-card__add').click();
+	await smokeCard.locator('.store-card__select').click();
+	await lightPage.waitForURL(/\/product\//, { timeout: 10000 });
+	await lightPage.locator('.pdp__add').click();
 	await lightPage.waitForSelector('.fkcart-modal.fkcart-show', { timeout: 5000 });
 	await lightPage.waitForTimeout(500);
 	await shot(lightPage, '06-cart-open');

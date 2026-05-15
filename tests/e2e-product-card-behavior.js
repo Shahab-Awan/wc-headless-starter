@@ -117,20 +117,20 @@ async function main() {
 	else no('badge left', JSON.stringify(badgeLeft));
 
 	// ─── button_style: solid ─────────────────────────────────────
-	console.log('\n--- button_style: solid fills the Add button with accent ---');
+	console.log('\n--- button_style: solid fills the Select button with accent ---');
 	await openDesign(page);
 	await setOption(page, 'button_style', 'solid');
 	await saveAndReload(page);
 	await visitPreview(page);
 	const solidBtn = await page.evaluate(() => {
-		const btn = document.querySelector('.store-card__add:not(:disabled)');
+		const btn = document.querySelector('.store-card__select');
 		if (!btn) return null;
 		const cs = getComputedStyle(btn);
 		return { bg: cs.backgroundColor, color: cs.color };
 	});
 	// Solid variant: background is not transparent (it's the accent color)
 	if (solidBtn && solidBtn.bg !== 'rgba(0, 0, 0, 0)' && solidBtn.bg !== 'transparent') {
-		ok(`Add button solid fill: bg=${solidBtn.bg}`);
+		ok(`Select button solid fill: bg=${solidBtn.bg}`);
 	} else {
 		no('solid btn', JSON.stringify(solidBtn));
 	}
@@ -142,7 +142,7 @@ async function main() {
 	await saveAndReload(page);
 	await visitPreview(page);
 	const iconBtn = await page.evaluate(() => {
-		const btn = document.querySelector('.store-card__add:not(:disabled)');
+		const btn = document.querySelector('.store-card__select');
 		if (!btn) return null;
 		const cs = getComputedStyle(btn);
 		return { borderColor: cs.borderColor };

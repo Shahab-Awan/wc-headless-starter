@@ -240,14 +240,13 @@ async function main() {
 	const iconOnlyOOS = await page.evaluate(() => {
 		const oos = document.querySelector('.store-card.is-oos');
 		if (!oos) return null;
-		const btn = oos.querySelector('.store-card__add');
+		const btn = oos.querySelector('.store-card__select');
 		if (!btn) return null;
 		const cs = getComputedStyle(btn);
-		// Muted color: should be fg-muted (~ slate-500ish), not accent
-		return { color: cs.color, disabled: btn.disabled };
+		return { color: cs.color, href: btn.getAttribute('href') };
 	});
-	if (iconOnlyOOS?.disabled) ok(`OOS icon-only button disabled`);
-	else no('icon-only disabled', JSON.stringify(iconOnlyOOS));
+	if (iconOnlyOOS?.href) ok(`OOS card still links to PDP (${iconOnlyOOS.href})`);
+	else no('icon-only OOS select', JSON.stringify(iconOnlyOOS));
 
 	// ═════════════════════════════════════════════════════════
 	// 9. hover_effect: shadow + OOS grayscale → both apply

@@ -1,0 +1,1 @@
+{"show_reviews":true,"cross_sell_mode":"simple","modules":[{"id":"pdp-related","type":"product_slider","visibility":"all","spacing_v":"normal","spacing_h":"normal","center_header":false,"config":{"title":"Complete the setup","source":"manual","category":null,"product_ids":[40,41,43,44]}}]}

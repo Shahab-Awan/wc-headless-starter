@@ -241,10 +241,11 @@ async function testDoubleClickIdempotency(browser) {
 	await page.goto(SPA, { waitUntil: 'networkidle' });
 	await waitForStable(page, '.store-card');
 
-	// Double-click quick-add on the same card. Cart should increment but
-	// never exceed what the user's actions should produce (2 here, not 3+).
+	// Double-click add on PDP after selecting from a card.
 	const firstCard = page.locator('.store-card', { hasText: 'Canvas Tote' });
-	const addBtn = firstCard.locator('.store-card__add');
+	await firstCard.locator('.store-card__select').click();
+	await page.waitForURL(/\/product\//, { timeout: 10000 });
+	const addBtn = page.locator('.pdp__add');
 	await Promise.all([addBtn.click(), addBtn.click()]); // fire in parallel
 	await page.waitForSelector('.fkcart-modal.fkcart-show', { timeout: 5000 });
 	await page.waitForTimeout(1000);
@@ -335,8 +336,9 @@ async function testShadowCartReplay(browser) {
 	await page.goto(SPA, { waitUntil: 'networkidle' });
 	await waitForStable(page, '.store-card');
 
-	// Add an item
-	await page.locator('.store-card', { hasText: 'Canvas Tote' }).locator('.store-card__add').click();
+	await page.locator('.store-card', { hasText: 'Canvas Tote' }).locator('.store-card__select').click();
+	await page.waitForURL(/\/product\//, { timeout: 10000 });
+	await page.locator('.pdp__add').click();
 	await page.waitForSelector('.fkcart-modal.fkcart-show', { timeout: 5000 });
 	await page.waitForTimeout(500);
 
@@ -382,8 +384,9 @@ async function testFullPurchaseCOD(browser) {
 	await page.goto(SPA, { waitUntil: 'networkidle' });
 	await waitForStable(page, '.store-card');
 
-	// Add to cart
-	await page.locator('.store-card', { hasText: 'Canvas Tote' }).locator('.store-card__add').click();
+	await page.locator('.store-card', { hasText: 'Canvas Tote' }).locator('.store-card__select').click();
+	await page.waitForURL(/\/product\//, { timeout: 10000 });
+	await page.locator('.pdp__add').click();
 	await page.waitForSelector('.fkcart-modal.fkcart-show', { timeout: 5000 });
 	await page.waitForTimeout(500);
 	await shot(page, '10-cart-before-checkout');
@@ -506,8 +509,9 @@ async function testBothThemesJourney(browser) {
 		const actualTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
 		assert(`${scheme}: data-theme matches`, actualTheme === scheme, `got ${actualTheme}`);
 
-		// Open cart
-		await page.locator('.store-card__add').first().click();
+		await page.locator('.store-card__select').first().click();
+		await page.waitForURL(/\/product\//, { timeout: 10000 });
+		await page.locator('.pdp__add').click();
 		await page.waitForSelector('.fkcart-modal.fkcart-show', { timeout: 5000 });
 		await page.waitForTimeout(400);
 		await shot(page, `21-cart-${scheme}`);
@@ -536,8 +540,9 @@ async function testMobileViewport(browser) {
 	const cards = await page.locator('.store-card').count();
 	assert('mobile home shows cards', cards > 0);
 
-	// Add to cart on mobile
-	await page.locator('.store-card__add').first().click();
+	await page.locator('.store-card__select').first().click();
+	await page.waitForURL(/\/product\//, { timeout: 10000 });
+	await page.locator('.pdp__add').click();
 	await page.waitForSelector('.fkcart-modal.fkcart-show', { timeout: 5000 });
 	await page.waitForTimeout(400);
 	await shot(page, '31-mobile-cart');

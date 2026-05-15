@@ -36,7 +36,7 @@ async function run() {
 		const primePage = await primeCtx.newPage();
 		await primePage.goto(SPA, { waitUntil: 'networkidle' });
 		await primePage.waitForSelector('.store-card');
-		await primePage.locator('.store-card__add').first().click();
+		await primePage.locator('.store-card__select').first().click();
 		await primePage.waitForSelector('.fkcart-modal.fkcart-show');
 		await primePage.waitForTimeout(400);
 		cartTokenHref = await primePage.locator('.fkcart-checkout').getAttribute('href');

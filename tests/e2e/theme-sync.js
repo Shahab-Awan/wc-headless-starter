@@ -74,7 +74,7 @@ async function run() {
 	await page.screenshot({ path: path.join(SHOTS, '01-spa-dark.png'), fullPage: true });
 
 	log('2. Populate cart + navigate to native /checkout');
-	await page.locator('.store-card__add').first().click();
+	await page.locator('.store-card__select').first().click();
 	await page.waitForSelector('.fkcart-modal.fkcart-show');
 	await page.waitForTimeout(400);
 	const checkoutHref = await page.locator('.fkcart-checkout').getAttribute('href');

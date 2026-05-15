@@ -43,7 +43,7 @@ async function run() {
 		// 4. Populate cart via SPA, then hit checkout
 		await page.goto(SPA, { waitUntil: 'networkidle' });
 		await page.waitForSelector('.store-card', { timeout: 10000 });
-		await page.locator('.store-card__add').first().click();
+		await page.locator('.store-card__select').first().click();
 		await page.waitForSelector('.fkcart-modal.fkcart-show', { timeout: 5000 });
 		await page.waitForTimeout(400);
 
