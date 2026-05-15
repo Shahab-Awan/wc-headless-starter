@@ -119,7 +119,7 @@ class AdminPage {
 		],
 		[
 			'id'           => 'customerlabs',
-			'name'         => 'CustomerLabs 1PD Opsss',
+			'name'         => 'CustomerLabs 1PD Ops',
 			'description'  => 'CustomerLabs loader (inline bootstrap + CDN). Replace inline + src_template in REGISTRY_SEEDS with the snippet from your CustomerLabs workspace if this is not your account.',
 			'src_template' => 'https://cdn.js.customerlabs.co/cl852373hycz6u.js',
 			'params'       => [],
