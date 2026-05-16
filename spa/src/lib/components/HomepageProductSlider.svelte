@@ -58,7 +58,7 @@
 {:else if !loading && products.length > 0}
 	<section class="homepage-module" class:is-v-compact={spacing_v === 'compact'} class:is-v-spacious={spacing_v === 'spacious'} class:is-h-compact={spacing_h === 'compact'} class:is-h-spacious={spacing_h === 'spacious'} id={config.title?.toLowerCase().replace(/\s+/g, '-')}>
 		<div class="homepage-module__head" class:is-centered={center_header}>
-			<p class="homepage-module__label">{config.title || 'Products'}</p>
+			<p class="homepage-module__label wchs-section-heading">{config.title || 'Products'}</p>
 			{#if !center_header}
 				<a class="homepage-module__more" href={title_link}>All products →</a>
 			{/if}
@@ -86,21 +86,19 @@
 		display: flex;
 		align-items: baseline;
 		justify-content: space-between;
-		padding: 0 0 20px;
+		padding: 0 0 22px;
 	}
 	.homepage-module__head.is-centered {
 		justify-content: center;
 		text-align: center;
 	}
 	.homepage-module__label {
-		font-family: var(--font-heading, var(--font-sans));
-		font-size: 12px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--fg-muted);
-		margin: 0;
+		flex: 1;
+		min-width: 0;
+		line-height: 1.2;
+		padding-right: 12px;
 	}
+
 	.homepage-module__more {
 		font-size: 12px;
 		font-weight: 450;

@@ -11,7 +11,7 @@
 
 {#if config.items?.length}
 	<section class="accordion" class:is-v-compact={spacing_v === 'compact'} class:is-v-spacious={spacing_v === 'spacious'} class:is-h-compact={spacing_h === 'compact'} class:is-h-spacious={spacing_h === 'spacious'} id={config.title?.toLowerCase().replace(/\s+/g, '-') || 'accordion'}>
-		<h2 class="accordion__title" class:is-centered={center_header}>{config.title}</h2>
+		<h2 class="accordion__title wchs-section-heading" class:is-centered={center_header}>{config.title}</h2>
 		<div class="accordion__list">
 			{#each config.items as item, i}
 				<div class="accordion__item">
@@ -53,13 +53,7 @@
 	.accordion.is-h-spacious { --mod-max-w: 760px; --mod-px: 40px; }
 
 	.accordion__title {
-		font-family: var(--font-heading, var(--font-sans));
-		font-size: 13px;
-		font-weight: var(--heading-weight, 600);
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--fg);
-		margin: 0 0 24px;
+		margin: 0 0 28px;
 	}
 	.accordion__title.is-centered {
 		text-align: center;

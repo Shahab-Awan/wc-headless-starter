@@ -12,48 +12,166 @@ defined( 'ABSPATH' ) || exit;
  * its own brand color scoped without affecting the site default.
  */
 
+if ( ! function_exists( 'wchs_hero_default_research_stats' ) ) {
+	/**
+	 * @return array<int, array{value: string, label: string}>
+	 */
+	function wchs_hero_default_research_stats(): array {
+		return [
+			[ 'value' => '≥99%', 'label' => 'VERIFIED PURITY' ],
+			[ 'value' => '6-panel', 'label' => 'COA EVERY BATCH' ],
+			[ 'value' => '60+', 'label' => 'RESEARCH COMPOUNDS' ],
+		];
+	}
+}
+
+if ( ! function_exists( 'wchs_hero_sanitize_research_stats' ) ) {
+	/**
+	 * @param mixed $value Raw POST JSON string or decoded array.
+	 * @return array<int, array{value: string, label: string}>
+	 */
+	function wchs_hero_sanitize_research_stats( $value, array $values ): array {
+		unset( $values );
+		$defaults = wchs_hero_default_research_stats();
+		if ( is_array( $value ) ) {
+			$rows = [];
+			foreach ( $value as $row ) {
+				if ( ! is_array( $row ) ) {
+					continue;
+				}
+				$v = sanitize_text_field( (string) ( $row['value'] ?? '' ) );
+				$l = sanitize_text_field( (string) ( $row['label'] ?? '' ) );
+				if ( $v !== '' && $l !== '' ) {
+					$rows[] = [ 'value' => $v, 'label' => $l ];
+				}
+			}
+			return ! empty( $rows ) ? $rows : $defaults;
+		}
+		$raw = is_string( $value ) ? wp_unslash( $value ) : '';
+		$decoded = json_decode( $raw, true );
+		return is_array( $decoded ) ? wchs_hero_sanitize_research_stats( $decoded, [] ) : $defaults;
+	}
+}
+
 return [
 	'type'     => 'hero',
 	'name'     => 'Hero',
 	'icon'     => 'image',
 	'category' => 'branding',
 	'supports' => [
-		'spacing'    => false, // hero has its own internal spacing/mobile rules
+		'spacing'    => false,
 		'visibility' => true,
-		'header'     => false, // hero renders its own headline; no outer header
+		'header'     => false,
 		'color'      => [ 'accent' => true ],
 		'typography' => true,
 	],
 	'fields'   => [
-		// ── Background & media ──
-		[ 'id' => 'image_desktop',     'type' => 'media_url', 'default' => '' ],
-		[ 'id' => 'image_mobile',      'type' => 'media_url', 'default' => '' ],
-		[ 'id' => 'image_position_x',  'type' => 'int',       'default' => 50, 'min' => 0,  'max' => 100 ],
-		[ 'id' => 'image_position_y',  'type' => 'int',       'default' => 50, 'min' => 0,  'max' => 100 ],
-		[ 'id' => 'image_zoom',        'type' => 'int',       'default' => 100, 'min' => 50, 'max' => 200 ],
-		[ 'id' => 'variant',           'type' => 'enum',      'default' => 'text-only',
-		  'values' => [ 'text-only', 'webgl-noise', 'webgl-variant-2', 'webgl-variant-3',
-		                'webgl-variant-4', 'webgl-variant-5', 'webgl-variant-6' ] ],
+		[ 'id' => 'image_desktop',    'type' => 'media_url', 'default' => '' ],
+		[ 'id' => 'image_mobile',     'type' => 'media_url', 'default' => '' ],
+		[ 'id' => 'image_position_x', 'type' => 'int',       'default' => 50, 'min' => 0,  'max' => 100 ],
+		[ 'id' => 'image_position_y', 'type' => 'int',       'default' => 50, 'min' => 0,  'max' => 100 ],
+		[ 'id' => 'image_zoom',       'type' => 'int',       'default' => 100, 'min' => 50, 'max' => 200 ],
+		[
+			'id'      => 'variant',
+			'type'    => 'enum',
+			'default' => 'text-only',
+			'options' => [
+				'text-only'         => 'None',
+				'webgl-noise'       => 'Smoke',
+				'webgl-variant-2'   => 'Plasma',
+				'webgl-variant-3'   => 'Voronoi',
+				'webgl-variant-4'   => 'Hex Grid',
+				'webgl-variant-5'   => 'Dot Matrix',
+				'webgl-variant-6'   => 'Bokeh',
+				'research-motion'   => 'Research motion (CSS)',
+			],
+		],
 
-		// ── Content ──
-		[ 'id' => 'headline',         'type' => 'text', 'default' => '' ],
-		[ 'id' => 'subheadline',      'type' => 'text', 'default' => '' ],
-		[ 'id' => 'show_cta',         'type' => 'boolean', 'default' => true ],
-		[ 'id' => 'cta_text',         'type' => 'text', 'default' => '' ],
-		[ 'id' => 'cta_link',         'type' => 'text', 'default' => '#' ],
-		[ 'id' => 'layout',           'type' => 'enum',  'default' => 'left',
-		  'values' => [ 'left', 'center', 'bottom' ] ],
+		[ 'id' => 'headline',    'type' => 'text', 'default' => '' ],
+		[ 'id' => 'subheadline', 'type' => 'text', 'default' => '' ],
+		[ 'id' => 'show_cta',    'type' => 'boolean', 'default' => true ],
+		[ 'id' => 'cta_text',    'type' => 'text', 'default' => '' ],
+		[ 'id' => 'cta_link',    'type' => 'text', 'default' => '#' ],
+		[ 'id' => 'research_badge',       'type' => 'text', 'default' => '' ],
+		[ 'id' => 'cta_secondary_text',   'type' => 'text', 'default' => '' ],
+		[ 'id' => 'cta_secondary_link',   'type' => 'text', 'default' => '' ],
+		[
+			'id'       => 'research_stats',
+			'type'     => 'textarea',
+			'default'  => '',
+			'validate' => 'wchs_hero_sanitize_research_stats',
+		],
 
-		// ── Typography override ──
-		[ 'id' => 'headline_size',    'type' => 'enum', 'default' => 'l',
-		  'values' => [ 's', 'm', 'l', 'xl' ] ],
-		[ 'id' => 'headline_weight',  'type' => 'enum', 'default' => 'medium',
-		  'values' => [ 'light', 'regular', 'medium', 'semibold', 'bold', 'extrabold', 'black' ] ],
-		[ 'id' => 'headline_font',    'type' => 'enum', 'default' => 'inter',
-		  'values' => [ 'inter', 'barlow', 'bebas', 'playfair', 'space_grotesk', 'archivo', 'oswald' ] ],
-		[ 'id' => 'subheadline_size', 'type' => 'enum', 'default' => 'm',
-		  'values' => [ 's', 'm', 'l' ] ],
-		[ 'id' => 'text_color_mode',  'type' => 'enum', 'default' => 'theme',
-		  'values' => [ 'theme', 'white', 'black', 'accent' ] ],
+		[
+			'id'      => 'layout',
+			'type'    => 'enum',
+			'default' => 'left',
+			'options' => [
+				'left'   => 'Left',
+				'center' => 'Center',
+				'bottom' => 'Bottom',
+			],
+		],
+
+		[
+			'id'      => 'headline_size',
+			'type'    => 'enum',
+			'default' => 'l',
+			'options' => [
+				's'  => 'Small',
+				'm'  => 'Medium',
+				'l'  => 'Large',
+				'xl' => 'Extra large',
+			],
+		],
+		[
+			'id'      => 'headline_weight',
+			'type'    => 'enum',
+			'default' => 'medium',
+			'options' => [
+				'light'     => 'Light',
+				'regular'   => 'Regular',
+				'medium'    => 'Medium',
+				'semibold'  => 'Semibold',
+				'bold'      => 'Bold',
+				'extrabold' => 'Extra bold',
+				'black'     => 'Black',
+			],
+		],
+		[
+			'id'      => 'headline_font',
+			'type'    => 'enum',
+			'default' => 'inter',
+			'options' => [
+				'inter'         => 'Inter',
+				'barlow'        => 'Barlow Semi Condensed',
+				'bebas'         => 'Bebas Neue',
+				'playfair'      => 'Playfair Display',
+				'space_grotesk' => 'Space Grotesk',
+				'archivo'       => 'Archivo',
+				'oswald'        => 'Oswald',
+			],
+		],
+		[
+			'id'      => 'subheadline_size',
+			'type'    => 'enum',
+			'default' => 'm',
+			'options' => [
+				's' => 'Small',
+				'm' => 'Medium',
+				'l' => 'Large',
+			],
+		],
+		[
+			'id'      => 'text_color_mode',
+			'type'    => 'enum',
+			'default' => 'theme',
+			'options' => [
+				'theme'  => 'Theme',
+				'white'  => 'Always white',
+				'black'  => 'Always black',
+				'accent' => 'Accent',
+			],
+		],
 	],
 ];

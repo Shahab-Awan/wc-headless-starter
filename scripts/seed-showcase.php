@@ -494,6 +494,7 @@ $homepage     = [
 			'spacing_h'     => 'normal',
 			'center_header' => false,
 			'config'        => [
+				'layout' => 'alternating',
 				'title' => 'Launch with content that already looks like a store',
 				'items' => [
 					[

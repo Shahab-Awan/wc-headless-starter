@@ -176,7 +176,9 @@
 		product_slider: 'Product Slider', review_slider: 'Review Slider',
 		accordion: 'Accordion', trust_bar: 'Trust Bar', text_block: 'Text Block',
 		gallery: 'Gallery', contact_form: 'Contact Form', shop_grid: 'Shop Grid',
-		category_grid: 'Category Grid', split_features: 'Split Features',
+		category_grid: 'Category Grid', 		split_features: 'Split Features',
+		split_value: 'Value split (BOGO)',
+		feature_highlights: 'Feature highlights',
 		cta: 'CTA button', spacer: 'Spacer', logo_strip: 'Logo strip',
 		video: 'Video / embed'
 	};
@@ -186,7 +188,8 @@
 		product_slider: 'commerce', review_slider: 'commerce',
 		shop_grid: 'commerce', category_grid: 'commerce',
 		accordion: 'content', text_block: 'content', gallery: 'content',
-		split_features: 'content', cta: 'content', spacer: 'content',
+		split_features: 'content', split_value: 'commerce', feature_highlights: 'content',
+		cta: 'content', spacer: 'content',
 		video: 'content',
 		contact_form: 'engagement'
 	};
@@ -198,6 +201,8 @@
 		hero: ['homepage','shop','pdp','pages'],
 		trust_bar: ['homepage','shop','pdp','pages'],
 		split_features: ['homepage','shop','pdp','pages'],
+		split_value: ['homepage','shop','pdp','pages'],
+		feature_highlights: ['homepage','shop','pdp','pages'],
 		product_slider: ['homepage','shop','pdp','pages'],
 		review_slider: ['homepage','shop','pdp','pages'],
 		text_block: ['homepage','shop','pdp','pages'],
@@ -264,6 +269,76 @@
 				title: '', source_url: '', poster_url: '',
 				aspect_ratio: '16/9', autoplay: false, muted: true, loop: false, controls: true,
 			};
+		}
+		if (type === 'split_value') {
+			return {
+				rating_line: 'Rated 4.98/5 · 24,987+ reviews',
+				headline_prefix: 'A Leading Provider of Research Grade',
+				headline_accent: 'Peptides.',
+				accent_underline: true,
+				bullets: [
+					{ text: 'Fast U.S. Shipping' },
+					{ text: '99% Tested Purity' },
+					{ text: 'Made in USA' },
+				],
+				cta_label: 'Buy 1 Get 1 Free',
+				cta_href: '/shop',
+				trust_note: 'Research use only. All major credit/debit cards, PayPal, ACH, BTC, Zelle.',
+				promo_badge_eyebrow: 'LIMITED TIME',
+				promo_badge_title: 'Buy 1 Get 1 Free',
+				image: '/wp-content/uploads/2026/05/WhatsApp-Image-2026-05-16-at-6.42.45-AM.jpeg',
+				image_alt: 'Research-grade peptides — product lineup',
+				stats: [
+					{ value: '99%', label: 'Purity' },
+					{ value: '24.9K+', label: 'Reviews' },
+					{ value: 'Triple-Tested', label: 'for Quality' },
+				],
+			};
+		}
+		if (type === 'feature_highlights') {
+			return {
+				badge_text: 'Verified & Trusted',
+				headline_prefix: 'The Standard for ',
+				headline_accent: 'Verified Peptides',
+				subheadline: 'Independent testing. Full batch documentation. Reliable, tracked delivery.',
+				items: [
+					{ variant: 'pin', headline: 'USA Manufactured', description: 'Synthesized and packaged domestically. No overseas sourcing.' },
+					{ variant: 'star', headline: '5-Star Reviewed', description: 'Rated 5 stars by verified customers.' },
+					{ variant: 'lab', headline: 'Third-Party Lab Tested', description: 'Every batch independently verified before shipping.' },
+					{ variant: 'award', headline: 'Triple-Tested for Quality', description: 'Purity, Content, and Endotoxin testing on every product.' },
+				],
+				cta_label: 'Buy 1 Get 1 Free',
+				cta_href: '/shop',
+			};
+		}
+		if (type === 'split_features') {
+			return {
+				layout: 'alternating',
+				headline: '',
+				subtitle: '',
+				brand_name: '',
+				competitor_name: 'Unverified Sellers',
+				brand_logo: '',
+				competitor_logo: '',
+				title: '',
+				items: [],
+			};
+		}
+		if (type === 'text_block') {
+			return {
+				layout: 'auto',
+				title: '',
+				headline: '',
+				content: '',
+				brand_name: '',
+				competitor_name: 'Unverified Sellers',
+				brand_logo: '',
+				competitor_logo: '',
+				comparison_rows: [],
+			};
+		}
+		if (type === 'category_grid') {
+			return { title: '', columns: 4, gap: 12, items: [] };
 		}
 		return { title: '' };
 	}
@@ -928,7 +1003,26 @@
 				});
 				break;
 			case 'text_block':
+				setVal(container, '[data-field="tb_layout"]', cfg.layout || 'auto');
+				setVal(container, '[data-field="tb_headline"]', cfg.headline || '');
 				setVal(container, '[data-field="content"]', cfg.content || '');
+				setVal(container, '[data-field="tb_brand_name"]', cfg.brand_name || '');
+				setVal(container, '[data-field="tb_competitor_name"]', cfg.competitor_name || '');
+				setVal(container, '[data-field="tb_brand_logo"]', cfg.brand_logo || '');
+				setVal(container, '[data-field="tb_competitor_logo"]', cfg.competitor_logo || '');
+				populateTbCompareRows(container, cfg.comparison_rows || []);
+				(function () {
+					['tb_brand_logo', 'tb_competitor_logo'].forEach(function (fid) {
+						var input = container.querySelector('[data-field="' + fid + '"]');
+						if (!input) return;
+						var field = input.closest('.wchs-field');
+						var preview = field && field.querySelector('.wchs-media-preview');
+						var removeBtn = field && field.querySelector('.wchs-media-remove');
+						if (input.value && preview) { preview.src = input.value; preview.style.display = ''; }
+						else if (preview) { preview.src = ''; preview.style.display = 'none'; }
+						if (removeBtn) removeBtn.style.display = input.value ? '' : 'none';
+					});
+				})();
 				break;
 			case 'gallery':
 				setVal(container, '[data-field="columns"]', cfg.columns || 3);
@@ -946,12 +1040,71 @@
 				populateContactFields(container, cfg.fields || []);
 				break;
 			case 'category_grid':
-				setVal(container, '[data-field="columns"]', cfg.columns || 3);
-				setVal(container, '[data-field="gap"]', cfg.gap || 8);
+				setVal(container, '[data-field="columns"]', cfg.columns || 4);
+				setVal(container, '[data-field="gap"]', cfg.gap || 12);
 				populateCatGridItems(container, cfg.items || []);
 				break;
 			case 'split_features':
+				setVal(container, '[data-field="sf_layout"]', cfg.layout || 'alternating');
+				setVal(container, '[data-field="sf_headline"]', cfg.headline || '');
+				setVal(container, '[data-field="sf_subtitle"]', cfg.subtitle || '');
+				setVal(container, '[data-field="sf_brand_name"]', cfg.brand_name || '');
+				setVal(container, '[data-field="sf_competitor_name"]', cfg.competitor_name || '');
+				setVal(container, '[data-field="sf_brand_logo"]', cfg.brand_logo || '');
+				setVal(container, '[data-field="sf_competitor_logo"]', cfg.competitor_logo || '');
 				populateSplitItems(container, cfg.items || []);
+				(function () {
+					['sf_brand_logo', 'sf_competitor_logo'].forEach(function (fid) {
+						var input = container.querySelector('[data-field="' + fid + '"]');
+						if (!input) return;
+						var field = input.closest('.wchs-field');
+						var preview = field && field.querySelector('.wchs-media-preview');
+						var removeBtn = field && field.querySelector('.wchs-media-remove');
+						if (input.value && preview) { preview.src = input.value; preview.style.display = ''; }
+						else if (preview) { preview.src = ''; preview.style.display = 'none'; }
+						if (removeBtn) removeBtn.style.display = input.value ? '' : 'none';
+					});
+				})();
+				break;
+			case 'split_value':
+				setVal(container, '[data-field="sv_rating_line"]', cfg.rating_line || '');
+				setVal(container, '[data-field="sv_headline_prefix"]', cfg.headline_prefix || '');
+				setVal(container, '[data-field="sv_headline_accent"]', cfg.headline_accent || '');
+				setCheck(container, '[data-field="sv_accent_underline"]', cfg.accent_underline !== false);
+				populateSvBullets(container, cfg.bullets || []);
+				setVal(container, '[data-field="sv_cta_label"]', cfg.cta_label || '');
+				setVal(container, '[data-field="sv_cta_href"]', cfg.cta_href || '');
+				setVal(container, '[data-field="sv_trust_note"]', cfg.trust_note || '');
+				setVal(container, '[data-field="sv_promo_eyebrow"]', cfg.promo_badge_eyebrow || '');
+				setVal(container, '[data-field="sv_promo_title"]', cfg.promo_badge_title || '');
+				setVal(container, '[data-field="sv_image"]', cfg.image || '');
+				setVal(container, '[data-field="sv_image_alt"]', cfg.image_alt || '');
+				populateSvStats(container, cfg.stats || []);
+				(function () {
+					var input = container.querySelector('[data-field="sv_image"]');
+					if (!input) return;
+					var field = input.closest('.wchs-field');
+					var preview = field && field.querySelector('.wchs-media-preview');
+					var removeBtn = field && field.querySelector('.wchs-media-remove');
+					if (input.value && preview) { preview.src = input.value; preview.style.display = ''; }
+					else if (preview) { preview.src = ''; preview.style.display = 'none'; }
+					if (removeBtn) removeBtn.style.display = input.value ? '' : 'none';
+				})();
+				break;
+			case 'feature_highlights':
+				setVal(container, '[data-field="fh_badge_text"]', cfg.badge_text || '');
+				setVal(container, '[data-field="fh_headline_prefix"]', cfg.headline_prefix || '');
+				setVal(container, '[data-field="fh_headline_accent"]', cfg.headline_accent || '');
+				setVal(container, '[data-field="fh_subheadline"]', cfg.subheadline || '');
+				setVal(container, '[data-field="fh_cta_label"]', cfg.cta_label || '');
+				setVal(container, '[data-field="fh_cta_href"]', cfg.cta_href || '');
+				populateRepeaterItems(container, '.wchs-fh-items', cfg.items || [], function (item, el) {
+					var sel = el.querySelector('[data-field="fh_variant"]');
+					if (sel) sel.value = item.variant || 'pin';
+					var inputs = el.querySelectorAll('input[type="text"]');
+					if (inputs[0]) inputs[0].value = item.headline || '';
+					if (inputs[1]) inputs[1].value = item.description || '';
+				});
 				break;
 			case 'cta':
 				setVal(container, '[data-field="cta_label"]', cfg.label || '');
@@ -1003,6 +1156,19 @@
 				setCheck(container, '[data-field="hero_show_cta"]', cfg.show_cta !== false);
 				setVal(container, '[data-field="hero_cta_text"]', cfg.cta_text || '');
 				setVal(container, '[data-field="hero_cta_link"]', cfg.cta_link || '#');
+				setVal(container, '[data-field="hero_research_badge"]', cfg.research_badge || '');
+				setVal(container, '[data-field="hero_cta_secondary_text"]', cfg.cta_secondary_text || '');
+				setVal(container, '[data-field="hero_cta_secondary_link"]', cfg.cta_secondary_link || '');
+				(function () {
+					var rs = cfg.research_stats;
+					var txt = '';
+					if (Array.isArray(rs)) {
+						try { txt = JSON.stringify(rs, null, 2); } catch (e) { txt = '[]'; }
+					} else if (typeof rs === 'string') {
+						txt = rs;
+					}
+					setVal(container, '[data-field="hero_research_stats_json"]', txt || '[]');
+				})();
 				setVal(container, '[data-field="hero_headline_size"]', cfg.headline_size || 'l');
 				setVal(container, '[data-field="hero_headline_weight"]', cfg.headline_weight || 'medium');
 				setVal(container, '[data-field="hero_headline_font"]', cfg.headline_font || 'inter');
@@ -1083,7 +1249,14 @@
 				cfg.items = readAccordionItems(container);
 				break;
 			case 'text_block':
+				cfg.layout = getVal(container, '[data-field="tb_layout"]') || 'auto';
+				cfg.headline = getVal(container, '[data-field="tb_headline"]') || '';
 				cfg.content = getVal(container, '[data-field="content"]') || '';
+				cfg.brand_name = getVal(container, '[data-field="tb_brand_name"]') || '';
+				cfg.competitor_name = getVal(container, '[data-field="tb_competitor_name"]') || '';
+				cfg.brand_logo = getVal(container, '[data-field="tb_brand_logo"]') || '';
+				cfg.competitor_logo = getVal(container, '[data-field="tb_competitor_logo"]') || '';
+				cfg.comparison_rows = readTbCompareRows(container);
 				break;
 			case 'gallery':
 				cfg.columns = parseInt(getVal(container, '[data-field="columns"]')) || 3;
@@ -1101,12 +1274,45 @@
 				cfg.fields = readContactFields(container);
 				break;
 			case 'category_grid':
-				cfg.columns = parseInt(getVal(container, '[data-field="columns"]')) || 3;
-				cfg.gap = parseInt(getVal(container, '[data-field="gap"]')) || 8;
+				cfg.columns = parseInt(getVal(container, '[data-field="columns"]')) || 4;
+				cfg.gap = parseInt(getVal(container, '[data-field="gap"]')) || 12;
 				cfg.items = readCatGridItems(container);
 				break;
 			case 'split_features':
+				cfg.layout = getVal(container, '[data-field="sf_layout"]') || 'alternating';
+				cfg.headline = getVal(container, '[data-field="sf_headline"]') || '';
+				cfg.subtitle = getVal(container, '[data-field="sf_subtitle"]') || '';
+				cfg.brand_name = getVal(container, '[data-field="sf_brand_name"]') || '';
+				cfg.competitor_name = getVal(container, '[data-field="sf_competitor_name"]') || '';
+				cfg.brand_logo = getVal(container, '[data-field="sf_brand_logo"]') || '';
+				cfg.competitor_logo = getVal(container, '[data-field="sf_competitor_logo"]') || '';
 				cfg.items = readSplitItems(container);
+				break;
+			case 'split_value':
+				cfg.rating_line = getVal(container, '[data-field="sv_rating_line"]') || '';
+				cfg.headline_prefix = getVal(container, '[data-field="sv_headline_prefix"]') || '';
+				cfg.headline_accent = getVal(container, '[data-field="sv_headline_accent"]') || '';
+				cfg.accent_underline = getCheck(container, '[data-field="sv_accent_underline"]');
+				cfg.bullets = readSvBullets(container);
+				cfg.cta_label = getVal(container, '[data-field="sv_cta_label"]') || '';
+				cfg.cta_href = getVal(container, '[data-field="sv_cta_href"]') || '';
+				cfg.trust_note = getVal(container, '[data-field="sv_trust_note"]') || '';
+				cfg.promo_badge_eyebrow = getVal(container, '[data-field="sv_promo_eyebrow"]') || '';
+				cfg.promo_badge_title = getVal(container, '[data-field="sv_promo_title"]') || '';
+				cfg.image = getVal(container, '[data-field="sv_image"]') || '';
+				cfg.image_alt = getVal(container, '[data-field="sv_image_alt"]') || '';
+				cfg.stats = readSvStats(container);
+				delete cfg.title;
+				break;
+			case 'feature_highlights':
+				cfg.badge_text = getVal(container, '[data-field="fh_badge_text"]') || '';
+				cfg.headline_prefix = getVal(container, '[data-field="fh_headline_prefix"]') || '';
+				cfg.headline_accent = getVal(container, '[data-field="fh_headline_accent"]') || '';
+				cfg.subheadline = getVal(container, '[data-field="fh_subheadline"]') || '';
+				cfg.cta_label = getVal(container, '[data-field="fh_cta_label"]') || '';
+				cfg.cta_href = getVal(container, '[data-field="fh_cta_href"]') || '';
+				cfg.items = readFhItems(container);
+				delete cfg.title;
 				break;
 			case 'cta':
 				cfg.label = getVal(container, '[data-field="cta_label"]') || '';
@@ -1153,6 +1359,18 @@
 				cfg.show_cta = getCheck(container, '[data-field="hero_show_cta"]');
 				cfg.cta_text = getVal(container, '[data-field="hero_cta_text"]') || '';
 				cfg.cta_link = getVal(container, '[data-field="hero_cta_link"]') || '#';
+				cfg.research_badge = getVal(container, '[data-field="hero_research_badge"]') || '';
+				cfg.cta_secondary_text = getVal(container, '[data-field="hero_cta_secondary_text"]') || '';
+				cfg.cta_secondary_link = getVal(container, '[data-field="hero_cta_secondary_link"]') || '';
+				(function () {
+					var raw = getVal(container, '[data-field="hero_research_stats_json"]');
+					try {
+						var parsed = JSON.parse(raw || '[]');
+						cfg.research_stats = Array.isArray(parsed) ? parsed : [];
+					} catch (e) {
+						cfg.research_stats = [];
+					}
+				})();
 				cfg.headline_size = getVal(container, '[data-field="hero_headline_size"]') || 'l';
 				cfg.headline_weight = getVal(container, '[data-field="hero_headline_weight"]') || 'medium';
 				cfg.headline_font = getVal(container, '[data-field="hero_headline_font"]') || 'inter';
@@ -1175,9 +1393,25 @@
 	function readTrustItems(ctx) {
 		var items = [];
 		ctx.querySelectorAll('.wchs-accordion-items .wchs-accordion-item').forEach(function (el) {
+			if (el.closest('.wchs-fh-items')) return;
 			var iconHidden = el.querySelector('.wchs-icon-picker__value');
 			var inputs = el.querySelectorAll('input[type="text"]');
 			items.push({ icon: iconHidden ? iconHidden.value : '', headline: inputs[0] ? inputs[0].value : '', description: inputs[1] ? inputs[1].value : '' });
+		});
+		return items;
+	}
+
+	function readFhItems(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-fh-items .wchs-accordion-item').forEach(function (el) {
+			var sel = el.querySelector('[data-field="fh_variant"]');
+			var variant = sel ? sel.value : 'pin';
+			var inputs = el.querySelectorAll('input[type="text"]');
+			items.push({
+				variant: variant,
+				headline: inputs[0] ? inputs[0].value : '',
+				description: inputs[1] ? inputs[1].value : '',
+			});
 		});
 		return items;
 	}
@@ -1280,6 +1514,27 @@
 		return items;
 	}
 
+	function readSvBullets(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-sv-bullets .wchs-accordion-item').forEach(function (el) {
+			var inp = el.querySelector('input[type="text"]');
+			var t = inp ? inp.value.trim() : '';
+			if (t) items.push({ text: t });
+		});
+		return items;
+	}
+
+	function readSvStats(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-sv-stats .wchs-accordion-item').forEach(function (el) {
+			var inputs = el.querySelectorAll('input[type="text"]');
+			var v = inputs[0] ? inputs[0].value.trim() : '';
+			var lab = inputs[1] ? inputs[1].value.trim() : '';
+			if (v || lab) items.push({ value: v, label: lab });
+		});
+		return items;
+	}
+
 	// Repeater populators (create DOM elements from data)
 	function populateRepeaterItems(ctx, containerSel, items, fillFn) {
 		var container = ctx.querySelector(containerSel);
@@ -1361,6 +1616,35 @@
 		});
 	}
 
+	function populateTbCompareRows(ctx, rows) {
+		var container = ctx.querySelector('.wchs-tb-compare-rows');
+		if (!container) return;
+		var tpl = container.querySelector('.wchs-accordion-item');
+		if (!tpl) return;
+		var tplHtml = tpl.outerHTML;
+		container.innerHTML = '';
+		(rows.length ? rows : [ { heading: '' } ]).forEach(function (item) {
+			var div = document.createElement('div');
+			div.innerHTML = tplHtml;
+			var el = div.firstElementChild;
+			var inp = el.querySelector('input[type="text"]');
+			if (inp) inp.value = item.heading || '';
+			container.appendChild(el);
+		});
+	}
+
+	function readTbCompareRows(ctx) {
+		var container = ctx.querySelector('.wchs-tb-compare-rows');
+		if (!container) return [];
+		var out = [];
+		container.querySelectorAll('.wchs-accordion-item').forEach(function (el) {
+			var inp = el.querySelector('input[type="text"]');
+			var h = inp ? inp.value.trim() : '';
+			if (h) out.push({ heading: h });
+		});
+		return out;
+	}
+
 	function populateSplitItems(ctx, items) {
 		var container = ctx.querySelector('.wchs-accordion-items');
 		if (!container || !items.length) return;
@@ -1381,6 +1665,41 @@
 			if (src) src.value = item.image || '';
 			var thumb = el.querySelector('.wchs-gallery-thumb');
 			if (thumb && item.image) { thumb.src = item.image; thumb.style.display = ''; }
+			container.appendChild(el);
+		});
+	}
+
+	function populateSvBullets(ctx, items) {
+		var container = ctx.querySelector('.wchs-sv-bullets');
+		if (!container) return;
+		var tpl = container.querySelector('.wchs-accordion-item');
+		if (!tpl) return;
+		var tplHtml = tpl.outerHTML;
+		container.innerHTML = '';
+		(items.length ? items : [{ text: '' }]).forEach(function (item) {
+			var div = document.createElement('div');
+			div.innerHTML = tplHtml;
+			var el = div.firstElementChild;
+			var inp = el.querySelector('input[type="text"]');
+			if (inp) inp.value = item.text || '';
+			container.appendChild(el);
+		});
+	}
+
+	function populateSvStats(ctx, items) {
+		var container = ctx.querySelector('.wchs-sv-stats');
+		if (!container) return;
+		var tpl = container.querySelector('.wchs-accordion-item');
+		if (!tpl) return;
+		var tplHtml = tpl.outerHTML;
+		container.innerHTML = '';
+		(items.length ? items : [{ value: '', label: '' }]).forEach(function (item) {
+			var div = document.createElement('div');
+			div.innerHTML = tplHtml;
+			var el = div.firstElementChild;
+			var inputs = el.querySelectorAll('input[type="text"]');
+			if (inputs[0]) inputs[0].value = item.value || '';
+			if (inputs[1]) inputs[1].value = item.label || '';
 			container.appendChild(el);
 		});
 	}
@@ -1741,6 +2060,33 @@
 			container.appendChild(div);
 			initModalWysiwyg(div);
 		}
+		var addFhModal = e.target.closest('.wchs-add-fh-item-modal');
+		if (addFhModal) {
+			var fhWrap = addFhModal.previousElementSibling;
+			if (!fhWrap || !fhWrap.classList.contains('wchs-fh-items')) return;
+			var fhTpl = fhWrap.querySelector('.wchs-accordion-item');
+			if (!fhTpl) return;
+			var fhDiv = document.createElement('div');
+			fhDiv.innerHTML = fhTpl.outerHTML;
+			var fhEl = fhDiv.firstElementChild;
+			var fhSel = fhEl.querySelector('[data-field="fh_variant"]');
+			if (fhSel) fhSel.value = 'pin';
+			fhEl.querySelectorAll('input[type="text"]').forEach(function (inp) { inp.value = ''; });
+			fhWrap.appendChild(fhEl);
+		}
+		var addTbCompareModal = e.target.closest('.wchs-add-tb-compare-row-modal');
+		if (addTbCompareModal) {
+			var tbWrap = addTbCompareModal.previousElementSibling;
+			if (!tbWrap || !tbWrap.classList.contains('wchs-tb-compare-rows')) return;
+			var tbTpl = tbWrap.querySelector('.wchs-accordion-item');
+			if (!tbTpl) return;
+			var tbDiv = document.createElement('div');
+			tbDiv.innerHTML = tbTpl.outerHTML;
+			var tbEl = tbDiv.firstElementChild;
+			var tbInp = tbEl.querySelector('input[type="text"]');
+			if (tbInp) tbInp.value = '';
+			tbWrap.appendChild(tbEl);
+		}
 		var addSplitModal = e.target.closest('.wchs-add-splitfeature-item-modal');
 		if (addSplitModal) {
 			var container = addSplitModal.previousElementSibling;
@@ -1761,6 +2107,29 @@
 				+ '<button type="button" class="wchs-accordion-item__remove" title="Remove" style="flex-shrink:0">✕</button>';
 			container.appendChild(div);
 			initModalWysiwyg(div);
+		}
+		var addSvBulletModal = e.target.closest('.wchs-add-sv-bullet-modal');
+		if (addSvBulletModal) {
+			var bCont = addSvBulletModal.previousElementSibling;
+			if (!bCont || !bCont.classList.contains('wchs-sv-bullets')) return;
+			var div = document.createElement('div');
+			div.className = 'wchs-accordion-item';
+			div.style.cssText = 'display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid #ddd;background:#fafafa';
+			div.innerHTML = '<input type="text" style="flex:1" placeholder="Bullet text" />'
+				+ '<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>';
+			bCont.appendChild(div);
+		}
+		var addSvStatModal = e.target.closest('.wchs-add-sv-stat-modal');
+		if (addSvStatModal) {
+			var sCont = addSvStatModal.previousElementSibling;
+			if (!sCont || !sCont.classList.contains('wchs-sv-stats')) return;
+			var div = document.createElement('div');
+			div.className = 'wchs-accordion-item';
+			div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;padding:6px 8px;border:1px solid #ddd;background:#fafafa';
+			div.innerHTML = '<input type="text" placeholder="Value" />'
+				+ '<input type="text" placeholder="Label" />'
+				+ '<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>';
+			sCont.appendChild(div);
 		}
 
 		var removeItemBtn = e.target.closest('.wchs-accordion-item__remove');
@@ -3208,6 +3577,9 @@
 			hero_cta_text: 'cta_text',
 			hero_cta_link: 'cta_link',
 			hero_rating_text: 'rating_text',
+			hero_research_badge: 'research_badge',
+			hero_cta_secondary_text: 'cta_secondary_text',
+			hero_cta_secondary_link: 'cta_secondary_link',
 		};
 		Object.keys(textFields).forEach(function (name) {
 			var el = document.querySelector('[name="' + name + '"]');
@@ -3276,6 +3648,16 @@
 			trustItems.push({ icon: iconEl.value, text: textEl ? textEl.value : '' });
 		});
 		hero.trust_items = trustItems;
+
+		var statsTa = document.querySelector('[name="hero_research_stats_json"]');
+		if (statsTa) {
+			try {
+				var parsedStats = JSON.parse(statsTa.value || '[]');
+				hero.research_stats = Array.isArray(parsedStats) ? parsedStats : [];
+			} catch (e2) {
+				hero.research_stats = [];
+			}
+		}
 
 		// Read modules from the hidden JSON input
 		var modulesInput = document.querySelector('[name="modules_json"]');

@@ -2,6 +2,7 @@ import type { WchsCroTierRow } from '$lib/wc/products';
 
 export type BogoBundlePreset = {
 	paid_qty: number;
+	free_qty?: number;
 	flag?: string;
 };
 
@@ -19,40 +20,47 @@ export type BundleDisplayRow = WchsCroTierRow & {
 };
 
 const DEFAULT_PRESETS: BogoBundlePreset[] = [
-	{ paid_qty: 1, flag: '' },
-	{ paid_qty: 2, flag: 'MOST POPULAR' },
-	{ paid_qty: 3, flag: 'BEST VALUE' },
+	{ paid_qty: 1, free_qty: 0, flag: '' },
+	{ paid_qty: 2, free_qty: 1, flag: 'MOST POPULAR' },
+	{ paid_qty: 3, free_qty: 2, flag: 'BEST VALUE' },
 ];
 
-/** Buy N get N free → cart qty 2N, pay for N at regular, 50% effective per unit. */
 export function buildBogoBundleRows(
 	regularMinor: number,
-	savingsPct = 50,
 	presets: BogoBundlePreset[] = DEFAULT_PRESETS
 ): BundleDisplayRow[] {
 	if (regularMinor <= 0) return [];
 
-	const pct = Math.min(100, Math.max(0, savingsPct));
-	const unitMinor = Math.round(regularMinor * (1 - pct / 100));
+	return presets
+		.filter((preset) => preset.paid_qty >= 1)
+		.map((preset) => {
+			const paid = preset.paid_qty;
+			const free = preset.free_qty !== undefined ? preset.free_qty : paid;
+			const safeFree = Math.max(0, free);
+			const total = paid + safeFree;
+			const pct = safeFree > 0 && total > 0 ? (100 * safeFree) / total : 0;
+			const unitMinor =
+				safeFree > 0 ? Math.round((regularMinor * paid) / total) : regularMinor;
+			const lineTotal = paid * regularMinor;
+			const compareTotal = total * regularMinor;
 
-	return presets.map((preset) => {
-		const paid = preset.paid_qty;
-		const minQty = paid * 2;
-		const lineTotal = paid * regularMinor;
-		const compareTotal = minQty * regularMinor;
-
-		return {
-			min_qty: minQty,
-			unit_price: unitMinor,
-			savings_per_unit: regularMinor - unitMinor,
-			savings_pct: pct,
-			line_total_at_min_qty: lineTotal,
-			paid_qty: paid,
-			flag: preset.flag ?? '',
-			title: `Buy ${paid} Get ${paid} Free`,
-			compare_line_total: compareTotal,
-		};
-	});
+			return {
+				min_qty: total,
+				unit_price: unitMinor,
+				savings_per_unit: regularMinor - unitMinor,
+				savings_pct: Math.round(pct * 10) / 10,
+				line_total_at_min_qty: lineTotal,
+				paid_qty: paid,
+				flag: preset.flag ?? '',
+				title:
+					safeFree > 0
+						? `Buy ${paid} Get ${safeFree} Free`
+						: paid === 1
+							? 'Buy 1'
+							: `Buy ${paid}`,
+				compare_line_total: compareTotal,
+			};
+		});
 }
 
 export function enrichTierRows(
@@ -64,17 +72,24 @@ export function enrichTierRows(
 		const preset = presets[i];
 		const paid =
 			preset?.paid_qty ??
-			(tier.min_qty % 2 === 0 && tier.min_qty >= 2 ? tier.min_qty / 2 : tier.min_qty);
-		const compare = regularMinor > 0 ? tier.min_qty * regularMinor : tier.line_total_at_min_qty * 2;
+			(regularMinor > 0 ? Math.round(tier.line_total_at_min_qty / regularMinor) : 1);
+		const free =
+			preset?.free_qty !== undefined ? preset.free_qty : preset ? paid : Math.max(0, tier.min_qty - paid);
+		const safeFree = Math.max(0, free);
+		const total = paid + safeFree;
+		const compare =
+			regularMinor > 0 ? total * regularMinor : tier.min_qty * regularMinor;
 
 		return {
 			...tier,
 			paid_qty: paid,
 			flag: preset?.flag ?? (i === 1 ? 'MOST POPULAR' : i === 2 ? 'BEST VALUE' : ''),
 			title:
-				tier.min_qty >= 2 && tier.min_qty % 2 === 0
-					? `Buy ${paid} Get ${paid} Free`
-					: `${tier.min_qty}+ units`,
+				safeFree > 0
+					? `Buy ${paid} Get ${safeFree} Free`
+					: paid === 1
+						? 'Buy 1'
+						: `Buy ${paid}`,
 			compare_line_total: compare,
 		};
 	});
@@ -87,11 +102,10 @@ export function resolveBundleRows(
 ): BundleDisplayRow[] {
 	const enabled = bogo?.enabled !== false;
 	const presets = bogo?.presets?.length ? bogo.presets : DEFAULT_PRESETS;
-	const savingsPct = bogo?.savings_pct ?? 50;
 
 	if (apiTiers.length > 0) {
 		return enrichTierRows(apiTiers, regularMinor, presets);
 	}
 	if (!enabled || regularMinor <= 0) return [];
-	return buildBogoBundleRows(regularMinor, savingsPct, presets);
+	return buildBogoBundleRows(regularMinor, presets);
 }

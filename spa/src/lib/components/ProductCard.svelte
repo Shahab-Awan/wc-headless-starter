@@ -49,10 +49,6 @@
 		return cro.tiers[cro.tiers.length - 1].savings_pct ?? 0;
 	});
 
-	function formatPct(p: number): string {
-		return Number.isInteger(p) ? `${p}%` : `${p.toFixed(1)}%`;
-	}
-
 	function formatPrice(cents?: string | number) {
 		return fmt(cents ?? product.prices.price, product.prices);
 	}
@@ -96,14 +92,12 @@
 
 	const ctaLabel = $derived.by(() => {
 		if (!inStock) return 'View details';
-		if (product.has_options) return 'Select options';
-		return 'Add to cart';
+		return 'Select options';
 	});
 
 	const ctaAria = $derived.by(() => {
 		if (!inStock) return `View details for ${product.name}`;
-		if (product.has_options) return `Select options for ${product.name}`;
-		return `Add ${product.name} to cart`;
+		return `Select options for ${product.name}`;
 	});
 
 	function reportProductLinkIntent(e: MouseEvent) {
@@ -150,8 +144,6 @@
 			{/if}
 			{#if !inStock}
 				<span class="store-card__badge store-card__badge--oos">Out of stock</span>
-			{:else if maxTierPct > 0 && config.data.product_card?.show_bulk_badge !== false}
-				<span class="store-card__badge tabular-nums">Bulk save<br />up to {formatPct(maxTierPct)}</span>
 			{:else if product.on_sale}
 				<span class="store-card__badge">{saleBadgeRendered}</span>
 			{/if}
@@ -165,15 +157,6 @@
 				style={titleLayout && config.data.product_card?.title_lines === 'auto' ? `height: ${titleLayout.height}px` : ''}
 			>{product.name}</h3>
 		</a>
-
-		{#if cro?.tiers && cro.tiers.length > 0 && config.data.product_card?.show_tier_hint !== false}
-			<p class="store-card__tier-hint tabular-nums">
-				{cro.tiers[0].min_qty}+ save {formatPct(cro.tiers[0].savings_pct)}
-				{#if cro.tiers.length > 1}
-					· {cro.tiers[cro.tiers.length - 1].min_qty}+ save {formatPct(maxTierPct)}
-				{/if}
-			</p>
-		{/if}
 
 		<div class="store-card__foot">
 			{#if !inStock && config.data.product_card?.oos_treatment === 'hidden-price'}
@@ -189,15 +172,7 @@
 				</div>
 			{/if}
 
-			<a class="store-card__select" href={productHref} onclick={reportProductLinkIntent} aria-label={ctaAria}>
-				<svg class="store-card__select-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
-					<path
-						fill="currentColor"
-						d="M9 3a1 1 0 0 0-1 1v1H5.5a1.5 1.5 0 0 0-1.45 1.12l-1.33 5A1.5 1.5 0 0 0 4.2 13H19.8a1.5 1.5 0 0 0 1.48-1.88l-1.33-5A1.5 1.5 0 0 0 18.5 5H16V4a1 1 0 0 0-1-1H9Zm1 2h4v1h-5V5ZM5.92 7H18.1l1.06 4H4.85l1.06-4ZM7 15.5a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Zm10.5-1.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"
-					/>
-				</svg>
-				<span class="store-card__select-text">{ctaLabel}</span>
-			</a>
+			<a class="store-card__select" href={productHref} onclick={reportProductLinkIntent} aria-label={ctaAria}>{ctaLabel}</a>
 		</div>
 	</div>
 </div>
@@ -250,27 +225,31 @@
 
 	.store-card__media {
 		position: relative;
-		aspect-ratio: var(--card-aspect-ratio, 4 / 5);
-		padding: 20px;
-		border-radius: var(--card-radius, 12px);
+		aspect-ratio: var(--card-aspect-ratio, 1 / 1);
+		padding: 0;
+		border-radius: var(--card-radius, 14px);
 		background: color-mix(in srgb, var(--fg) 6%, var(--bg));
 		overflow: hidden;
 		transition:
 			transform var(--dur-med) var(--ease-out),
 			box-shadow var(--dur-med) var(--ease-out);
 	}
+	.store-card__media:has(img) {
+		background: color-mix(in srgb, var(--fg) 4%, var(--bg));
+	}
 	.store-card__media img {
 		width: 100%;
 		height: 100%;
-		object-fit: contain;
+		object-fit: cover;
 		object-position: center;
 		transition: opacity var(--dur-med) var(--ease-out);
 	}
 	.store-card__media .store-card__media-secondary {
 		position: absolute;
-		inset: 20px;
-		width: calc(100% - 40px);
-		height: calc(100% - 40px);
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
 		opacity: 0;
 		transition: opacity var(--dur-med) var(--ease-out);
 	}
@@ -376,14 +355,6 @@
 	:global(html[data-card-title-lines='3']) .store-card__title {
 		-webkit-line-clamp: 3;
 	}
-	.store-card__tier-hint {
-		margin: -2px 0 0;
-		font-size: 10px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--success, #059669);
-	}
 
 	.store-card__foot {
 		display: flex;
@@ -432,38 +403,35 @@
 		}
 	}
 
-	.store-card__select-icon {
-		flex-shrink: 0;
-	}
-	.store-card__select-text {
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-	}
 	.store-card__select {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 8px;
 		width: 100%;
 		min-height: 44px;
 		padding: 0 14px;
-		border: none;
-		border-radius: var(--card-button-radius, 10px);
+		border: 1px solid var(--accent);
+		border-radius: var(--card-button-radius, 14px);
 		background: var(--accent);
 		color: var(--accent-fg);
 		font: inherit;
-		font-size: 11px;
-		font-weight: 700;
+		font-size: 12px;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 		text-decoration: none;
 		cursor: pointer;
 		transition:
 			background var(--dur-fast) var(--ease),
+			border-color var(--dur-fast) var(--ease),
 			color var(--dur-fast) var(--ease),
 			opacity var(--dur-fast) var(--ease),
 			transform var(--dur-fast) var(--ease);
 	}
 	.store-card__select:hover {
 		background: color-mix(in srgb, var(--accent) 88%, var(--fg));
+		border-color: color-mix(in srgb, var(--accent) 88%, var(--fg));
+		color: var(--accent-fg);
 	}
 	.store-card__select:active {
 		transform: scale(0.98);
@@ -471,39 +439,11 @@
 	.store-card.is-oos .store-card__select {
 		background: color-mix(in srgb, var(--fg) 12%, var(--bg));
 		color: var(--fg-muted);
+		border-color: var(--border);
 	}
 	.store-card.is-oos .store-card__select:hover {
 		background: var(--fg);
 		color: var(--bg);
-	}
-
-	:global(html[data-card-button='outline']) .store-card__select {
-		background: transparent;
-		color: var(--accent);
-		border: 1px solid var(--accent);
-	}
-	:global(html[data-card-button='outline']) .store-card__select:hover {
-		background: var(--accent);
-		color: var(--accent-fg);
-	}
-	:global(html[data-card-button='icon-only']) .store-card__select {
-		border: none;
-		background: transparent;
-		color: var(--accent);
-		min-height: 40px;
-	}
-	:global(html[data-card-button='icon-only']) .store-card__select .store-card__select-text {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-	:global(html[data-card-button='icon-only']) .store-card__select:hover {
-		background: color-mix(in srgb, var(--accent) 12%, transparent);
+		border-color: var(--fg);
 	}
 </style>

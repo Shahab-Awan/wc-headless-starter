@@ -10,9 +10,25 @@ return [
 		'spacing'    => true,
 		'visibility' => true,
 		'header'     => true,
+		'color'      => [ 'accent' => true ],
 	],
 	'fields'   => [
-		[ 'id' => 'title', 'type' => 'text', 'default' => '' ],
+		[
+			'id'      => 'layout',
+			'type'    => 'enum',
+			'default' => 'alternating',
+			'options' => [
+				'alternating' => 'Alternating image / text',
+				'comparison'  => 'Brand comparison table',
+			],
+		],
+		[ 'id' => 'headline',         'type' => 'text',     'default' => '' ],
+		[ 'id' => 'subtitle',        'type' => 'textarea', 'default' => '' ],
+		[ 'id' => 'brand_name',      'type' => 'text',     'default' => '' ],
+		[ 'id' => 'competitor_name', 'type' => 'text',     'default' => 'Unverified Sellers' ],
+		[ 'id' => 'brand_logo',      'type' => 'image',    'default' => '' ],
+		[ 'id' => 'competitor_logo', 'type' => 'image',    'default' => '' ],
+		[ 'id' => 'title',           'type' => 'text',     'default' => '' ],
 		[
 			'id'      => 'items',
 			'type'    => 'repeater',
@@ -23,7 +39,6 @@ return [
 				[ 'id' => 'description', 'type' => 'wysiwyg' ],
 				[ 'id' => 'image',       'type' => 'image' ],
 			],
-			// Keep items with at least heading or image (legacy behavior)
 			'item_any_required' => [ 'heading', 'image' ],
 		],
 	],

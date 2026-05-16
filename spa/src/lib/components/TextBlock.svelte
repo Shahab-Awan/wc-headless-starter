@@ -1,13 +1,97 @@
 <script lang="ts">
-	import type { TextBlockModuleConfig, SpacingPreset } from '$lib/config.svelte';
+	import BrandComparisonTable from '$lib/components/BrandComparisonTable.svelte';
+	import {
+		config as siteCfg,
+		type ModuleResolved,
+		type TextBlockModuleConfig,
+		type SpacingPreset,
+	} from '$lib/config.svelte';
 
-	let { config, spacing_v = 'normal', spacing_h = 'normal', center_header = false }: { config: TextBlockModuleConfig; spacing_v?: SpacingPreset; spacing_h?: SpacingPreset; center_header?: boolean } = $props();
+	let {
+		config,
+		resolved,
+		spacing_v = 'normal',
+		spacing_h = 'normal',
+		center_header = false,
+	}: {
+		config: TextBlockModuleConfig;
+		resolved?: ModuleResolved;
+		spacing_v?: SpacingPreset;
+		spacing_h?: SpacingPreset;
+		center_header?: boolean;
+	} = $props();
+
+	const TITLE_COMPARE_HINT = /why\s*alyve|why choose/i;
+
+	const DEFAULT_COMPARE_ROWS = [
+		'Every batch independently tested',
+		'Certificate of Analysis published before purchase',
+		'Documented sourcing & batch traceability',
+		'Fast, tracked domestic shipping',
+	];
+
+	const layoutMode = $derived((config.layout ?? 'auto') as 'auto' | 'standard' | 'comparison');
+	const titleTrim = $derived((config.title ?? '').trim());
+	const hint = $derived(TITLE_COMPARE_HINT.test(titleTrim.toLowerCase()));
+
+	const rowsFromConfig = $derived(
+		(config.comparison_rows ?? [])
+			.map((r) => r.heading?.trim() ?? '')
+			.filter((line) => line !== '')
+	);
+
+	const forcedStandard = $derived(layoutMode === 'standard');
+	const forcedComparison = $derived(layoutMode === 'comparison');
+
+	const compareRows = $derived.by(() => {
+		if (rowsFromConfig.length > 0) return rowsFromConfig;
+		if (forcedStandard) return [];
+		if (forcedComparison || hint) return DEFAULT_COMPARE_ROWS;
+		return [];
+	});
+
+	const showComparison = $derived(
+		!forcedStandard &&
+			compareRows.length > 0 &&
+			(forcedComparison || hint || rowsFromConfig.length > 0)
+	);
+
+	const brandName = $derived(
+		(config.brand_name?.trim() || siteCfg.data.brand_name?.trim() || 'Our brand').trim()
+	);
+	const competitorName = $derived((config.competitor_name?.trim() || 'Unverified Sellers').trim());
+	const brandLogo = $derived(config.brand_logo?.trim() || '');
+	const competitorLogo = $derived(config.competitor_logo?.trim() || '');
+
+	const compareEyebrow = $derived(titleTrim || '');
+	const compareTitle = $derived((config.headline?.trim() || '').trim());
+	const compareLeadHtml = $derived((config.content ?? '').trim());
+
+	const comparisonHeaderCentered = $derived(
+		center_header ||
+			(!compareTitle && (!!compareLeadHtml || !!compareEyebrow))
+	);
 </script>
 
-{#if config.content}
+{#if showComparison}
+	<BrandComparisonTable
+		spacing_v={spacing_v}
+		spacing_h={spacing_h}
+		center_header={comparisonHeaderCentered}
+		resolved={resolved}
+		eyebrow={compareEyebrow || undefined}
+		title={compareTitle || undefined}
+		subtitleHtml={compareLeadHtml}
+		brandName={brandName}
+		competitorName={competitorName}
+		brandLogo={brandLogo}
+		competitorLogo={competitorLogo}
+		compareRows={compareRows}
+	/>
+{:else if config.content}
 	<section class="text-block" class:is-v-compact={spacing_v === 'compact'} class:is-v-spacious={spacing_v === 'spacious'} class:is-h-compact={spacing_h === 'compact'} class:is-h-spacious={spacing_h === 'spacious'} class:is-centered={center_header}>
 		{#if config.title}
-			<p class="text-block__label" class:is-centered={center_header}>{config.title}</p>
+			<p class="text-block__label wchs-section-heading" class:is-centered={center_header}>{config.title}</p>
 		{/if}
 		<div class="text-block__content" class:is-centered={center_header}>
 			{@html config.content}
@@ -30,11 +114,6 @@
 	.text-block.is-h-compact  { --mod-max-w: 100%; --mod-px: 12px; }
 	.text-block.is-h-spacious { --mod-max-w: 760px; --mod-px: 40px; }
 	.text-block__label {
-		font-size: 12px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--fg-muted);
 		margin: 0 0 20px;
 	}
 	.text-block__label.is-centered {

@@ -191,7 +191,7 @@
 <section class="shop-grid" class:is-v-compact={spacing_v === 'compact'} class:is-v-spacious={spacing_v === 'spacious'} class:is-h-compact={spacing_h === 'compact'} class:is-h-spacious={spacing_h === 'spacious'}>
 	<header class="shop-grid__head" class:is-centered={center_header}>
 		{#if title}
-			<p class="shop-grid__label">{title}</p>
+			<p class="shop-grid__label wchs-section-heading">{title}</p>
 		{/if}
 		<div class="shop-grid__controls">
 			{#if !category}
@@ -283,14 +283,10 @@
 		text-align: center;
 	}
 	.shop-grid__label {
-		font-family: var(--font-heading, var(--font-sans));
-		font-size: 12px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--fg-muted);
-		margin: 0;
+		line-height: 1.2;
+		margin-bottom: 4px;
 	}
+
 	/* Controls row: [Filter | Search | Sort]. Search grows; the two
 	   dropdowns stay at fixed 180px min-width. Stacks under 640px since
 	   three elements don't shrink gracefully at tablet widths. */
@@ -322,7 +318,7 @@
 		background: var(--bg);
 		color: var(--fg);
 		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
+		border-radius: 14px;
 		font-family: var(--font-sans);
 		font-size: 13px;
 		letter-spacing: -0.16px;
@@ -357,7 +353,7 @@
 		background: var(--bg);
 		color: var(--fg);
 		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
+		border-radius: 14px;
 		font-family: var(--font-sans);
 		font-size: 13px;
 		letter-spacing: -0.16px;
@@ -401,11 +397,11 @@
 	}
 	@container (min-width: 400px)  { .shop-grid__list { --cols: clamp(var(--cols-min, 2), 2, var(--cols-max, 4)); } }
 	@container (min-width: 600px)  { .shop-grid__list { --cols: clamp(var(--cols-min, 2), 3, var(--cols-max, 4)); } }
-	@container (min-width: 800px)  { .shop-grid__list { --cols: clamp(var(--cols-min, 2), 4, var(--cols-max, 4)); } }
-	@container (min-width: 1000px) { .shop-grid__list { --cols: clamp(var(--cols-min, 2), 5, var(--cols-max, 4)); } }
-	@container (min-width: 1200px) { .shop-grid__list { --cols: clamp(var(--cols-min, 2), 6, var(--cols-max, 4)); } }
-	@container (min-width: 1400px) { .shop-grid__list { --cols: clamp(var(--cols-min, 2), 7, var(--cols-max, 4)); } }
-	@container (min-width: 1600px) { .shop-grid__list { --cols: clamp(var(--cols-min, 2), 8, var(--cols-max, 4)); } }
+	@container (min-width: 800px)  { .shop-grid__list { --cols: clamp(var(--cols-min, 2), 3, var(--cols-max, 4)); } }
+	@container (min-width: 1000px) { .shop-grid__list { --cols: clamp(var(--cols-min, 2), 4, var(--cols-max, 4)); } }
+	@container (min-width: 1200px) { .shop-grid__list { --cols: clamp(var(--cols-min, 2), 5, var(--cols-max, 4)); } }
+	@container (min-width: 1400px) { .shop-grid__list { --cols: clamp(var(--cols-min, 2), 6, var(--cols-max, 4)); } }
+	@container (min-width: 1600px) { .shop-grid__list { --cols: clamp(var(--cols-min, 2), 7, var(--cols-max, 4)); } }
 	.shop-grid__list > li {
 		flex: 0 0 calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols));
 		max-width: calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols));
@@ -415,10 +411,10 @@
 		opacity: 0.55;
 	}
 	.shop-grid__skeleton {
-		aspect-ratio: 1 / 1.35;
+		aspect-ratio: 1 / 1;
 		background: var(--bg-muted);
 		border: 1px solid var(--border);
-		border-radius: var(--radius-md);
+		border-radius: 14px;
 		position: relative;
 		overflow: hidden;
 	}
@@ -453,7 +449,7 @@
 		background: transparent;
 		color: var(--fg);
 		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
+		border-radius: 14px;
 		font: inherit;
 		font-size: 11px;
 		font-weight: 500;

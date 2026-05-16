@@ -11,6 +11,8 @@
 	import Gallery from '$lib/components/Gallery.svelte';
 	import CategoryGrid from '$lib/components/CategoryGrid.svelte';
 	import SplitFeatures from '$lib/components/SplitFeatures.svelte';
+	import SplitValue from '$lib/components/SplitValue.svelte';
+	import FeatureHighlights from '$lib/components/FeatureHighlights.svelte';
 	import ContactForm from '$lib/components/ContactForm.svelte';
 
 	const shopModules = $derived(config.data.shop?.modules ?? []);
@@ -51,13 +53,17 @@
 		{:else if mod.type === 'trust_bar'}
 			<TrustBar config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 		{:else if mod.type === 'text_block'}
-			<TextBlock config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
+			<TextBlock config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 		{:else if mod.type === 'gallery'}
 			<Gallery config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 		{:else if mod.type === 'category_grid'}
 			<CategoryGrid config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 		{:else if mod.type === 'split_features'}
-			<SplitFeatures config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
+			<SplitFeatures config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
+		{:else if mod.type === 'split_value'}
+			<SplitValue config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
+		{:else if mod.type === 'feature_highlights'}
+			<FeatureHighlights config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 		{:else if mod.type === 'contact_form'}
 			<ContactForm config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 		{/if}

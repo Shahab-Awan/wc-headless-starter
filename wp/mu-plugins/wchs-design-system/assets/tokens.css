@@ -148,6 +148,18 @@ html[data-theme='dark']  { color-scheme: dark; }
 	font-feature-settings: 'tnum' on, 'lnum' on;
 }
 
+/* Shared storefront module titles — FAQs, category grid, product rails, shop header, etc. */
+.wchs-section-heading {
+	font-family: var(--font-heading, var(--font-sans));
+	font-size: clamp(1.25rem, 2.85vw, 1.875rem);
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	line-height: 1.22;
+	color: var(--fg-strong);
+	text-transform: none;
+	margin: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	*, *::before, *::after {
 		animation-duration: 0.001ms !important;

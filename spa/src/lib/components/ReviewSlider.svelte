@@ -120,7 +120,7 @@
 {#if reviews.length > 0}
 	<section class="review-slider" class:is-v-compact={spacing_v === 'compact'} class:is-v-spacious={spacing_v === 'spacious'} class:is-h-compact={spacing_h === 'compact'} class:is-h-spacious={spacing_h === 'spacious'} id="reviews">
 		<div class="review-slider__head" class:is-centered={center_header}>
-			<p class="review-slider__title">{title}</p>
+			<p class="review-slider__title wchs-section-heading">{title}</p>
 			<p class="review-slider__meta">
 				<span class="review-slider__rating">{totalAvg}</span>
 				<span class="review-slider__stars">
@@ -203,13 +203,8 @@
 		justify-content: center;
 	}
 	.review-slider__title {
-		font-family: var(--font-heading, var(--font-sans));
-		font-size: 12px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--fg-muted);
-		margin: 0 0 6px;
+		margin: 0 0 10px;
+		line-height: 1.2;
 	}
 	.review-slider__meta {
 		display: flex;

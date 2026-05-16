@@ -1,18 +1,73 @@
 <script lang="ts">
-	import type { SplitFeaturesModuleConfig, SpacingPreset } from '$lib/config.svelte';
+	import BrandComparisonTable from '$lib/components/BrandComparisonTable.svelte';
+	import {
+		config as siteCfg,
+		type ModuleResolved,
+		type SplitFeaturesModuleConfig,
+		type SpacingPreset,
+	} from '$lib/config.svelte';
 
-	let { config, spacing_v = 'normal', spacing_h = 'normal', center_header = false }: {
+	let {
+		config,
+		resolved,
+		spacing_v = 'normal',
+		spacing_h = 'normal',
+		center_header = false,
+	}: {
 		config: SplitFeaturesModuleConfig;
+		resolved?: ModuleResolved;
 		spacing_v?: SpacingPreset;
 		spacing_h?: SpacingPreset;
 		center_header?: boolean;
 	} = $props();
+
+	const layout = $derived.by((): 'alternating' | 'comparison' => {
+		const raw = config.layout;
+		if (raw === 'comparison' || raw === 'alternating') return raw;
+		const t = (config.title || '').trim().toLowerCase();
+		if (/why\s*choose|why\s*alyve/.test(t)) return 'comparison';
+		return 'alternating';
+	});
+
+	const compareRows = $derived(
+		(config.items ?? [])
+			.map((row) => row.heading?.trim() || '')
+			.filter((line) => line !== '')
+	);
+
+	const displayHeadline = $derived((config.headline?.trim() || config.title?.trim() || '').trim());
+	const eyebrow = $derived(config.headline?.trim() ? config.title?.trim() || '' : '');
+	const subtitlePlain = $derived((config.subtitle ?? '').trim());
+	const brandName = $derived(
+		(config.brand_name?.trim() || siteCfg.data.brand_name?.trim() || 'Our brand').trim()
+	);
+	const competitorName = $derived((config.competitor_name?.trim() || 'Unverified Sellers').trim());
+	const brandLogo = $derived(config.brand_logo?.trim() || '');
+	const competitorLogo = $derived(config.competitor_logo?.trim() || '');
+
+	const showComparison = $derived(layout === 'comparison' && compareRows.length > 0);
+	const showAlternating = $derived(!showComparison && (config.items?.length ?? 0) > 0);
 </script>
 
-{#if config.items.length > 0}
+{#if showComparison}
+	<BrandComparisonTable
+		spacing_v={spacing_v}
+		spacing_h={spacing_h}
+		center_header={center_header}
+		resolved={resolved}
+		eyebrow={eyebrow}
+		title={displayHeadline}
+		subtitleText={subtitlePlain}
+		brandName={brandName}
+		competitorName={competitorName}
+		brandLogo={brandLogo}
+		competitorLogo={competitorLogo}
+		compareRows={compareRows}
+	/>
+{:else if showAlternating}
 	<section class="split" class:is-v-compact={spacing_v === 'compact'} class:is-v-spacious={spacing_v === 'spacious'} class:is-h-compact={spacing_h === 'compact'} class:is-h-spacious={spacing_h === 'spacious'}>
 		{#if config.title}
-			<p class="split__label" class:is-centered={center_header}>{config.title}</p>
+			<p class="split__label wchs-section-heading" class:is-centered={center_header}>{config.title}</p>
 		{/if}
 		<div class="split__list">
 			{#each config.items as item, i}
@@ -45,18 +100,26 @@
 		margin: 0 auto;
 		padding: var(--mod-pt) var(--mod-px) var(--mod-pb);
 	}
-	.split.is-v-compact  { --mod-pt: 12px; --mod-pb: 12px; }
-	.split.is-v-spacious { --mod-pt: 56px; --mod-pb: 64px; }
-	.split.is-h-compact  { --mod-max-w: 100%; --mod-px: 12px; }
-	.split.is-h-spacious { --mod-max-w: 760px; --mod-px: 40px; }
+	.split.is-v-compact {
+		--mod-pt: 12px;
+		--mod-pb: 12px;
+	}
+	.split.is-v-spacious {
+		--mod-pt: 56px;
+		--mod-pb: 64px;
+	}
+	.split.is-h-compact {
+		--mod-max-w: 100%;
+		--mod-px: 12px;
+	}
+	.split.is-h-spacious {
+		--mod-max-w: 760px;
+		--mod-px: 40px;
+	}
 	.split__label {
-		font-size: 12px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--fg-muted);
 		margin: 0 0 28px;
 	}
+
 	.split__label.is-centered {
 		text-align: center;
 	}
@@ -117,13 +180,28 @@
 		margin: 0;
 		max-width: 44ch;
 	}
-	.split__desc :global(p) { margin: 0 0 10px; }
-	.split__desc :global(p:last-child) { margin-bottom: 0; }
-	.split__desc :global(a) { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
-	.split__desc :global(strong) { font-weight: 700; }
-	.split__desc :global(em) { font-style: italic; }
+	.split__desc :global(p) {
+		margin: 0 0 10px;
+	}
+	.split__desc :global(p:last-child) {
+		margin-bottom: 0;
+	}
+	.split__desc :global(a) {
+		color: var(--accent);
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+	.split__desc :global(strong) {
+		font-weight: 700;
+	}
+	.split__desc :global(em) {
+		font-style: italic;
+	}
 	.split__desc :global(ul),
-	.split__desc :global(ol) { padding-left: 24px; margin: 0 0 10px; }
+	.split__desc :global(ol) {
+		padding-left: 24px;
+		margin: 0 0 10px;
+	}
 
 	@media (max-width: 860px) {
 		.split__row,

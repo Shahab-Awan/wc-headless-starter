@@ -14,8 +14,8 @@ return [
 	],
 	'fields'   => [
 		[ 'id' => 'title',   'type' => 'text',   'default' => '' ],
-		[ 'id' => 'columns', 'type' => 'number', 'default' => 3, 'min' => 1, 'max' => 6 ],
-		[ 'id' => 'gap',     'type' => 'number', 'default' => 8, 'min' => 0, 'max' => 32 ],
+		[ 'id' => 'columns', 'type' => 'number', 'default' => 4, 'min' => 1, 'max' => 6 ],
+		[ 'id' => 'gap',     'type' => 'number', 'default' => 12, 'min' => 0, 'max' => 32 ],
 		[
 			'id'      => 'items',
 			'type'    => 'repeater',

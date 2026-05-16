@@ -31,6 +31,146 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
+ * When a split_value module has no hero image, use the first published
+ * product's featured (or first gallery) image from the catalog.
+ *
+ * @param array<int, array<string, mixed>> $mods Homepage/shop/page modules.
+ * @return array<int, array<string, mixed>>
+ */
+function wchs_enrich_split_value_module_images( array $mods ): array {
+	static $fallback = null;
+	$out             = [];
+	foreach ( $mods as $m ) {
+		if ( ! is_array( $m ) ) {
+			continue;
+		}
+		if ( ( $m['type'] ?? '' ) !== 'split_value' ) {
+			$out[] = $m;
+			continue;
+		}
+		$cfg = is_array( $m['config'] ?? null ) ? $m['config'] : [];
+		if ( ! empty( $cfg['image'] ) ) {
+			$out[] = $m;
+			continue;
+		}
+		if ( null === $fallback ) {
+			$fallback = [ 'src' => '', 'alt' => '' ];
+			$uploads  = wp_upload_dir();
+			if ( empty( $uploads['error'] ) ) {
+				$rel = '2026/05/WhatsApp-Image-2026-05-16-at-6.42.45-AM.jpeg';
+				$abs = trailingslashit( $uploads['basedir'] ) . $rel;
+				if ( file_exists( $abs ) ) {
+					$fallback = [
+						'src' => trailingslashit( $uploads['baseurl'] ) . $rel,
+						'alt' => 'Research-grade peptides — product lineup',
+					];
+				}
+			}
+			if ( '' === $fallback['src'] && function_exists( 'wc_get_products' ) ) {
+				$products = wc_get_products(
+					[
+						'status'  => 'publish',
+						'limit'   => 1,
+						'orderby' => 'menu_order',
+						'order'   => 'ASC',
+					]
+				);
+				$p = ( is_array( $products ) && isset( $products[0] ) && $products[0] instanceof \WC_Product )
+					? $products[0]
+					: null;
+				if ( $p ) {
+					$img_id = (int) $p->get_image_id();
+					$src    = '';
+					if ( $img_id ) {
+						$src = (string) ( wp_get_attachment_image_url( $img_id, 'woocommerce_single' )
+							?: wp_get_attachment_image_url( $img_id, 'large' ) );
+					}
+					if ( '' === $src ) {
+						$gids = $p->get_gallery_image_ids();
+						if ( ! empty( $gids[0] ) ) {
+							$src = (string) ( wp_get_attachment_image_url( (int) $gids[0], 'large' ) ?: '' );
+						}
+					}
+					if ( '' !== $src ) {
+						$fallback = [
+							'src' => $src,
+							'alt' => (string) $p->get_name(),
+						];
+					}
+				}
+			}
+		}
+		if ( ! empty( $fallback['src'] ) ) {
+			$cfg['image'] = $fallback['src'];
+			if ( ! isset( $cfg['image_alt'] ) || ! is_string( $cfg['image_alt'] ) || '' === trim( $cfg['image_alt'] ) ) {
+				$cfg['image_alt'] = $fallback['alt'];
+			}
+		}
+		$m['config'] = $cfg;
+		$out[]       = $m;
+	}
+	return $out;
+}
+
+/**
+ * Insert default feature_highlights before the catalog slider when the saved
+ * homepage predates that module. Allows legacy trust_bar rows between
+ * split_value and product_slider (the storefront hides trust_bar but it stays in JSON).
+ *
+ * @param array<int, array<string, mixed>> $mods
+ * @return array<int, array<string, mixed>>
+ */
+function wchs_homepage_ensure_feature_highlights_module( array $mods ): array {
+	foreach ( $mods as $m ) {
+		if ( is_array( $m ) && ( $m['type'] ?? '' ) === 'feature_highlights' ) {
+			return $mods;
+		}
+	}
+	if ( ! class_exists( '\\WCHS\\Admin\\AdminPage' ) ) {
+		return $mods;
+	}
+	for ( $i = 0, $n = count( $mods ); $i < $n; $i++ ) {
+		$m = $mods[ $i ] ?? null;
+		if ( ! is_array( $m ) || ( $m['type'] ?? '' ) !== 'split_value' ) {
+			continue;
+		}
+		$j = $i + 1;
+		while ( $j < $n && is_array( $mods[ $j ] ?? null ) ) {
+			$gap_type = $mods[ $j ]['type'] ?? '';
+			if ( 'trust_bar' === $gap_type || 'spacer' === $gap_type ) {
+				$j++;
+				continue;
+			}
+			break;
+		}
+		if ( $j >= $n || ! is_array( $mods[ $j ] ?? null ) || ( $mods[ $j ]['type'] ?? '' ) !== 'product_slider' ) {
+			continue;
+		}
+		$defaults = \WCHS\Admin\AdminPage::homepage_defaults();
+		$seed_row = null;
+		foreach ( (array) ( $defaults['modules'] ?? [] ) as $dm ) {
+			if ( is_array( $dm ) && ( $dm['type'] ?? '' ) === 'feature_highlights' ) {
+				$seed_row = $dm;
+				break;
+			}
+		}
+		if ( ! $seed_row ) {
+			return $mods;
+		}
+		$seed = json_decode( wp_json_encode( $seed_row ), true );
+		if ( ! is_array( $seed ) ) {
+			return $mods;
+		}
+		if ( empty( $seed['id'] ) || ! preg_match( '/^[a-z0-9]{8}$/', (string) $seed['id'] ) ) {
+			$seed['id'] = substr( str_replace( '-', '', wp_generate_uuid4() ), 0, 8 );
+		}
+		array_splice( $mods, $j, 0, [ $seed ] );
+		return $mods;
+	}
+	return $mods;
+}
+
+/**
  * Prevent stale domain/origin drift from host-level caches after cutovers.
  *
  * SiteGround's dynamic cache can serve old JSON for GET /wchs/v1/config and
@@ -680,6 +820,7 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 		return $mods;
 	};
 	$homepage['modules'] = $_migrate_mods( $homepage['modules'] ?? [] );
+	$homepage['modules'] = wchs_homepage_ensure_feature_highlights_module( $homepage['modules'] );
 
 	// Merge site defaults + per-module overrides into a `resolved` block on
 	// each module. SPA components read module.resolved instead of
@@ -691,7 +832,7 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 		}
 		return \WCHS\Admin\ResolverService::resolve_modules( $mods, $site_settings );
 	};
-	$homepage['modules'] = $_resolve_mods( $homepage['modules'] );
+	$homepage['modules'] = wchs_enrich_split_value_module_images( $_resolve_mods( $homepage['modules'] ) );
 
 	// Auto-detect free-shipping threshold from WC shipping zones. The
 	// cart uses this to render an "Add $X more for FREE shipping" bar.

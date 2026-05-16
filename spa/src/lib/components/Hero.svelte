@@ -16,6 +16,7 @@
 	 * the +layout.svelte onMount + config.svelte.ts preview patch calls
 	 * loadFont() to ensure the Bunny stylesheet is present.
 	 */
+	import HeroResearchMotion from '$lib/components/HeroResearchMotion.svelte';
 	import { browser } from '$app/environment';
 	import { config, type ModuleResolved } from '$lib/config.svelte';
 	import { HERO_FONTS } from '$lib/hero-fonts';
@@ -196,6 +197,9 @@
 	const displayBrandName = $derived(brandName ?? config.data.brand_name);
 </script>
 
+{#if hero.variant === 'research-motion'}
+	<HeroResearchMotion hero={hero} {resolved} brandName={displayBrandName} />
+{:else}
 <section
 	class="hero hero--{layout}"
 	style="--hero-mobile-pad: {430 + ((hero.image_position_mobile_y ?? 50) - 50) * 2}px;{heroTextColor ? ` --hero-text: ${heroTextColor};` : ''}{accentStyle}"
@@ -304,6 +308,7 @@
 		{/if}
 	</div>
 </section>
+{/if}
 
 <style>
 	.hero {

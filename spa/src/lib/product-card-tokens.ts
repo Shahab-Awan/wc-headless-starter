@@ -15,17 +15,17 @@ const ASPECT_RATIO: Record<ProductCardConfig['media_aspect_ratio'], string> = {
 };
 
 const CORNER_RADIUS: Record<ProductCardConfig['corner_radius'], string> = {
-	square: '0px',
-	soft:   '8px',
-	round:  '12px',
-	pill:   '16px',
+	square: '14px',
+	soft:   '14px',
+	round:  '14px',
+	pill:   '14px',
 };
 
 const BUTTON_RADIUS: Record<ProductCardConfig['corner_radius'], string> = {
-	square: '0px',
-	soft:   '8px',
-	round:  '10px',
-	pill:   '12px',
+	square: '14px',
+	soft:   '14px',
+	round:  '14px',
+	pill:   '14px',
 };
 
 export function applyProductCardTokens(pc: ProductCardConfig, root = document.documentElement): void {

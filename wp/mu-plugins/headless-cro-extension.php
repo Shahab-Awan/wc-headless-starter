@@ -20,6 +20,7 @@
  *   extensions.wchs_cro.savings_per_unit    — minor units
  *   extensions.wchs_cro.savings_line_total  — minor units
  *   extensions.wchs_cro.savings_pct         — float 0-100
+ *   extensions.wchs_cro.bundle_label        — optional drawer badge when site BOGO tiers apply
  *   extensions.wchs_cro.next_tier           — { qty_needed, next_unit_price, additional_savings_pct } | null
  *
  * Shape (cart top-level):
@@ -72,17 +73,64 @@ add_action( 'woocommerce_blocks_loaded', function () {
 } );
 
 /**
- * Site-wide Buy-N-Get-N-Free defaults (50% effective per unit when cart qty is 2N).
+ * Site-wide bundle presets: paid_qty + optional free_qty (missing free_qty ⇒ legacy Buy-N-Get-N).
  */
+function wchs_cro_bogo_normalize_preset_row( array $row ): ?array {
+	$paid = (int) ( $row['paid_qty'] ?? 0 );
+	if ( $paid < 1 ) {
+		return null;
+	}
+	$has_explicit_free = array_key_exists( 'free_qty', $row );
+	$free              = $has_explicit_free ? max( 0, (int) $row['free_qty'] ) : $paid;
+	return [
+		'paid_qty' => $paid,
+		'free_qty' => $free,
+		'flag'     => sanitize_text_field( (string) ( $row['flag'] ?? '' ) ),
+	];
+}
+
 function wchs_cro_bogo_settings(): array {
 	$bogo = [];
 	if ( class_exists( '\WCHS\Admin\AdminPage' ) ) {
 		$pdp  = \WCHS\Admin\AdminPage::get_pdp_config();
 		$bogo = is_array( $pdp['bundle_bogo'] ?? null ) ? $pdp['bundle_bogo'] : [];
 	}
+
+	$default_presets = [
+		[ 'paid_qty' => 1, 'free_qty' => 0, 'flag' => '' ],
+		[ 'paid_qty' => 2, 'free_qty' => 1, 'flag' => 'MOST POPULAR' ],
+		[ 'paid_qty' => 3, 'free_qty' => 2, 'flag' => 'BEST VALUE' ],
+	];
+
+	$presets_out = [];
+	if ( ! empty( $bogo['presets'] ) && is_array( $bogo['presets'] ) ) {
+		foreach ( $bogo['presets'] as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$norm = wchs_cro_bogo_normalize_preset_row( $row );
+			if ( ! $norm ) {
+				continue;
+			}
+			$presets_out[] = $norm;
+		}
+	}
+	if ( empty( $presets_out ) ) {
+		foreach ( $default_presets as $row ) {
+			$presets_out[] = wchs_cro_bogo_normalize_preset_row( $row );
+		}
+	}
+	usort(
+		$presets_out,
+		static function ( array $a, array $b ): int {
+			return $a['paid_qty'] <=> $b['paid_qty'];
+		}
+	);
+
 	return [
 		'enabled'     => ! array_key_exists( 'enabled', $bogo ) || ! empty( $bogo['enabled'] ),
 		'savings_pct' => (float) ( $bogo['savings_pct'] ?? 50 ),
+		'presets'     => $presets_out,
 	];
 }
 
@@ -117,8 +165,8 @@ function wchs_cro_get_native_tier_rules( \WC_Product $product ): array {
 }
 
 /**
- * Resolve a product's tier rules. Falls back to BOGO percentage at qty 2+ when
- * the product has no native tiers and site BOGO bundles are enabled.
+ * Resolve a product's tier rules. Falls back to site bundle presets (percentage
+ * thresholds at paid+free qty) when the product has no native tiers.
  */
 function wchs_cro_get_tier_rules( \WC_Product $product ): array {
 	$native = wchs_cro_get_native_tier_rules( $product );
@@ -129,28 +177,56 @@ function wchs_cro_get_tier_rules( \WC_Product $product ): array {
 	if ( ! $bogo['enabled'] ) {
 		return [ 'type' => null, 'rules' => [] ];
 	}
+	$rules = [];
+	foreach ( $bogo['presets'] as $preset ) {
+		$paid = (int) ( $preset['paid_qty'] ?? 0 );
+		$free = (int) ( $preset['free_qty'] ?? $paid );
+		if ( $paid < 1 || $free < 1 ) {
+			continue;
+		}
+		$total = $paid + $free;
+		if ( $total < 2 ) {
+			continue;
+		}
+		$rules[ $total ] = round( ( 100 * $free ) / $total, 4 );
+	}
+	if ( empty( $rules ) ) {
+		return [ 'type' => null, 'rules' => [] ];
+	}
+	ksort( $rules, SORT_NUMERIC );
 	return [
 		'type'  => 'percentage',
-		'rules' => [ 2 => $bogo['savings_pct'] ],
+		'rules' => $rules,
 	];
 }
 
 /**
- * Buy 1/2/3 Get 1/2/3 Free rows for PDP + cart (pay for N, receive 2N at 50% per unit).
+ * PDP tier rows from bundle presets (pay paid_qty × regular, receive paid+free units).
  *
  * @return list<array<string, int|float>>
  */
-function wchs_cro_build_bogo_bundle_rows( int $regular_minor, float $savings_pct ): array {
-	$pct        = max( 0, min( 100, $savings_pct ) );
-	$unit_minor = (int) round( $regular_minor * ( 1 - $pct / 100 ) );
-	$rows       = [];
-	foreach ( [ 1, 2, 3 ] as $paid ) {
-		$min_qty = $paid * 2;
-		$rows[]  = [
-			'min_qty'               => $min_qty,
+function wchs_cro_build_bogo_bundle_rows( int $regular_minor ): array {
+	$bogo = wchs_cro_bogo_settings();
+	$rows = [];
+	foreach ( $bogo['presets'] as $preset ) {
+		$paid = (int) $preset['paid_qty'];
+		if ( $paid < 1 ) {
+			continue;
+		}
+		$free = (int) ( $preset['free_qty'] ?? $paid );
+		if ( $free < 0 ) {
+			$free = 0;
+		}
+		$total      = $paid + $free;
+		$pct        = $free > 0 && $total > 0 ? min( 100, ( 100 * $free ) / $total ) : 0.0;
+		$unit_minor = $free > 0
+			? (int) round( $regular_minor * $paid / $total )
+			: $regular_minor;
+		$rows[] = [
+			'min_qty'               => $total,
 			'unit_price'            => $unit_minor,
 			'savings_per_unit'      => max( 0, $regular_minor - $unit_minor ),
-			'savings_pct'           => $pct,
+			'savings_pct'           => round( $pct, 1 ),
 			'line_total_at_min_qty' => $paid * $regular_minor,
 		];
 	}
@@ -203,7 +279,7 @@ function wchs_cro_build_tier_rows( \WC_Product $product ): array {
 	$native = wchs_cro_get_native_tier_rules( $product );
 	if ( empty( $native['rules'] ) ) {
 		if ( $regular_minor > 0 && wchs_cro_bogo_settings()['enabled'] ) {
-			return wchs_cro_build_bogo_bundle_rows( $regular_minor, wchs_cro_bogo_settings()['savings_pct'] );
+			return wchs_cro_build_bogo_bundle_rows( $regular_minor );
 		}
 		return [];
 	}
@@ -376,6 +452,68 @@ function wchs_cro_product_schema() {
 	];
 }
 
+function wchs_cro_cart_item_bundle_label(
+	int $qty,
+	int $savings_line,
+	array $native_rules,
+	array $rules_data
+): string {
+	if ( $savings_line <= 0 ) {
+		return '';
+	}
+	if ( ! empty( $native_rules['rules'] ) ) {
+		return '';
+	}
+	if ( empty( $rules_data['rules'] ) ) {
+		return '';
+	}
+	$bogo = wchs_cro_bogo_settings();
+	if ( empty( $bogo['enabled'] ) ) {
+		return '';
+	}
+	$presets = $bogo['presets'] ?? [];
+	if ( empty( $presets ) ) {
+		return '';
+	}
+
+	$candidates = [];
+	foreach ( $presets as $preset ) {
+		if ( ! is_array( $preset ) ) {
+			continue;
+		}
+		$paid = (int) ( $preset['paid_qty'] ?? 0 );
+		if ( $paid < 1 ) {
+			continue;
+		}
+		$free = array_key_exists( 'free_qty', $preset ) ? (int) $preset['free_qty'] : $paid;
+		if ( $free < 1 ) {
+			continue;
+		}
+		$total = $paid + $free;
+		if ( $qty < $total ) {
+			continue;
+		}
+		$candidates[] = [
+			'paid'  => $paid,
+			'free'  => $free,
+			'total' => $total,
+			'flag'  => sanitize_text_field( (string) ( $preset['flag'] ?? '' ) ),
+		];
+	}
+	if ( empty( $candidates ) ) {
+		return '';
+	}
+	usort(
+		$candidates,
+		static function ( array $a, array $b ): int {
+			return $b['total'] <=> $a['total'];
+		}
+	);
+	$best = $candidates[0];
+	$title = sprintf( 'Buy %d Get %d Free', $best['paid'], $best['free'] );
+	return $best['flag'] !== '' ? $title . ' · ' . $best['flag'] : $title;
+}
+
 function wchs_cro_cart_item_data( $cart_item ) {
 	if ( empty( $cart_item['data'] ) || ! $cart_item['data'] instanceof \WC_Product ) {
 		return [];
@@ -387,6 +525,7 @@ function wchs_cro_cart_item_data( $cart_item ) {
 	$regular_major = (float) $product->get_regular_price();
 	$regular_unit_minor = (int) round( $regular_major * $minor );
 
+	$native_rules = wchs_cro_get_native_tier_rules( $product );
 	$rules_data = wchs_cro_get_tier_rules( $product );
 	$effective_unit_minor = wchs_cro_unit_price_for_qty( $product, $qty, $rules_data );
 
@@ -425,6 +564,7 @@ function wchs_cro_cart_item_data( $cart_item ) {
 		'savings_line_total'   => $savings_line,
 		'savings_pct'          => $savings_pct,
 		'next_tier'            => $next_tier,
+		'bundle_label'         => wchs_cro_cart_item_bundle_label( $qty, $savings_line, $native_rules, $rules_data ),
 		'cross_sell_ids'       => array_values( array_map( 'intval', (array) $product->get_cross_sell_ids() ) ),
 	];
 }
@@ -437,6 +577,7 @@ function wchs_cro_cart_item_schema() {
 		'savings_line_total'   => [ 'type' => 'integer', 'context' => [ 'view', 'edit' ], 'readonly' => true ],
 		'savings_pct'          => [ 'type' => 'number',  'context' => [ 'view', 'edit' ], 'readonly' => true ],
 		'next_tier'            => [ 'type' => [ 'object', 'null' ], 'context' => [ 'view', 'edit' ], 'readonly' => true ],
+		'bundle_label'         => [ 'type' => 'string', 'context' => [ 'view', 'edit' ], 'readonly' => true ],
 		'cross_sell_ids'       => [ 'type' => 'array', 'items' => [ 'type' => 'integer' ], 'context' => [ 'view', 'edit' ], 'readonly' => true ],
 	];
 }
@@ -497,3 +638,52 @@ function wchs_cro_cart_schema() {
 		],
 	];
 }
+
+add_action(
+	'woocommerce_before_calculate_totals',
+	function ( $cart ) {
+		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
+			return;
+		}
+		if ( did_action( 'woocommerce_before_calculate_totals' ) >= 2 ) {
+			return;
+		}
+
+		foreach ( $cart->get_cart() as $item ) {
+			if ( empty( $item['data'] ) || ! $item['data'] instanceof \WC_Product ) {
+				continue;
+			}
+			$product = $item['data'];
+			$qty     = (int) $item['quantity'];
+
+			if ( ! empty( wchs_cro_get_native_tier_rules( $product )['rules'] ) ) {
+				continue;
+			}
+
+			if ( ! wchs_cro_bogo_settings()['enabled'] ) {
+				continue;
+			}
+
+			$rules = wchs_cro_get_tier_rules( $product );
+			if ( empty( $rules['rules'] ) ) {
+				continue;
+			}
+
+			$decimals        = max( 0, (int) wc_get_price_decimals() );
+			$minor           = pow( 10, $decimals );
+			$effective_minor = wchs_cro_unit_price_for_qty( $product, $qty, $rules );
+			$effective_major = (float) wc_format_decimal( $effective_minor / $minor );
+
+			$regular_major = (float) wc_format_decimal( (float) $product->get_regular_price() );
+			if ( $effective_major <= 0 || $regular_major <= 0 ) {
+				continue;
+			}
+
+			if ( abs( $effective_major - $regular_major ) > 0.00001 ) {
+				$product->set_price( $effective_major );
+			}
+		}
+	},
+	15,
+	1
+);

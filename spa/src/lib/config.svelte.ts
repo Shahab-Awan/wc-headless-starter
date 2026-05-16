@@ -33,6 +33,8 @@ export type HeroTextWeight = 'light' | 'regular' | 'medium' | 'semibold' | 'bold
 export type HeroFontKey = 'inter' | 'barlow' | 'bebas' | 'playfair' | 'space_grotesk' | 'archivo' | 'oswald';
 export type HeroTextColorMode = 'theme' | 'white' | 'black' | 'accent';
 
+export type HeroResearchStat = { value: string; label: string };
+
 export type HomepageHeroConfig = {
 	headline: string;
 	content_mode?: 'text' | 'logo';
@@ -48,7 +50,15 @@ export type HomepageHeroConfig = {
 	subheadline_size?: Extract<HeroTextSize, 's' | 'm' | 'l'>;
 	cta_text: string;
 	cta_link: string;
-	variant: 'text-only' | 'webgl-noise' | 'webgl-variant-2' | 'webgl-variant-3' | 'webgl-variant-4' | 'webgl-variant-5' | 'webgl-variant-6';
+	variant:
+		| 'text-only'
+		| 'research-motion'
+		| 'webgl-noise'
+		| 'webgl-variant-2'
+		| 'webgl-variant-3'
+		| 'webgl-variant-4'
+		| 'webgl-variant-5'
+		| 'webgl-variant-6';
 	layout: 'left' | 'center' | 'bottom';
 	image_desktop: string;
 	image_mobile: string;
@@ -64,6 +74,10 @@ export type HomepageHeroConfig = {
 	cta_accent: boolean;
 	show_cta: boolean;
 	trust_items: HeroTrustItem[];
+	research_badge?: string;
+	cta_secondary_text?: string;
+	cta_secondary_link?: string;
+	research_stats?: HeroResearchStat[];
 };
 
 /**
@@ -94,7 +108,19 @@ export type HeroModuleConfig = {
 	cta_text?: string;
 	cta_link?: string;
 	layout?: 'left' | 'center' | 'bottom';
-	variant?: 'text-only' | 'webgl-noise' | 'webgl-variant-2' | 'webgl-variant-3' | 'webgl-variant-4' | 'webgl-variant-5' | 'webgl-variant-6';
+	variant?:
+		| 'text-only'
+		| 'research-motion'
+		| 'webgl-noise'
+		| 'webgl-variant-2'
+		| 'webgl-variant-3'
+		| 'webgl-variant-4'
+		| 'webgl-variant-5'
+		| 'webgl-variant-6';
+	research_badge?: string;
+	cta_secondary_text?: string;
+	cta_secondary_link?: string;
+	research_stats?: HeroResearchStat[];
 };
 
 export type ProductSliderModuleConfig = {
@@ -203,9 +229,18 @@ export type TrustBarModuleConfig = {
 	icon_accent?: boolean;
 };
 
+export type TextBlockComparisonRow = { heading: string };
+
 export type TextBlockModuleConfig = {
+	layout?: 'auto' | 'standard' | 'comparison';
 	title: string;
+	headline?: string;
 	content: string;
+	brand_name?: string;
+	competitor_name?: string;
+	brand_logo?: string;
+	competitor_logo?: string;
+	comparison_rows?: TextBlockComparisonRow[];
 };
 
 export type GalleryItem = {
@@ -242,8 +277,50 @@ export type SplitFeatureItem = {
 };
 
 export type SplitFeaturesModuleConfig = {
+	layout?: 'alternating' | 'comparison';
+	headline?: string;
+	subtitle?: string;
+	brand_name?: string;
+	competitor_name?: string;
+	brand_logo?: string;
+	competitor_logo?: string;
 	title: string;
 	items: SplitFeatureItem[];
+};
+
+export type SplitValueBullet = { text: string };
+export type SplitValueStat = { value: string; label: string };
+
+export type SplitValueModuleConfig = {
+	rating_line: string;
+	headline_prefix: string;
+	headline_accent: string;
+	accent_underline: boolean;
+	bullets: SplitValueBullet[];
+	cta_label: string;
+	cta_href: string;
+	trust_note: string;
+	promo_badge_eyebrow: string;
+	promo_badge_title: string;
+	image: string;
+	image_alt: string;
+	stats: SplitValueStat[];
+};
+
+export type FeatureHighlightItem = {
+	variant: string;
+	headline: string;
+	description: string;
+};
+
+export type FeatureHighlightsModuleConfig = {
+	badge_text: string;
+	headline_prefix: string;
+	headline_accent: string;
+	subheadline: string;
+	items: FeatureHighlightItem[];
+	cta_label: string;
+	cta_href: string;
 };
 
 export type ShopGridModuleConfig = {
@@ -311,6 +388,8 @@ export type HomepageModule =
 	| (ModuleBase & { type: 'gallery'; config: GalleryModuleConfig })
 	| (ModuleBase & { type: 'category_grid'; config: CategoryGridModuleConfig })
 	| (ModuleBase & { type: 'split_features'; config: SplitFeaturesModuleConfig })
+	| (ModuleBase & { type: 'split_value'; config: SplitValueModuleConfig })
+	| (ModuleBase & { type: 'feature_highlights'; config: FeatureHighlightsModuleConfig })
 	| (ModuleBase & { type: 'shop_grid'; config: ShopGridModuleConfig })
 	| (ModuleBase & { type: 'contact_form'; config: ContactFormModuleConfig })
 	| (ModuleBase & { type: 'hero'; config: HeroModuleConfig })
@@ -331,7 +410,7 @@ export type PdpCoaMetric = { label: string; value: string };
 export type PdpBogoBundleConfig = {
 	enabled?: boolean;
 	savings_pct?: number;
-	presets?: Array<{ paid_qty: number; flag?: string }>;
+	presets?: Array<{ paid_qty: number; free_qty?: number; flag?: string }>;
 };
 
 export type PdpCoaSectionConfig = {
@@ -555,40 +634,124 @@ const DEFAULTS: SiteConfig = {
 	google_ads_conversion_label: '',
 	homepage: {
 		hero: {
-			headline: 'Welcome',
+			headline: 'Precision peptides. Uncompromised purity.',
 			content_mode: 'text',
 			logo_source: 'site_logo',
 			logo_url: '',
 			logo_dark_url: '',
 			logo_size: 'large',
-			subheadline: 'Browse products, review your cart, and checkout securely.',
-			cta_text: 'Enter the shop',
+			headline_size: 'l',
+			headline_weight: 'bold',
+			headline_font: 'inter',
+			text_color_mode: 'white',
+			subheadline:
+				'Independently verified. Third-party tested. Every batch held to the highest standard.',
+			subheadline_size: 'm',
+			cta_text: 'Browse catalog →',
 			cta_link: '/shop',
-			variant: 'webgl-noise',
-			layout: 'left',
+			cta_secondary_text: '',
+			cta_secondary_link: '',
+			research_badge: '• RESEARCH USE ONLY',
+			research_stats: [
+				{ value: '≥99%', label: 'VERIFIED PURITY' },
+				{ value: '6-panel', label: 'COA EVERY BATCH' },
+				{ value: '60+', label: 'RESEARCH COMPOUNDS' },
+			],
+			variant: 'research-motion',
+			layout: 'center',
 			image_desktop: '',
 			image_mobile: '',
 			image_position_x: 50,
 			image_position_y: 50,
 			image_position_mobile_x: 50,
 			image_position_mobile_y: 80,
-			show_eyebrow: true,
+			image_zoom: 100,
+			image_zoom_mobile: 100,
+			show_eyebrow: false,
 			cta_accent: true,
 			show_cta: true,
 			show_rating: false,
 			rating_text: '',
 			trust_items: [],
 		},
-		modules: [{
-			type: 'product_slider',
-			visibility: 'all',
-			config: {
-				title: 'Featured',
-				source: 'all',
-				category: null,
-				product_ids: [],
+		modules: [
+			{
+				type: 'split_value',
+				visibility: 'all',
+				spacing_v: 'normal',
+				spacing_h: 'normal',
+				config: {
+					rating_line: 'Rated 4.98/5 · 24,987+ reviews',
+					headline_prefix: 'A Leading Provider of Research Grade',
+					headline_accent: 'Peptides.',
+					accent_underline: true,
+					bullets: [
+						{ text: 'Fast U.S. Shipping' },
+						{ text: '99% Tested Purity' },
+						{ text: 'Made in USA' },
+					],
+					cta_label: 'Buy 1 Get 1 Free',
+					cta_href: '/shop',
+					trust_note: 'Research use only. All major credit/debit cards, PayPal, ACH, BTC, Zelle.',
+					promo_badge_eyebrow: 'LIMITED TIME',
+					promo_badge_title: 'Buy 1 Get 1 Free',
+					image: '/wp-content/uploads/2026/05/WhatsApp-Image-2026-05-16-at-6.42.45-AM.jpeg',
+					image_alt: 'Research-grade peptides — product lineup',
+					stats: [
+						{ value: '99%', label: 'Purity' },
+						{ value: '24.9K+', label: 'Reviews' },
+						{ value: 'Triple-Tested', label: 'for Quality' },
+					],
+				},
 			},
-		}],
+			{
+				type: 'feature_highlights',
+				visibility: 'all',
+				spacing_v: 'normal',
+				spacing_h: 'normal',
+				config: {
+					badge_text: 'Verified & Trusted',
+					headline_prefix: 'The Standard for ',
+					headline_accent: 'Verified Peptides',
+					subheadline:
+						'Independent testing. Full batch documentation. Reliable, tracked delivery.',
+					items: [
+						{
+							variant: 'pin',
+							headline: 'USA Manufactured',
+							description: 'Synthesized and packaged domestically. No overseas sourcing.',
+						},
+						{
+							variant: 'star',
+							headline: '5-Star Reviewed',
+							description: 'Rated 5 stars by verified customers.',
+						},
+						{
+							variant: 'lab',
+							headline: 'Third-Party Lab Tested',
+							description: 'Every batch independently verified before shipping.',
+						},
+						{
+							variant: 'award',
+							headline: 'Triple-Tested for Quality',
+							description: 'Purity, Content, and Endotoxin testing on every product.',
+						},
+					],
+					cta_label: 'Buy 1 Get 1 Free',
+					cta_href: '/shop',
+				},
+			},
+			{
+				type: 'product_slider',
+				visibility: 'all',
+				config: {
+					title: 'Featured',
+					source: 'all',
+					category: null,
+					product_ids: [],
+				},
+			},
+		],
 	},
 	review_write_enabled: true,
 	turnstile_site_key: '',
@@ -619,9 +782,9 @@ const DEFAULTS: SiteConfig = {
 			enabled: true,
 			savings_pct: 50,
 			presets: [
-				{ paid_qty: 1, flag: '' },
-				{ paid_qty: 2, flag: 'MOST POPULAR' },
-				{ paid_qty: 3, flag: 'BEST VALUE' },
+				{ paid_qty: 1, free_qty: 0, flag: '' },
+				{ paid_qty: 2, free_qty: 1, flag: 'MOST POPULAR' },
+				{ paid_qty: 3, free_qty: 2, flag: 'BEST VALUE' },
 			],
 		},
 		cross_sell: {
@@ -668,7 +831,7 @@ const DEFAULTS: SiteConfig = {
 	footer: { columns: [] },
 	social_links: [],
 	product_card: {
-		media_aspect_ratio: '4:5',
+		media_aspect_ratio: '1:1',
 		corner_radius: 'round',
 		border: 'none',
 		hover_effect: 'shadow',
@@ -701,6 +864,97 @@ const DEFAULTS: SiteConfig = {
 	},
 	active_scripts: [],
 };
+
+const VALID_HERO_VARIANTS: HomepageHeroConfig['variant'][] = [
+	'text-only',
+	'research-motion',
+	'webgl-noise',
+	'webgl-variant-2',
+	'webgl-variant-3',
+	'webgl-variant-4',
+	'webgl-variant-5',
+	'webgl-variant-6',
+];
+
+function normalizeHeroVariant(raw: unknown): HomepageHeroConfig['variant'] {
+	const s = typeof raw === 'string' ? raw.trim() : '';
+	if (s && (VALID_HERO_VARIANTS as readonly string[]).includes(s)) {
+		return s as HomepageHeroConfig['variant'];
+	}
+	return DEFAULTS.homepage.hero.variant;
+}
+
+/** Legacy homepage JSON often had trust_bar between split_value and product_slider (SPA hides it). */
+function legacyFeatureHighlightsInsertIndex(modules: HomepageModule[]): number {
+	const list = modules;
+	const svIdx = list.findIndex((m) => m?.type === 'split_value');
+	if (svIdx === -1) return -1;
+	let j = svIdx + 1;
+	while (j < list.length) {
+		const t = list[j]?.type;
+		if (t === 'trust_bar' || t === 'spacer') j++;
+		else break;
+	}
+	if (j >= list.length || list[j]?.type !== 'product_slider') return -1;
+	return j;
+}
+
+function mergeHomepageModulesWithDefaultSplitValue(modules: HomepageModule[]): HomepageModule[] {
+	const list = Array.isArray(modules) ? [...modules] : [];
+	if (!list.some((m) => m && m.type === 'split_value')) {
+		const seed = DEFAULTS.homepage.modules.find((m) => m.type === 'split_value');
+		if (seed) {
+			list.unshift(JSON.parse(JSON.stringify(seed)) as HomepageModule);
+		}
+	}
+	const fhInsert = legacyFeatureHighlightsInsertIndex(list);
+	const needsLegacyFh =
+		!list.some((m) => m && m.type === 'feature_highlights') && fhInsert >= 0;
+	if (needsLegacyFh) {
+		const fhSeed = DEFAULTS.homepage.modules.find((m) => m.type === 'feature_highlights');
+		if (fhSeed) {
+			const copy = JSON.parse(JSON.stringify(fhSeed)) as HomepageModule;
+			list.splice(fhInsert, 0, copy);
+		}
+	}
+	return list;
+}
+
+export function homepageModulesWithSplitValueAfterHero(modules: HomepageModule[]): HomepageModule[] {
+	const visible = modules.filter(isModuleVisibleNow);
+	const svIdx = visible.findIndex((m) => m.type === 'split_value');
+	let ordered = [...visible];
+	if (svIdx > 0) {
+		const [sv] = ordered.splice(svIdx, 1);
+		ordered.unshift(sv);
+	}
+	const fhIdx = ordered.findIndex((m) => m.type === 'feature_highlights');
+	const svPos = ordered.findIndex((m) => m.type === 'split_value');
+	if (fhIdx !== -1 && svPos !== -1 && fhIdx !== svPos + 1) {
+		const [fh] = ordered.splice(fhIdx, 1);
+		const insertAfter = ordered.findIndex((m) => m.type === 'split_value');
+		ordered.splice(insertAfter + 1, 0, fh);
+	}
+	return ordered;
+}
+
+/** REST replaces whole `homepage`; merge defaults into `hero` so new keys resolve without wiping merchant overrides. */
+function mergeFetchedHomepage(incoming: HomepageConfig | undefined): HomepageConfig {
+	const base = DEFAULTS.homepage;
+	const hp = incoming ?? base;
+	const rawHero = hp.hero ?? {};
+	const rawModules = Array.isArray(hp.modules) ? hp.modules : base.modules;
+	return {
+		...base,
+		...hp,
+		hero: {
+			...base.hero,
+			...rawHero,
+			variant: normalizeHeroVariant(rawHero.variant),
+		},
+		modules: mergeHomepageModulesWithDefaultSplitValue(rawModules),
+	};
+}
 
 class ConfigStore {
 	data = $state<SiteConfig>(DEFAULTS);
@@ -756,7 +1010,13 @@ class ConfigStore {
 				if (!json.wp_origin || typeof json.wp_origin !== 'string') {
 					throw new Error('config response missing wp_origin');
 				}
-				this.data = { ...DEFAULTS, ...json, features: { ...DEFAULTS.features, ...json.features } };
+				const mergedHomepage = mergeFetchedHomepage(json.homepage);
+				this.data = {
+					...DEFAULTS,
+					...json,
+					features: { ...DEFAULTS.features, ...json.features },
+					homepage: mergedHomepage,
+				};
 				this.ready = true;
 				this.error = null;
 				return this.data;
@@ -812,7 +1072,9 @@ class ConfigStore {
 			if (msg.homepage && typeof msg.homepage === 'object') {
 				const hp = msg.homepage as Partial<SiteConfig['homepage']>;
 				const currentHp = this.data.homepage;
-				const nextModules = hp.modules ? this.reResolveModules(hp.modules) : currentHp.modules;
+				const rawList = (hp.modules !== undefined ? hp.modules : currentHp.modules) as HomepageModule[];
+				const mergedList = mergeHomepageModulesWithDefaultSplitValue(rawList);
+				const nextModules = this.reResolveModules(mergedList) as SiteConfig['homepage']['modules'];
 				this.data = {
 					...this.data,
 					homepage: {

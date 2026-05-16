@@ -20,8 +20,8 @@
 
 	let categories = $state<WcCategory[]>([]);
 
-	const cols = $derived(Math.max(1, Math.min(6, config.columns || 3)));
-	const gap = $derived(Math.max(0, Math.min(32, config.gap ?? 8)));
+	const cols = $derived(Math.max(1, Math.min(6, config.columns || 4)));
+	const gap = $derived(Math.max(0, Math.min(32, config.gap ?? 12)));
 
 	// Match config items to fetched category data
 	const tiles = $derived(
@@ -48,7 +48,7 @@
 {#if tiles.length > 0}
 	<section class="cat-grid" class:is-v-compact={spacing_v === 'compact'} class:is-v-spacious={spacing_v === 'spacious'} class:is-h-compact={spacing_h === 'compact'} class:is-h-spacious={spacing_h === 'spacious'}>
 		{#if config.title}
-			<p class="cat-grid__label" class:is-centered={center_header}>{config.title}</p>
+			<p class="cat-grid__label wchs-section-heading" class:is-centered={center_header}>{config.title}</p>
 		{/if}
 		<div class="cat-grid__grid" style="--cols: {cols}; --gap: {gap}px;">
 			{#each tiles as tile}
@@ -85,7 +85,7 @@
 		--mod-pt: 32px;
 		--mod-pb: 40px;
 		--mod-px: 28px;
-		--mod-max-w: 960px;
+		--mod-max-w: 1200px;
 		max-width: var(--mod-max-w);
 		margin: 0 auto;
 		padding: var(--mod-pt) var(--mod-px) var(--mod-pb);
@@ -95,12 +95,7 @@
 	.cat-grid.is-h-compact  { --mod-max-w: 100%; --mod-px: 12px; }
 	.cat-grid.is-h-spacious { --mod-max-w: 760px; --mod-px: 40px; }
 	.cat-grid__label {
-		font-size: 12px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--fg-muted);
-		margin: 0 0 20px;
+		margin: 0 0 24px;
 	}
 	.cat-grid__label.is-centered {
 		text-align: center;
@@ -115,7 +110,7 @@
 		flex: 0 0 calc((100% - var(--gap, 8px) * (var(--cols, 3) - 1)) / var(--cols, 3));
 		max-width: calc((100% - var(--gap, 8px) * (var(--cols, 3) - 1)) / var(--cols, 3));
 		position: relative;
-		aspect-ratio: 4 / 3;
+		aspect-ratio: 1 / 1;
 		overflow: hidden;
 		border-radius: var(--radius-md);
 		background: var(--bg-muted);
@@ -146,7 +141,7 @@
 		position: relative;
 		z-index: 1;
 		width: 100%;
-		padding: 20px 14px 12px;
+		padding: 22px 16px 14px;
 		background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 100%);
 		display: flex;
 		flex-direction: column;
@@ -154,9 +149,9 @@
 	}
 	.cat-grid__name {
 		font-family: var(--font-heading, var(--font-sans));
-		font-size: 14px;
-		font-weight: 600;
-		letter-spacing: -0.01em;
+		font-size: clamp(15px, 1.35vw, 17px);
+		font-weight: 700;
+		letter-spacing: -0.015em;
 	}
 	.cat-grid__desc {
 		font-size: 11px;
@@ -176,18 +171,15 @@
 
 	@media (max-width: 860px) {
 		.cat-grid__tile {
-			flex: 0 0 calc((100% - var(--gap, 8px) * (min(var(--cols, 3), 3) - 1)) / min(var(--cols, 3), 3));
-			max-width: calc((100% - var(--gap, 8px) * (min(var(--cols, 3), 3) - 1)) / min(var(--cols, 3), 3));
+			flex: 0 0 calc((100% - var(--gap, 8px) * (min(var(--cols, 4), 4) - 1)) / min(var(--cols, 4), 4));
+			max-width: calc((100% - var(--gap, 8px) * (min(var(--cols, 4), 4) - 1)) / min(var(--cols, 4), 4));
 		}
 	}
-	/* Mobile: one tile per row regardless of admin's --cols setting.
-	   Stacked full-width cards with a flatter aspect ratio so the imagery +
-	   name + count have room to breathe — three across at 414px is unreadable. */
 	@media (max-width: 639px) {
 		.cat-grid__tile {
-			flex: 0 0 100%;
-			max-width: 100%;
-			aspect-ratio: 16 / 9;
+			flex: 0 0 calc((100% - var(--gap, 8px)) / 2);
+			max-width: calc((100% - var(--gap, 8px)) / 2);
+			aspect-ratio: 1 / 1;
 		}
 	}
 </style>

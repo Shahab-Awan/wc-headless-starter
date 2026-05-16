@@ -368,7 +368,7 @@ class AdminPage {
 			'typography_heading_weight'   => 'semibold',   // 'light' | 'regular' | 'medium' | 'semibold' | 'bold' | 'extrabold' | 'black'
 			'typography_body_size'        => 'm',          // 's' (14px) | 'm' (15px) | 'l' (16px)
 			'product_card'                => [
-				'media_aspect_ratio'        => '4:5',         // '1:1' | '4:5' | '3:4' | '16:9'
+				'media_aspect_ratio'        => '1:1',          // '1:1' | '4:5' | '3:4' | '16:9' (1:1 = square)
 				'corner_radius'             => 'round',       // 'square' | 'soft' | 'round' | 'pill'
 				'border'                    => 'none',        // 'full' | 'bottom-only' | 'none' | 'hover-only'
 				'hover_effect'              => 'shadow',      // 'lift' | 'shadow' | 'border' | 'none'
@@ -439,6 +439,14 @@ class AdminPage {
 			$saved['hero'] ?? [],
 			$defaults['hero']
 		);
+		$h = $saved['hero'];
+		if (
+			( $h['headline'] ?? '' ) === 'Welcome'
+			&& ( $h['variant'] ?? '' ) === 'webgl-noise'
+			&& false !== strpos( (string) ( $h['subheadline'] ?? '' ), 'Browse products, review your cart' )
+		) {
+			$saved['hero'] = array_merge( $h, $defaults['hero'] );
+		}
 		if ( empty( $saved['modules'] ) || ! is_array( $saved['modules'] ) ) {
 			$saved['modules'] = $defaults['modules'];
 		}
@@ -470,9 +478,9 @@ class AdminPage {
 				'enabled'     => true,
 				'savings_pct' => 50,
 				'presets'     => [
-					[ 'paid_qty' => 1, 'flag' => '' ],
-					[ 'paid_qty' => 2, 'flag' => 'MOST POPULAR' ],
-					[ 'paid_qty' => 3, 'flag' => 'BEST VALUE' ],
+					[ 'paid_qty' => 1, 'free_qty' => 0, 'flag' => '' ],
+					[ 'paid_qty' => 2, 'free_qty' => 1, 'flag' => 'MOST POPULAR' ],
+					[ 'paid_qty' => 3, 'free_qty' => 2, 'flag' => 'BEST VALUE' ],
 				],
 			],
 			'cross_sell'          => [
@@ -979,36 +987,111 @@ class AdminPage {
 	public static function homepage_defaults(): array {
 		return [
 			'hero' => [
-				'headline'         => 'Welcome',
-				'content_mode'     => 'text',
-				'logo_source'      => 'site_logo',
-				'logo_url'         => '',
-				'logo_dark_url'    => '',
-				'logo_size'        => 'large',
-				'headline_size'    => 'l',
-				'headline_weight'  => 'medium',
-				'headline_font'    => 'inter',
-				'text_color_mode'  => 'theme',
-				'subheadline'      => 'Browse products, review your cart, and checkout securely.',
-				'subheadline_size' => 'm',
-				'cta_text'      => 'Enter the shop',
-				'cta_link'      => '/shop',
-				'variant'       => 'webgl-noise',
-				'layout'        => 'left',
-				'image_desktop'    => '',
-				'image_mobile'     => '',
-				'image_position_x'        => 50,
-				'image_position_y'        => 50,
+				'headline'               => 'Precision peptides. Uncompromised purity.',
+				'content_mode'           => 'text',
+				'logo_source'            => 'site_logo',
+				'logo_url'               => '',
+				'logo_dark_url'          => '',
+				'logo_size'              => 'large',
+				'headline_size'          => 'l',
+				'headline_weight'        => 'bold',
+				'headline_font'          => 'inter',
+				'text_color_mode'        => 'white',
+				'subheadline'            => 'Independently verified. Third-party tested. Every batch held to the highest standard.',
+				'subheadline_size'       => 'm',
+				'cta_text'               => 'Browse catalog →',
+				'cta_link'               => '/shop',
+				'cta_secondary_text'     => '',
+				'cta_secondary_link'     => '',
+				'research_badge'         => '• RESEARCH USE ONLY',
+				'research_stats'         => [
+					[ 'value' => '≥99%', 'label' => 'VERIFIED PURITY' ],
+					[ 'value' => '6-panel', 'label' => 'COA EVERY BATCH' ],
+					[ 'value' => '60+', 'label' => 'RESEARCH COMPOUNDS' ],
+				],
+				'variant'                => 'research-motion',
+				'layout'                 => 'center',
+				'image_desktop'          => '',
+				'image_mobile'           => '',
+				'image_position_x'       => 50,
+				'image_position_y'       => 50,
 				'image_position_mobile_x' => 50,
 				'image_position_mobile_y' => 80,
-				'image_zoom'              => 100,
-				'image_zoom_mobile'       => 100,
-				'show_eyebrow'            => true,
-				'show_rating'   => false,
-				'rating_text'   => '',
-				'trust_items'   => [],
+				'image_zoom'             => 100,
+				'image_zoom_mobile'      => 100,
+				'show_eyebrow'           => false,
+				'cta_accent'             => true,
+				'show_cta'               => true,
+				'show_rating'            => false,
+				'rating_text'            => '',
+				'trust_items'            => [],
 			],
 			'modules' => [
+				[
+					'type'       => 'split_value',
+					'visibility' => 'all',
+					'spacing_v'  => 'normal',
+					'spacing_h'  => 'normal',
+					'config'     => [
+						'rating_line'         => 'Rated 4.98/5 · 24,987+ reviews',
+						'headline_prefix'     => 'A Leading Provider of Research Grade',
+						'headline_accent'     => 'Peptides.',
+						'accent_underline'    => true,
+						'bullets'             => [
+							[ 'text' => 'Fast U.S. Shipping' ],
+							[ 'text' => '99% Tested Purity' ],
+							[ 'text' => 'Made in USA' ],
+						],
+						'cta_label'           => 'Buy 1 Get 1 Free',
+						'cta_href'            => '/shop',
+						'trust_note'          => 'Research use only. All major credit/debit cards, PayPal, ACH, BTC, Zelle.',
+						'promo_badge_eyebrow' => 'LIMITED TIME',
+						'promo_badge_title'   => 'Buy 1 Get 1 Free',
+						'image'               => '/wp-content/uploads/2026/05/WhatsApp-Image-2026-05-16-at-6.42.45-AM.jpeg',
+						'image_alt'           => 'Research-grade peptides — product lineup',
+						'stats'               => [
+							[ 'value' => '99%', 'label' => 'Purity' ],
+							[ 'value' => '24.9K+', 'label' => 'Reviews' ],
+							[ 'value' => 'Triple-Tested', 'label' => 'for Quality' ],
+						],
+					],
+				],
+				[
+					'type'       => 'feature_highlights',
+					'visibility' => 'all',
+					'spacing_v'  => 'normal',
+					'spacing_h'  => 'normal',
+					'config'     => [
+						'badge_text'      => 'Verified & Trusted',
+						'headline_prefix' => 'The Standard for ',
+						'headline_accent' => 'Verified Peptides',
+						'subheadline'     => 'Independent testing. Full batch documentation. Reliable, tracked delivery.',
+						'items'           => [
+							[
+								'variant'     => 'pin',
+								'headline'    => 'USA Manufactured',
+								'description' => 'Synthesized and packaged domestically. No overseas sourcing.',
+							],
+							[
+								'variant'     => 'star',
+								'headline'    => '5-Star Reviewed',
+								'description' => 'Rated 5 stars by verified customers.',
+							],
+							[
+								'variant'     => 'lab',
+								'headline'    => 'Third-Party Lab Tested',
+								'description' => 'Every batch independently verified before shipping.',
+							],
+							[
+								'variant'     => 'award',
+								'headline'    => 'Triple-Tested for Quality',
+								'description' => 'Purity, Content, and Endotoxin testing on every product.',
+							],
+						],
+						'cta_label'       => 'Buy 1 Get 1 Free',
+						'cta_href'        => '/shop',
+					],
+				],
 				[
 					'type'       => 'product_slider',
 					'visibility' => 'all',
@@ -1519,10 +1602,14 @@ class AdminPage {
 			'show_cta'         => ! empty( $_POST['hero_show_cta'] ),
 			'show_rating'   => ! empty( $_POST['hero_show_rating'] ),
 			'rating_text'   => sanitize_text_field( wp_unslash( $_POST['hero_rating_text'] ?? '' ) ),
+			'research_badge'       => sanitize_text_field( wp_unslash( $_POST['hero_research_badge'] ?? '' ) ),
+			'cta_secondary_text'   => sanitize_text_field( wp_unslash( $_POST['hero_cta_secondary_text'] ?? '' ) ),
+			'cta_secondary_link'   => sanitize_text_field( wp_unslash( $_POST['hero_cta_secondary_link'] ?? '' ) ),
+			'research_stats'       => [],
 			'trust_items'   => [],
 		];
 
-		$valid_variants = [ 'text-only', 'webgl-noise', 'webgl-variant-2', 'webgl-variant-3', 'webgl-variant-4', 'webgl-variant-5', 'webgl-variant-6' ];
+		$valid_variants = [ 'text-only', 'webgl-noise', 'webgl-variant-2', 'webgl-variant-3', 'webgl-variant-4', 'webgl-variant-5', 'webgl-variant-6', 'research-motion' ];
 		if ( ! in_array( $hero['variant'], $valid_variants, true ) ) {
 			$hero['variant'] = 'webgl-noise';
 		}
@@ -1561,6 +1648,24 @@ class AdminPage {
 					$hero['trust_items'][] = [ 'icon' => $icon, 'text' => $text ];
 				}
 			}
+		}
+
+		$stats_raw = wp_unslash( $_POST['hero_research_stats_json'] ?? '' );
+		$decoded_stats = json_decode( $stats_raw, true );
+		if ( is_array( $decoded_stats ) ) {
+			foreach ( $decoded_stats as $row ) {
+				if ( ! is_array( $row ) ) {
+					continue;
+				}
+				$sv = sanitize_text_field( (string) ( $row['value'] ?? '' ) );
+				$sl = sanitize_text_field( (string) ( $row['label'] ?? '' ) );
+				if ( $sv !== '' && $sl !== '' ) {
+					$hero['research_stats'][] = [ 'value' => $sv, 'label' => $sl ];
+				}
+			}
+		}
+		if ( empty( $hero['research_stats'] ) ) {
+			$hero['research_stats'] = self::homepage_defaults()['hero']['research_stats'];
 		}
 
 		$raw_json = json_decode( wp_unslash( $_POST['modules_json'] ?? '[]' ), true );
@@ -2332,7 +2437,7 @@ class AdminPage {
 			<?php
 			$pc = array_merge(
 				[
-					'media_aspect_ratio' => '4:5', 'corner_radius' => 'round', 'border' => 'none',
+					'media_aspect_ratio' => '1:1', 'corner_radius' => 'round', 'border' => 'none',
 					'hover_effect' => 'shadow', 'button_style' => 'solid',
 					'badge_position' => 'top-right', 'badge_style' => 'filled',
 					'show_bulk_badge' => true, 'show_tier_hint' => true, 'show_oos_cards' => true,
@@ -3705,6 +3810,22 @@ class AdminPage {
 				<label>CTA Link <?php echo self::hint_icon('URL path, e.g. /shop'); ?></label>
 				<input type="text" name="hero_cta_link" value="<?php echo esc_attr( $hero['cta_link'] ); ?>" />
 			</div>
+			<div class="wchs-field">
+				<label>Research badge <?php echo self::hint_icon( 'Pill above the headline when Animation is Research motion (CSS).' ); ?></label>
+				<input type="text" name="hero_research_badge" value="<?php echo esc_attr( $hero['research_badge'] ?? '' ); ?>" maxlength="120" />
+			</div>
+			<div class="wchs-field">
+				<label>Secondary CTA text</label>
+				<input type="text" name="hero_cta_secondary_text" value="<?php echo esc_attr( $hero['cta_secondary_text'] ?? '' ); ?>" maxlength="80" />
+			</div>
+			<div class="wchs-field">
+				<label>Secondary CTA link <?php echo self::hint_icon( 'Leave blank for Research motion to fall back to the PDP COA library URL when set.' ); ?></label>
+				<input type="text" name="hero_cta_secondary_link" value="<?php echo esc_attr( $hero['cta_secondary_link'] ?? '' ); ?>" />
+			</div>
+			<div class="wchs-field">
+				<label>Research stats (JSON) <?php echo self::hint_icon( 'JSON array of objects with value + label (three rows). Empty or invalid restores defaults.' ); ?></label>
+				<textarea name="hero_research_stats_json" rows="6" class="large-text code"><?php echo esc_textarea( wp_json_encode( $hero['research_stats'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE ) ); ?></textarea>
+			</div>
 
 			</div></div><!-- /Hero Content -->
 
@@ -3807,6 +3928,7 @@ class AdminPage {
 					<label class="wchs-radio"><input type="radio" name="hero_variant" value="webgl-variant-4" <?php checked( $hero['variant'], 'webgl-variant-4' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Hex Grid</span></label>
 					<label class="wchs-radio"><input type="radio" name="hero_variant" value="webgl-variant-5" <?php checked( $hero['variant'], 'webgl-variant-5' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Dot Matrix</span></label>
 					<label class="wchs-radio"><input type="radio" name="hero_variant" value="webgl-variant-6" <?php checked( $hero['variant'], 'webgl-variant-6' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Bokeh</span></label>
+					<label class="wchs-radio"><input type="radio" name="hero_variant" value="research-motion" <?php checked( $hero['variant'], 'research-motion' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Research motion</span></label>
 				</div>
 			</div>
 
@@ -4394,8 +4516,55 @@ class AdminPage {
 		<!-- Text Block -->
 		<div id="wchs-mod-tpl-text_block" style="display:none">
 			<div class="wchs-module__fields">
-				<div class="wchs-field wchs-field--full"><label>Title</label><input type="text" data-field="title" /></div>
+				<div class="wchs-field">
+					<label>Layout <?php echo self::hint_icon( 'Auto: if the title contains “Why Alyve” or “Why Choose”, a brand comparison table appears under the intro (with default rows until you add your own).' ); ?></label>
+					<select data-field="tb_layout">
+						<option value="auto">Auto</option>
+						<option value="standard">Text only</option>
+						<option value="comparison">Brand comparison table</option>
+					</select>
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Title / eyebrow</label><input type="text" data-field="title" placeholder="e.g. WHY ALYVE" /></div>
+				<div class="wchs-field wchs-field--full"><label>Headline (optional)</label><input type="text" data-field="tb_headline" placeholder="Large heading below eyebrow" /></div>
 				<div class="wchs-field wchs-field--full"><label>Content</label><textarea data-field="content" rows="8" data-wysiwyg="1" style="width:100%"></textarea></div>
+				<div class="wchs-field"><label>Brand column name</label><input type="text" data-field="tb_brand_name" placeholder="Leave blank for site name" /></div>
+				<div class="wchs-field"><label>Competitor column name</label><input type="text" data-field="tb_competitor_name" placeholder="Unverified Sellers" /></div>
+				<div class="wchs-field wchs-field--full">
+					<label>Brand logo (optional)</label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="tb_brand_logo" class="wchs-media-url" placeholder="" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:80px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full">
+					<label>Competitor image (optional)</label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="tb_competitor_logo" class="wchs-media-url" placeholder="" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:80px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full">
+					<label>Comparison row labels</label>
+					<p style="margin:0 0 8px;font-size:12px;color:#666">Leave empty to use default rows when Auto or Comparison layout applies.</p>
+					<div class="wchs-tb-compare-rows">
+						<div class="wchs-accordion-item" style="display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid #ddd;background:#fafafa">
+							<input type="text" style="flex:1" placeholder="Row label (left column)" />
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-tb-compare-row-modal" style="margin-top:8px">+ Add row</button>
+				</div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+					Accent color override
+					<?php echo self::hint_icon( 'Comparison table: highlighted column background.' ); ?>
+				</label>
+				<?php echo self::accent_override_swatches(); ?>
 			</div>
 			<?php $this->render_module_common_fields(); ?>
 		</div>
@@ -4476,8 +4645,8 @@ class AdminPage {
 		<div id="wchs-mod-tpl-category_grid" style="display:none">
 			<div class="wchs-module__fields">
 				<div class="wchs-field"><label>Title</label><input type="text" data-field="title" /></div>
-				<div class="wchs-field"><label>Columns</label><select data-field="columns"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select></div>
-				<div class="wchs-field"><label>Gap (px)</label><select data-field="gap"><option value="0">0</option><option value="4">4</option><option value="8" selected>8</option><option value="16">16</option><option value="24">24</option></select></div>
+				<div class="wchs-field"><label>Columns</label><select data-field="columns"><option value="2">2</option><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="6">6</option></select></div>
+				<div class="wchs-field"><label>Gap (px)</label><select data-field="gap"><option value="0">0</option><option value="4">4</option><option value="8">8</option><option value="12" selected>12</option><option value="16">16</option><option value="24">24</option><option value="32">32</option></select></div>
 			</div>
 			<div class="wchs-field" style="margin-top:12px">
 				<label>Categories</label>
@@ -4497,9 +4666,39 @@ class AdminPage {
 		<!-- Split Features -->
 		<div id="wchs-mod-tpl-split_features" style="display:none">
 			<div class="wchs-module__fields">
-				<div class="wchs-field wchs-field--full"><label>Title</label><input type="text" data-field="title" /></div>
+				<div class="wchs-field">
+					<label>Layout <?php echo self::hint_icon('Comparison table uses each row’s Heading only (leave images blank). Title containing “Why Choose” auto-opens comparison on the storefront.'); ?></label>
+					<select data-field="sf_layout">
+						<option value="alternating">Alternating image / text</option>
+						<option value="comparison">Brand comparison table</option>
+					</select>
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Eyebrow (optional)</label><input type="text" data-field="title" placeholder="Small label above headline when headline is set" /></div>
+				<div class="wchs-field wchs-field--full"><label>Headline</label><input type="text" data-field="sf_headline" placeholder="Why Choose Alyve" /></div>
+				<div class="wchs-field wchs-field--full"><label>Intro text</label><textarea data-field="sf_subtitle" rows="3" placeholder="Paragraph below headline"></textarea></div>
+				<div class="wchs-field"><label>Brand column name</label><input type="text" data-field="sf_brand_name" placeholder="Leave blank for site name" /></div>
+				<div class="wchs-field"><label>Competitor column name</label><input type="text" data-field="sf_competitor_name" placeholder="Unverified Sellers" /></div>
 				<div class="wchs-field wchs-field--full">
-					<label>Feature Blocks</label>
+					<label>Brand logo (optional)</label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="sf_brand_logo" class="wchs-media-url" placeholder="" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:80px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full">
+					<label>Competitor image (optional)</label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="sf_competitor_logo" class="wchs-media-url" placeholder="" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:80px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full">
+					<label>Rows / feature blocks</label>
+					<p style="margin:0 0 8px;font-size:12px;color:#666">Comparison mode: set <strong>Heading</strong> for each row label (left column). Alternating mode: fill image + copy as before.</p>
 					<div class="wchs-accordion-items">
 						<div class="wchs-accordion-item" style="display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid #ddd;background:#fafafa">
 							<div style="flex-shrink:0;width:80px">
@@ -4509,14 +4708,119 @@ class AdminPage {
 							</div>
 							<div style="flex:1;display:flex;flex-direction:column;gap:4px">
 								<input type="text" placeholder="Eyebrow (e.g. VERIFICATION)" />
-								<input type="text" placeholder="Heading" />
+								<input type="text" placeholder="Heading / row label" />
 								<textarea placeholder="Description" rows="3" data-wysiwyg="1"></textarea>
 							</div>
 							<button type="button" class="wchs-accordion-item__remove" title="Remove" style="flex-shrink:0">✕</button>
 						</div>
 					</div>
-					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-splitfeature-item-modal" style="margin-top:8px">+ Add Feature</button>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-splitfeature-item-modal" style="margin-top:8px">+ Add row</button>
 				</div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+					Accent color override
+					<?php echo self::hint_icon('Comparison table: highlighted column background. Alternating layout ignores this.' ); ?>
+				</label>
+				<?php echo self::accent_override_swatches(); ?>
+			</div>
+			<?php $this->render_module_common_fields(); ?>
+		</div>
+
+		<!-- Split value (BOGO promo) -->
+		<div id="wchs-mod-tpl-split_value" style="display:none">
+			<div class="wchs-module__fields">
+				<div class="wchs-field wchs-field--full"><label>Rating line</label><input type="text" data-field="sv_rating_line" placeholder="Rated 4.98/5 · 24,987+ reviews" /></div>
+				<div class="wchs-field wchs-field--full"><label>Headline (before accent)</label><input type="text" data-field="sv_headline_prefix" /></div>
+				<div class="wchs-field wchs-field--full"><label>Headline accent word</label><input type="text" data-field="sv_headline_accent" placeholder="Peptides." /></div>
+				<div class="wchs-field">
+					<label style="display:inline-flex;align-items:center;gap:8px;font-weight:500">
+						<input type="checkbox" data-field="sv_accent_underline" /> Accent underline on highlight word
+					</label>
+				</div>
+				<div class="wchs-field wchs-field--full">
+					<label>Bullet list</label>
+					<div class="wchs-sv-bullets">
+						<div class="wchs-accordion-item" style="display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid #ddd;background:#fafafa">
+							<input type="text" style="flex:1" placeholder="e.g. Fast U.S. Shipping" />
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-sv-bullet-modal" style="margin-top:8px">+ Add bullet</button>
+				</div>
+				<div class="wchs-field wchs-field--full"><label>CTA label</label><input type="text" data-field="sv_cta_label" placeholder="Buy 1 Get 1 Free" /></div>
+				<div class="wchs-field wchs-field--full"><label>CTA link</label><input type="text" data-field="sv_cta_href" placeholder="/shop" /></div>
+				<div class="wchs-field wchs-field--full"><label>Trust line (under button)</label><input type="text" data-field="sv_trust_note" /></div>
+				<div class="wchs-field"><label>Promo badge — small line</label><input type="text" data-field="sv_promo_eyebrow" placeholder="LIMITED TIME" /></div>
+				<div class="wchs-field"><label>Promo badge — title</label><input type="text" data-field="sv_promo_title" placeholder="Buy 1 Get 1 Free" /></div>
+				<div class="wchs-field wchs-field--full" style="margin-top:12px">
+					<label>Product image</label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="sv_image" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:140px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Image alt text</label><input type="text" data-field="sv_image_alt" /></div>
+				<div class="wchs-field wchs-field--full">
+					<label>Stats row (under image)</label>
+					<div class="wchs-sv-stats">
+						<div class="wchs-accordion-item" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;padding:6px 8px;border:1px solid #ddd;background:#fafafa">
+							<input type="text" placeholder="Value (e.g. 99%)" />
+							<input type="text" placeholder="Label (e.g. Purity)" />
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-sv-stat-modal" style="margin-top:8px">+ Add stat</button>
+				</div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+					Accent color override
+					<?php echo self::hint_icon( 'Optional accent for this block (button, stars, highlights).' ); ?>
+				</label>
+				<?php echo self::accent_override_swatches(); ?>
+			</div>
+			<?php $this->render_module_common_fields(); ?>
+		</div>
+
+		<!-- Feature highlights -->
+		<div id="wchs-mod-tpl-feature_highlights" style="display:none">
+			<div class="wchs-module__fields" style="display:flex;flex-direction:column;gap:14px">
+				<div class="wchs-field wchs-field--full"><label>Badge text</label><input type="text" data-field="fh_badge_text" placeholder="Verified & Trusted" /></div>
+				<div class="wchs-field wchs-field--full"><label>Headline (before accent)</label><input type="text" data-field="fh_headline_prefix" /></div>
+				<div class="wchs-field wchs-field--full"><label>Headline accent</label><input type="text" data-field="fh_headline_accent" /></div>
+				<div class="wchs-field wchs-field--full"><label>Subheadline</label><input type="text" data-field="fh_subheadline" /></div>
+				<div class="wchs-field wchs-field--full">
+					<label>Highlight cards</label>
+					<div class="wchs-fh-items wchs-accordion-items" style="display:flex;flex-direction:column;gap:10px">
+						<div class="wchs-accordion-item wchs-fh-item" style="display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #ddd;background:#fafafa">
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Card style</label>
+							<select data-field="fh_variant">
+								<option value="pin">USA / location</option>
+								<option value="star">Reviews / star</option>
+								<option value="lab">Lab testing</option>
+								<option value="award">Quality badge</option>
+							</select>
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Title</label>
+							<input type="text" placeholder="Title" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Description</label>
+							<input type="text" placeholder="Description" />
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-fh-item-modal" style="margin-top:10px">+ Add card</button>
+				</div>
+				<div class="wchs-field wchs-field--full"><label>CTA label</label><input type="text" data-field="fh_cta_label" placeholder="Buy 1 Get 1 Free" /></div>
+				<div class="wchs-field wchs-field--full"><label>CTA link</label><input type="text" data-field="fh_cta_href" placeholder="/shop" /></div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+					Accent color override
+					<?php echo self::hint_icon( 'Optional accent for headline highlight and CTA.' ); ?>
+				</label>
+				<?php echo self::accent_override_swatches(); ?>
 			</div>
 			<?php $this->render_module_common_fields(); ?>
 		</div>
@@ -4598,6 +4902,7 @@ class AdminPage {
 					<option value="webgl-variant-4">Hex Grid</option>
 					<option value="webgl-variant-5">Dot Matrix</option>
 					<option value="webgl-variant-6">Bokeh</option>
+					<option value="research-motion">Research motion (CSS)</option>
 				</select>
 			</div>
 
@@ -4608,6 +4913,13 @@ class AdminPage {
 				</div>
 				<div class="wchs-field"><label>CTA text</label><input type="text" data-field="hero_cta_text" placeholder="Learn more" /></div>
 				<div class="wchs-field"><label>CTA link</label><input type="text" data-field="hero_cta_link" placeholder="/shop" /></div>
+				<div class="wchs-field wchs-field--full"><label>Research badge</label><input type="text" data-field="hero_research_badge" placeholder="• RESEARCH USE ONLY" maxlength="120" /></div>
+				<div class="wchs-field"><label>Secondary CTA text</label><input type="text" data-field="hero_cta_secondary_text" maxlength="80" /></div>
+				<div class="wchs-field"><label>Secondary CTA link</label><input type="text" data-field="hero_cta_secondary_link" placeholder="/shop" /></div>
+				<div class="wchs-field wchs-field--full">
+					<label style="display:inline-flex;align-items:center;gap:6px">Research stats (JSON) <?php echo self::hint_icon( 'Array of {"value","label"} objects. Empty restores defaults.' ); ?></label>
+					<textarea data-field="hero_research_stats_json" rows="5" class="large-text code" style="width:100%;font-family:monospace;font-size:11px" placeholder='[{"value":"≥99%","label":"VERIFIED PURITY"}]'></textarea>
+				</div>
 			</div>
 
 			<!-- Typography override -->
