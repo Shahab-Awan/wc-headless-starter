@@ -695,8 +695,7 @@ const DEFAULTS: SiteConfig = {
 					trust_note: 'Research use only. All major credit/debit cards, PayPal, ACH, BTC, Zelle.',
 					promo_badge_eyebrow: 'LIMITED TIME',
 					promo_badge_title: 'Buy 1 Get 1 Free',
-					image:
-						'https://alyvepeptides.com/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp',
+					image: '/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp',
 					image_alt: 'Research-grade peptides — product lineup',
 					stats: [
 						{ value: '99%', label: 'Purity' },
