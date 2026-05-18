@@ -1,5 +1,6 @@
 import { request } from './store-api';
 import { isCartCrossSellBlockedProduct } from '$lib/config.svelte';
+import { canPurchase } from './stock';
 
 /** Drop ancillary products (shipping protection, BAC water) from storefront listings. */
 export function filterCatalogProducts(products: StoreProduct[]): StoreProduct[] {
@@ -181,6 +182,44 @@ export function findVariationId(
 		const match = v.attributes.every((attr) => selection[attr.name] === attr.value);
 		const complete = v.attributes.every((attr) => selection[attr.name] !== undefined);
 		if (match && complete) return v.id;
+	}
+	return null;
+}
+
+/** Build a selection map from variation attribute rows. */
+export function selectionFromVariationAttrs(
+	attrs: { name: string; value: string }[]
+): Record<string, string> {
+	const sel: Record<string, string> = {};
+	for (const a of attrs) sel[a.name] = a.value;
+	return sel;
+}
+
+/**
+ * Prefer WC default attributes when that variation is purchasable; otherwise
+ * the first in-stock variation. Returns null when nothing can be bought.
+ */
+export function findPurchasableDefaultSelection(
+	product: StoreProduct,
+	variations: StoreProductVariation[]
+): Record<string, string> | null {
+	if (!product.has_options || product.attributes.length === 0) return null;
+
+	const defaults: Record<string, string> = {};
+	for (const attr of product.attributes) {
+		const def = attr.terms?.find((t) => t.default);
+		if (def) defaults[attr.name] = def.name;
+	}
+	if (Object.keys(defaults).length === product.attributes.length) {
+		const id = findVariationId(product.variations, defaults);
+		const v = variations.find((x) => x.id === id);
+		if (v && canPurchase(v)) return defaults;
+	}
+
+	for (const ref of product.variations) {
+		const v = variations.find((x) => x.id === ref.id);
+		if (!v || !canPurchase(v)) continue;
+		return selectionFromVariationAttrs(ref.attributes);
 	}
 	return null;
 }

@@ -10,9 +10,11 @@
 		getProductsByIds,
 		getVariations,
 		findVariationId,
+		findPurchasableDefaultSelection,
 		type StoreProduct,
 		type StoreProductVariation
 	} from '$lib/wc/products';
+	import { canPurchase, isOutOfStock } from '$lib/wc/stock';
 	import { cart } from '$lib/wc/cart.svelte';
 	import PdpBuyBox from '$lib/components/pdp/PdpBuyBox.svelte';
 	import PdpCrossSell from '$lib/components/pdp/PdpCrossSell.svelte';
@@ -65,25 +67,23 @@
 	let selection = $state<Record<string, string>>({});
 	let quantity = $state(1);
 
-	// Seed selection from the product's default_attributes (served by the
-	// Store API as `term.default = true` on each attribute). Without this,
-	// variable products land with nothing selected and "ADD TO CART" stays
-	// disabled — users have to click a variant manually even if the store
-	// already has a default picked in WC admin.
+	// Seed selection from the first purchasable variation once variation
+	// payloads are loaded (WC defaults only when that variation is in stock).
 	$effect(() => {
-		if (!product || !product.has_options) return;
-		// Only seed attributes that don't already have a selection (so a
-		// subsequent user click wins over the default).
+		if (!product?.has_options || variations.length === 0) return;
+		const defaults = findPurchasableDefaultSelection(product, variations);
+		if (!defaults) return;
+		const keys = product.attributes.map((a) => a.name);
+		if (keys.every((k) => selection[k])) return;
 		let touched = false;
-		for (const attr of product.attributes) {
-			if (selection[attr.name]) continue;
-			const def = attr.terms?.find((t) => t.default);
-			if (def) {
-				selection[attr.name] = def.name;
+		const next = { ...selection };
+		for (const [k, v] of Object.entries(defaults)) {
+			if (!next[k]) {
+				next[k] = v;
 				touched = true;
 			}
 		}
-		if (touched) selection = { ...selection };
+		if (touched) selection = next;
 	});
 	let adding = $state(false);
 	let activeImage = $state(0);
@@ -178,15 +178,8 @@
 			product = await getProduct(page.params.slug ?? '');
 			if (product && product.has_options && product.variations.length) {
 				variations = await getVariations(product.variations.map((v) => v.id));
-				// Pre-select default attributes from WC config
-				const defaults: Record<string, string> = {};
-				for (const attr of product.attributes) {
-					const def = attr.terms.find(t => t.default);
-					if (def) defaults[attr.name] = def.name;
-				}
-				if (Object.keys(defaults).length > 0) {
-					selection = defaults;
-				}
+				const defaults = findPurchasableDefaultSelection(product, variations);
+				if (defaults) selection = defaults;
 			}
 			const ids = product?.extensions?.wchs_cro?.cross_sell_ids ?? [];
 			if (ids.length > 0) {
@@ -285,8 +278,8 @@
 			.trim()
 			.substring(0, 300);
 		const inStock = selectedVariation
-			? selectedVariation.is_in_stock
-			: product.is_in_stock;
+			? canPurchase(selectedVariation)
+			: canPurchase(product);
 		const schema: Record<string, unknown> = {
 			'@context': 'https://schema.org',
 			'@type': 'Product',
@@ -447,12 +440,9 @@
 	const canAdd = $derived.by(() => {
 		if (!product) return false;
 		if (adding) return false;
-		if (!product.has_options) {
-			return product.is_in_stock && product.is_purchasable;
-		}
-		if (!selectedVariationId) return false;
-		if (!selectedVariation) return false;
-		return selectedVariation.is_in_stock && selectedVariation.is_purchasable;
+		if (!product.has_options) return canPurchase(product);
+		if (!selectedVariationId || !selectedVariation) return false;
+		return canPurchase(selectedVariation);
 	});
 
 	// Derived: button label — gives the user feedback on why disabled
@@ -460,24 +450,21 @@
 		if (!product) return 'Loading';
 		if (adding) return 'Adding…';
 		if (!product.has_options) {
-			if (!product.is_in_stock) return 'Out of Stock';
-			if (!product.is_purchasable) return 'Unavailable';
+			if (!canPurchase(product)) return isOutOfStock(product) ? 'Out of Stock' : 'Unavailable';
 			return product.add_to_cart?.text ?? 'Add to Cart';
 		}
 		// Variable
 		const missing = product.attributes.filter((a) => !selection[a.name]).map((a) => a.name);
 		if (missing.length) return `Select ${missing[0]}`;
 		if (!selectedVariationId) return 'Unavailable';
-		if (selectedVariation && !selectedVariation.is_in_stock) return 'Out of Stock';
+		if (selectedVariation && !canPurchase(selectedVariation)) return 'Out of Stock';
 		return 'Add to Cart';
 	});
 
 	// Per-variation stock indexed by "attr1=val1|attr2=val2" signature, so
 	// buttons can show which combos are in stock without hitting the API.
 	const stockByVariationId = $derived(
-		new Map<number, { inStock: boolean; purchasable: boolean }>(
-			variations.map((v) => [v.id, { inStock: v.is_in_stock, purchasable: v.is_purchasable }])
-		)
+		new Map(variations.map((v) => [v.id, canPurchase(v)]))
 	);
 
 	/**
@@ -497,8 +484,7 @@
 				return chosen === undefined || chosen === a.value;
 			});
 			if (!otherAttrsOk) continue;
-			const stock = stockByVariationId.get(v.id);
-			if (stock && stock.inStock && stock.purchasable) return true;
+			if (stockByVariationId.get(v.id)) return true;
 		}
 		return false;
 	}

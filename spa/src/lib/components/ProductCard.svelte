@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { formatPrice as fmt } from '$lib/utils/format';
 	import { config } from '$lib/config.svelte';
+	import { canPurchase, isOutOfStock } from '$lib/wc/stock';
 
 	type Product = {
 		id: number;
@@ -41,7 +42,8 @@
 
 	const cro = $derived(product.extensions?.wchs_cro);
 	const hasVariations = $derived(!!(product.has_options && product.prices.price_range));
-	const inStock = $derived(product.is_in_stock !== false);
+	const inStock = $derived(canPurchase(product));
+	const outOfStock = $derived(isOutOfStock(product));
 	const productHref = $derived(`/product/${product.slug}`);
 
 	const maxTierPct = $derived.by(() => {
@@ -90,15 +92,7 @@
 		return pretext.measure(product.name, 'title', cardWidth - 8, 20);
 	});
 
-	const ctaLabel = $derived.by(() => {
-		if (!inStock) return 'View details';
-		return 'Select options';
-	});
-
-	const ctaAria = $derived.by(() => {
-		if (!inStock) return `View details for ${product.name}`;
-		return `Select options for ${product.name}`;
-	});
+	const ctaAria = $derived(`Select options for ${product.name}`);
 
 	function reportProductLinkIntent(e: MouseEvent) {
 		const el = e.currentTarget;
@@ -119,7 +113,7 @@
 	}
 </script>
 
-<div class="store-card" class:is-oos={!inStock}>
+<div class="store-card" class:is-oos={outOfStock}>
 	<a class="store-card__media-link" href={productHref} aria-label={product.name} onclick={reportProductLinkIntent}>
 		<div class="store-card__media">
 			{#if product.images[0]}
@@ -142,7 +136,7 @@
 					</svg>
 				</div>
 			{/if}
-			{#if !inStock}
+			{#if outOfStock}
 				<span class="store-card__badge store-card__badge--oos">Out of stock</span>
 			{:else if product.on_sale}
 				<span class="store-card__badge">{saleBadgeRendered}</span>
@@ -159,7 +153,7 @@
 		</a>
 
 		<div class="store-card__foot">
-			{#if !inStock && config.data.product_card?.oos_treatment === 'hidden-price'}
+			{#if outOfStock && config.data.product_card?.oos_treatment === 'hidden-price'}
 				<div class="store-card__price-stack">
 					<span class="store-card__sold-out">Sold out</span>
 				</div>
@@ -172,7 +166,7 @@
 				</div>
 			{/if}
 
-			<a class="store-card__select" href={productHref} onclick={reportProductLinkIntent} aria-label={ctaAria}>{ctaLabel}</a>
+			<a class="store-card__select" href={productHref} onclick={reportProductLinkIntent} aria-label={ctaAria}>Select options</a>
 		</div>
 	</div>
 </div>
@@ -435,15 +429,5 @@
 	}
 	.store-card__select:active {
 		transform: scale(0.98);
-	}
-	.store-card.is-oos .store-card__select {
-		background: color-mix(in srgb, var(--fg) 12%, var(--bg));
-		color: var(--fg-muted);
-		border-color: var(--border);
-	}
-	.store-card.is-oos .store-card__select:hover {
-		background: var(--fg);
-		color: var(--bg);
-		border-color: var(--fg);
 	}
 </style>

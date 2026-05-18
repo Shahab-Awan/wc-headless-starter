@@ -10,7 +10,14 @@
 	import { onMount, untrack } from 'svelte';
 	import EmblaCarousel, { type EmblaCarouselType } from 'embla-carousel';
 	import { cart } from '$lib/wc/cart.svelte';
-	import { getProductsByIds, getVariations, type StoreProduct, type StoreProductVariation } from '$lib/wc/products';
+	import {
+		getProductsByIds,
+		getVariations,
+		findPurchasableDefaultSelection,
+		type StoreProduct,
+		type StoreProductVariation,
+	} from '$lib/wc/products';
+	import { canPurchase } from '$lib/wc/stock';
 
 	import { fade, fly } from 'svelte/transition';
 	import {
@@ -37,7 +44,11 @@
 		modalState = { ...getState(product), stepIdx: 0 };
 		modalVariations = [];
 		if (product.has_options && product.variations.length) {
-			modalVariations = await getVariations(product.variations.map(v => v.id));
+			modalVariations = await getVariations(product.variations.map((v) => v.id));
+			const defaults = findPurchasableDefaultSelection(product, modalVariations);
+			if (defaults && modalState) {
+				modalState = { ...modalState, attrs: defaults };
+			}
 		}
 	}
 
@@ -63,7 +74,7 @@
 			if (!otherOk) continue;
 			// Check stock from full variation data
 			const fullVar = modalVariations.find(v => v.id === vRef.id);
-			if (fullVar && fullVar.is_in_stock && fullVar.is_purchasable) return true;
+			if (fullVar && canPurchase(fullVar)) return true;
 		}
 		return false;
 	}
@@ -175,13 +186,17 @@
 			return;
 		}
 
+		const vid = product.has_options ? findVariationId(product, s.attrs) : null;
+		const variation = product.has_options
+			? Object.entries(s.attrs).map(([k, v]) => ({ attribute: k, value: v }))
+			: [];
+		const targetId = vid ?? product.id;
+		if (!canPurchase(product) && !product.has_options) return;
+		if (product.has_options && vid === null) return;
+
 		addingId = product.id;
 		try {
-			const vid = findVariationId(product, s.attrs);
-			const variation = product.has_options
-				? Object.entries(s.attrs).map(([k, v]) => ({ attribute: k, value: v }))
-				: [];
-			await cart.addItem(vid ?? product.id, s.qty, variation, { clicked_from: 'cart_cross_sell' });
+			await cart.addItem(targetId, s.qty, variation, { clicked_from: 'cart_cross_sell' });
 			miniStates.set(product.id, { ...s, justAdded: true });
 			miniStates = new Map(miniStates);
 			setTimeout(() => {
@@ -265,17 +280,22 @@
 		const ready = (!modalProduct.has_options || allSelected(modalProduct, modalState.attrs)) && isQty;
 		if (!ready) return;
 
+		const vid = modalProduct.has_options ? findVariationId(modalProduct, modalState.attrs) : null;
+		if (modalProduct.has_options && !vid) return;
+		const variation = modalProduct.has_options
+			? Object.entries(modalState.attrs).map(([k, v]) => ({ attribute: k, value: v }))
+			: [];
+		const targetId = vid ?? modalProduct.id;
+		const varRow = vid ? modalVariations.find((v) => v.id === vid) : null;
+		if (modalProduct.has_options) {
+			if (!varRow || !canPurchase(varRow)) return;
+		} else if (!canPurchase(modalProduct)) {
+			return;
+		}
+
 		addingId = modalProduct.id;
 		try {
-			const vid = modalProduct.has_options ? findVariationId(modalProduct, modalState.attrs) : null;
-			if (modalProduct.has_options && !vid) {
-				// Invalid combination — shouldn't happen if options are filtered correctly
-				return;
-			}
-			const variation = modalProduct.has_options
-				? Object.entries(modalState.attrs).map(([k, v]) => ({ attribute: k, value: v }))
-				: [];
-			await cart.addItem(vid ?? modalProduct.id, modalState.qty, variation, { clicked_from: 'cart_cross_sell' });
+			await cart.addItem(targetId, modalState.qty, variation, { clicked_from: 'cart_cross_sell' });
 			miniStates.set(modalProduct.id, { ...modalState, justAdded: true });
 			miniStates = new Map(miniStates);
 			closeModal();
@@ -344,7 +364,7 @@
 	async function addToCart(e: Event, product: StoreProduct) {
 		e.preventDefault();
 		e.stopPropagation();
-		if (addingId !== null) return;
+		if (addingId !== null || !canPurchase(product)) return;
 		addingId = product.id;
 		try {
 			await cart.addItem(product.id, 1, [], { clicked_from: 'cart_cross_sell' });
