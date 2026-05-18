@@ -742,13 +742,13 @@ function clPageUrl(): CLScalar {
 }
 
 /** CustomerLabs drops customProperties if fired before the snippet uid is ready. */
-function whenCustomerLabsReady(run: () => void): void {
+function whenCustomerLabsReady(run: () => void, maxAttempts = 50): void {
 	if (typeof window === 'undefined') return;
 	let attempts = 0;
 	const tick = () => {
 		const hasApi = typeof window._cl?.trackClick === 'function';
 		const hasUid = Boolean(window.CLabsgbVar?.generalProps?.uid);
-		if ((hasApi && hasUid) || attempts >= 50) {
+		if ((hasApi && hasUid) || attempts >= maxAttempts) {
 			if (hasApi) run();
 			return;
 		}
@@ -762,36 +762,24 @@ function clCurrencyCode(code?: string): string {
 	return (code || config.data.currency_code || 'USD').toUpperCase();
 }
 
-/** Maps to CustomerLabs event_attributes (customProperties), not only product_traits. */
-function clProductEventAttributes(p: {
+/** event_attributes for Product viewed / Added to cart (not product_traits). */
+function clProductCustomAttributes(p: {
 	pageUrl: string;
 	currency: string;
 	priceMinor: string;
 	currency_minor_unit: number;
 	name: string;
-	id: number;
-	quantity?: number;
-	extra?: Record<string, CLScalar>;
 }): Record<string, CLScalar> {
 	const currency = clCurrencyCode(p.currency);
-	const qty = Math.max(1, Math.round(p.quantity ?? 1));
-	const lineMinor = String(Math.round((Number(p.priceMinor) || 0) * qty));
 	return {
 		page_url: clStr(p.pageUrl),
-		product_id: { t: 'number', v: String(p.id) },
 		product_name: clStr(p.name),
 		product_price: clMajorFromMinor(p.priceMinor, currency, p.currency_minor_unit),
-		product_quantity: { t: 'number', v: String(qty) },
 		currency: clStr(currency),
-		value: clMajorFromMinor(lineMinor, currency, p.currency_minor_unit),
-		...p.extra,
 	};
 }
 
-function clCartEventAttributes(
-	cart: StoreApiCart,
-	extra?: Record<string, CLScalar>,
-): Record<string, CLScalar> {
+function clCheckoutCustomAttributes(cart: StoreApiCart): Record<string, CLScalar> {
 	const currency = clCurrencyCode(cart.totals.currency_code);
 	const mu = cart.totals.currency_minor_unit;
 	return {
@@ -799,11 +787,18 @@ function clCartEventAttributes(
 		currency: clStr(currency),
 		value: clMajorFromMinor(cart.totals.total_price, currency, mu),
 		subtotal: clMajorFromMinor(cart.totals.total_items, currency, mu),
-		tax: clMajorFromMinor(cart.totals.total_tax, currency, mu),
 		shipping: clMajorFromMinor(cart.totals.total_shipping, currency, mu),
-		discount: clMajorFromMinor(cart.totals.total_discount, currency, mu),
 		items_count: { t: 'number', v: String(cart.items_count) },
-		...extra,
+	};
+}
+
+function clPurchasedCustomAttributes(order: StoreOrder): Record<string, CLScalar> {
+	const t = order.totals;
+	const currency = clCurrencyCode(t.currency_code);
+	return {
+		order_id: clStr(String(order.id)),
+		currency: clStr(currency),
+		value: clMajorFromMinor(t.total_price, currency, t.currency_minor_unit),
 	};
 }
 
@@ -879,14 +874,12 @@ export function trackCustomerLabsProductViewed(product: {
 					image: product.images?.[0]?.src,
 				}),
 			],
-			customProperties: clProductEventAttributes({
+			customProperties: clProductCustomAttributes({
 				pageUrl,
 				currency,
 				priceMinor: product.prices.price,
 				currency_minor_unit: product.prices.currency_minor_unit,
 				name: product.name,
-				id: product.id,
-				quantity: 1,
 			}),
 		});
 	});
@@ -918,16 +911,16 @@ export function trackCustomerLabsProductClickedFromListing(p: {
 					image: p.image,
 				}),
 			],
-			customProperties: clProductEventAttributes({
-				pageUrl,
-				currency,
-				priceMinor: p.prices.price,
-				currency_minor_unit: p.prices.currency_minor_unit,
-				name: p.name,
-				id: p.id,
-				quantity: 1,
-				extra: { clicked_from: clStr(p.listingSource) },
-			}),
+			customProperties: {
+				...clProductCustomAttributes({
+					pageUrl,
+					currency,
+					priceMinor: p.prices.price,
+					currency_minor_unit: p.prices.currency_minor_unit,
+					name: p.name,
+				}),
+				clicked_from: clStr(p.listingSource),
+			},
 		});
 	});
 }
@@ -961,15 +954,12 @@ export function trackCustomerLabsAddedToCart(item: {
 					image: item.image,
 				}),
 			],
-			customProperties: clProductEventAttributes({
+			customProperties: clProductCustomAttributes({
 				pageUrl,
 				currency,
 				priceMinor: item.price,
 				currency_minor_unit: item.currency_minor_unit,
 				name: item.name,
-				id: item.id,
-				quantity: qty,
-				extra: { clicked_from: clStr(item.clicked_from ?? 'product_page') },
 			}),
 		});
 	});
@@ -998,7 +988,7 @@ export function trackCustomerLabsCheckoutMade(cart: StoreApiCart): void {
 	whenCustomerLabsReady(() => {
 		window._cl?.trackClick?.('Checkout made', {
 			productProperties,
-			customProperties: clCartEventAttributes(cart),
+			customProperties: clCheckoutCustomAttributes(cart),
 		});
 	});
 }
@@ -1007,17 +997,6 @@ export function trackCustomerLabsPurchased(order: StoreOrder): void {
 	if (typeof window === 'undefined') return;
 	const t = order.totals;
 	const currency = clCurrencyCode(t.currency_code);
-	const customProperties: Record<string, CLScalar> = {
-		page_url: clPageUrl(),
-		transaction_id: clStr(String(order.id)),
-		currency: clStr(currency),
-		subtotal: clMajorFromMinor(t.total_items, currency, t.currency_minor_unit),
-		tax: clMajorFromMinor(t.total_tax, currency, t.currency_minor_unit),
-		shipping: clMajorFromMinor(t.total_shipping, currency, t.currency_minor_unit),
-		discount: clMajorFromMinor(t.total_discount, currency, t.currency_minor_unit),
-		value: clMajorFromMinor(t.total_price, currency, t.currency_minor_unit),
-		items_count: { t: 'number', v: String(order.items.length) },
-	};
 
 	const productProperties = order.items.map((li) => {
 		const qty = Math.max(1, li.quantity);
@@ -1033,7 +1012,23 @@ export function trackCustomerLabsPurchased(order: StoreOrder): void {
 		});
 	});
 
-	whenCustomerLabsReady(() => {
+	const customProperties = clPurchasedCustomAttributes(order);
+	const dedupeKey = `wchs_cl_purchased_${order.id}`;
+
+	const fire = () => {
+		try {
+			if (sessionStorage.getItem(dedupeKey)) return;
+		} catch {
+			/* private mode */
+		}
 		window._cl?.trackClick?.('Purchased', { productProperties, customProperties });
-	});
+		try {
+			sessionStorage.setItem(dedupeKey, '1');
+		} catch {
+			/* private mode */
+		}
+	};
+
+	// Thank-you page: wait longer for the CustomerLabs snippet (per their docs).
+	whenCustomerLabsReady(fire, 150);
 }
