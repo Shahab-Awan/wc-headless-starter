@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "sync:styles": "node ../scripts/sync-spa-design-styles.mjs",
+    "predev": "npm run sync:styles",
+    "precheck": "npm run sync:styles",
+    "prebuild": "npm run sync:styles",
     "dev": "vite dev --port 5175 --host localhost --strictPort",
     "build": "vite build",
     "preview": "vite preview --port 5175",

@@ -2,6 +2,9 @@ node_modules
 .svelte-kit
 build
 .vite
+# Generated from wp/mu-plugins/wchs-design-system/assets/ (see scripts/sync-spa-design-styles.mjs)
+src/lib/styles/tokens.css
+src/lib/styles/header.css
 *.log
 .env
 .env.*

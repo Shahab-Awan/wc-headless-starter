@@ -3,7 +3,7 @@
  * Single source of truth for both the SPA (+layout.svelte) and WP
  * (HeaderRenderer.php). Changes here apply to BOTH implementations.
  *
- * The SPA imports this via symlink at spa/src/lib/styles/header.css.
+ * The SPA imports a copy at spa/src/lib/styles/header.css (scripts/sync-spa-design-styles.mjs).
  * The WP design system loads it as part of wc-overrides.css via @import
  * or directly in Assets.php.
  *

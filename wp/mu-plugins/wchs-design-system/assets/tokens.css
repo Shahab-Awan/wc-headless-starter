@@ -7,7 +7,7 @@
  * Dark-dominant palette with cool-slate neutrals. Zero shadows — depth
  * lives in section alternation, not CSS box-shadow.
  *
- * Consumed by both the SPA (via symlink at spa/src/lib/styles/tokens.css)
+ * Consumed by both the SPA (copy at spa/src/lib/styles/tokens.css via scripts/sync-spa-design-styles.mjs)
  * and the WP shim theme (via wp_enqueue_style in functions.php).
  */
 
