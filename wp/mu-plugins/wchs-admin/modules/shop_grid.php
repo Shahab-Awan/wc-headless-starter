@@ -10,7 +10,7 @@ return [
 		'spacing'    => true,
 		'visibility' => true,
 		'header'     => true,
-		'contexts'   => [ 'shop' ],
+		'contexts'   => [ 'homepage', 'shop' ],
 	],
 	'fields'   => [
 		[ 'id' => 'title', 'type' => 'text', 'default' => '' ],

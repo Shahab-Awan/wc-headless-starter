@@ -10,7 +10,7 @@
 	import SplitValue from '$lib/components/SplitValue.svelte';
 	import FeatureHighlights from '$lib/components/FeatureHighlights.svelte';
 	import OrderHandling from '$lib/components/OrderHandling.svelte';
-	import ShopGrid from '$lib/components/ShopGrid.svelte';
+	import ShopCatalog from '$lib/components/ShopCatalog.svelte';
 	import ContactForm from '$lib/components/ContactForm.svelte';
 	import Hero from '$lib/components/Hero.svelte';
 	import CTA from '$lib/components/CTA.svelte';
@@ -85,7 +85,14 @@
 
 {#each modules as mod}
 	<div class="wchs-mod-wrap" data-module-type={mod.type} data-module-id={mod.id ?? ''} style="display: contents">
-		{#if mod.type === 'product_slider'}
+		{#if mod.type === 'product_slider' && mod.config.source === 'all'}
+			<ShopCatalog
+				spacing_v={mod.spacing_v || 'normal'}
+				spacing_h={mod.spacing_h || 'normal'}
+				showPageHead={false}
+				showIntro={true}
+			/>
+		{:else if mod.type === 'product_slider'}
 			<HomepageProductSlider config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 		{:else if mod.type === 'review_slider'}
 			<ReviewSlider title={mod.config.title || 'What customers say'} photos_only={mod.config.photos_only || false} product_ids={mod.config.product_ids || []} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
@@ -106,7 +113,12 @@
 		{:else if mod.type === 'feature_highlights'}
 			<FeatureHighlights config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 		{:else if mod.type === 'shop_grid'}
-			<ShopGrid title={mod.config.title || 'Shop'} category={mod.config.category} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
+			<ShopCatalog
+				spacing_v={mod.spacing_v || 'normal'}
+				spacing_h={mod.spacing_h || 'normal'}
+				showPageHead={false}
+				showIntro={true}
+			/>
 		{:else if mod.type === 'contact_form'}
 			<ContactForm config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} resolved={mod.resolved} />
 		{:else if mod.type === 'hero'}

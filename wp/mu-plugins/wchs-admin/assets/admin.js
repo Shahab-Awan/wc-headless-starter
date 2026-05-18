@@ -215,7 +215,7 @@
 		spacer: ['homepage','shop','pdp','pages'],
 		logo_strip: ['homepage','shop','pdp','pages'],
 		video: ['homepage','shop','pdp','pages'],
-		shop_grid: ['shop'],
+		shop_grid: ['homepage', 'shop'],
 		category_grid: ['homepage','pages'],
 		contact_form: ['pages']
 	};

@@ -20,10 +20,24 @@
 		spacing_v = 'normal',
 		spacing_h = 'normal',
 		searchQuery = '',
+		showPageHead = true,
+		pageTitle = 'Shop',
+		showIntro = false,
+		introEyebrow = 'Research catalog',
+		introHeadline = 'Research-grade peptides, organized by category',
+		introSubheadline = 'Browse our most requested compounds by research area. Select a category below to jump to products.',
 	}: {
 		spacing_v?: SpacingPreset;
 		spacing_h?: SpacingPreset;
 		searchQuery?: string;
+		/** Hide the page H1 (e.g. when embedded on the homepage). */
+		showPageHead?: boolean;
+		pageTitle?: string;
+		/** Centered eyebrow + headline block above category nav (homepage). */
+		showIntro?: boolean;
+		introEyebrow?: string;
+		introHeadline?: string;
+		introSubheadline?: string;
 	} = $props();
 
 	let loading = $state(true);
@@ -165,15 +179,25 @@
 	class:is-h-spacious={spacing_h === 'spacious'}
 	aria-label="Shop catalog"
 >
-	<header class="shop-cat__page-head">
-		<h1 class="shop-cat__page-title">
-			{#if isSearchMode}
-				Search: {trimmedSearch}
-			{:else}
-				Shop
-			{/if}
-		</h1>
-	</header>
+	{#if showPageHead}
+		<header class="shop-cat__page-head">
+			<h1 class="shop-cat__page-title">
+				{#if isSearchMode}
+					Search: {trimmedSearch}
+				{:else}
+					{pageTitle}
+				{/if}
+			</h1>
+		</header>
+	{/if}
+
+	{#if showIntro && !isSearchMode}
+		<header class="shop-cat__intro">
+			<p class="shop-cat__intro-eyebrow">{introEyebrow}</p>
+			<h2 class="shop-cat__intro-title">{introHeadline}</h2>
+			<p class="shop-cat__intro-sub">{introSubheadline}</p>
+		</header>
+	{/if}
 
 	{#if loading}
 		<p class="shop-cat__status" role="status">Loading catalog…</p>
@@ -289,6 +313,39 @@
 		font-weight: 700;
 		letter-spacing: -0.03em;
 		color: var(--fg);
+	}
+
+	.shop-cat__intro {
+		text-align: center;
+		max-width: 40rem;
+		margin: 0 auto 36px;
+		padding-top: 8px;
+	}
+	.shop-cat__intro-eyebrow {
+		margin: 0 0 14px;
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: var(--fg-muted);
+	}
+	.shop-cat__intro-title {
+		margin: 0 0 16px;
+		font-family: var(--font-heading, var(--font-sans));
+		font-size: clamp(1.75rem, 4.2vw, 2.5rem);
+		font-weight: 700;
+		letter-spacing: -0.03em;
+		line-height: 1.12;
+		color: var(--fg-strong, var(--fg));
+		text-wrap: balance;
+	}
+	.shop-cat__intro-sub {
+		margin: 0 auto;
+		max-width: 34rem;
+		font-size: 15px;
+		line-height: 1.6;
+		color: var(--fg-muted);
+		text-wrap: pretty;
 	}
 
 	.shop-cat__status {
