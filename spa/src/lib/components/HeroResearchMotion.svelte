@@ -42,15 +42,15 @@
 		extrabold: '800',
 		black: '900',
 	};
-	const headlineWt = $derived(headlineWeightMap[hero.headline_weight ?? 'bold'] ?? '700');
+	const headlineWt = $derived(headlineWeightMap[hero.headline_weight ?? 'medium'] ?? '500');
 	const headlineSz = $derived(
 		hero.headline_size === 'xl'
-			? 'clamp(2rem, 6vw, 3.35rem)'
+			? 'clamp(2.25rem, 6.8vw, 3.75rem)'
 			: hero.headline_size === 'm'
-				? 'clamp(1.65rem, 4.8vw, 2.6rem)'
+				? 'clamp(1.85rem, 5.2vw, 2.85rem)'
 				: hero.headline_size === 's'
-					? 'clamp(1.45rem, 4vw, 2.1rem)'
-					: 'clamp(1.85rem, 5.5vw, 3rem)'
+					? 'clamp(1.55rem, 4.5vw, 2.25rem)'
+					: 'clamp(2.05rem, 6.2vw, 3.45rem)'
 	);
 	const subSz = $derived(
 		hero.subheadline_size === 'l'
@@ -61,10 +61,36 @@
 	);
 
 	const badgeText = $derived(hero.research_badge?.trim() || '• RESEARCH USE ONLY');
-	const catalogLabel = $derived.by(() => {
-		const t = hero.cta_text?.trim() || 'Browse catalog';
+	function ctaLabel(text: string | undefined, fallback: string): string {
+		const t = text?.trim() || fallback;
 		return /→|->|›/.test(t) ? t : `${t} →`;
-	});
+	}
+
+	function splitHeadlineLines(text: string): { primary: string; soft?: string } {
+		const h = text.trim();
+		if (!h) return { primary: '' };
+		if (h.includes('\n')) {
+			const parts = h.split(/\n+/).map((s) => s.trim()).filter(Boolean);
+			return { primary: parts[0] ?? '', soft: parts[1] };
+		}
+		const peptidesIdx = h.toLowerCase().lastIndexOf(' research peptides');
+		if (peptidesIdx > 0) {
+			return {
+				primary: h.slice(0, peptidesIdx).trim(),
+				soft: h.slice(peptidesIdx).trim(),
+			};
+		}
+		const dot = h.indexOf('. ');
+		if (dot > 0) {
+			return { primary: h.slice(0, dot + 1).trim(), soft: h.slice(dot + 2).trim() };
+		}
+		return { primary: h };
+	}
+
+	const primaryLabel = $derived.by(() => ctaLabel(hero.cta_text, 'Shop All Peptides'));
+	const secondaryLabel = $derived.by(() =>
+		ctaLabel(hero.cta_secondary_text, 'View COA Library')
+	);
 	const stats = $derived(
 		Array.isArray(hero.research_stats) && hero.research_stats.length > 0
 			? hero.research_stats
@@ -124,12 +150,22 @@
 		<p class="hero-rx__badge">{badgeText}</p>
 
 		{#if hero.headline?.trim()}
-			<h1 class="hero-rx__title" style="font-family: {headlineFontFamily}; font-weight: {headlineWt}; font-size: {headlineSz};">
-				{hero.headline}
+			{@const headlineLines = splitHeadlineLines(hero.headline)}
+			<h1
+				class="hero-rx__title"
+				style="font-family: {headlineFontFamily}; font-size: {headlineSz}; --hero-rx-title-weight: {headlineWt};"
+			>
+				<span class="hero-rx__title-line hero-rx__title-line--primary">{headlineLines.primary}</span>
+				{#if headlineLines.soft}
+					<span class="hero-rx__title-line hero-rx__title-line--soft">{headlineLines.soft}</span>
+				{/if}
 			</h1>
 		{:else if brandName?.trim()}
-			<h1 class="hero-rx__title" style="font-family: {headlineFontFamily}; font-weight: {headlineWt}; font-size: {headlineSz};">
-				{brandName}
+			<h1
+				class="hero-rx__title"
+				style="font-family: {headlineFontFamily}; font-size: {headlineSz}; --hero-rx-title-weight: {headlineWt};"
+			>
+				<span class="hero-rx__title-line hero-rx__title-line--primary">{brandName}</span>
 			</h1>
 		{/if}
 
@@ -139,7 +175,15 @@
 
 		{#if hero.show_cta !== false}
 			<div class="hero-rx__ctas">
-				<a href="/shop" class="hero-rx__cta">{catalogLabel}</a>
+				<a href={hero.cta_link?.trim() || '/shop'} class="hero-rx__cta hero-rx__cta--primary">
+					{primaryLabel}
+				</a>
+				<a
+					href={hero.cta_secondary_link?.trim() || '/coa-library'}
+					class="hero-rx__cta hero-rx__cta--secondary"
+				>
+					{secondaryLabel}
+				</a>
 			</div>
 		{/if}
 
@@ -438,11 +482,23 @@
 
 	.hero-rx__title {
 		margin: 0 0 clamp(16px, 2.5vw, 24px);
-		line-height: 1.12;
-		letter-spacing: -0.035em;
-		color: var(--rx-fg);
-		white-space: pre-line;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.14em;
+		line-height: 1.06;
+		letter-spacing: -0.03em;
+		font-weight: var(--hero-rx-title-weight, 500);
 		text-wrap: balance;
+	}
+	.hero-rx__title-line {
+		display: block;
+	}
+	.hero-rx__title-line--primary {
+		color: var(--rx-fg);
+	}
+	.hero-rx__title-line--soft {
+		color: color-mix(in srgb, var(--rx-fg) 58%, var(--accent) 42%);
 	}
 
 	.hero-rx__lede {
@@ -459,6 +515,7 @@
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: center;
+		gap: 12px;
 		margin-bottom: clamp(36px, 6vw, 56px);
 	}
 
@@ -471,26 +528,40 @@
 		border-radius: 999px;
 		font-size: 13px;
 		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
+		letter-spacing: 0.04em;
 		text-decoration: none;
-		background: transparent;
-		color: var(--rx-fg);
-		border: 1px solid color-mix(in srgb, var(--rx-fg) 58%, transparent);
+		border: 1px solid transparent;
 		transition:
 			transform var(--dur-fast) var(--ease),
 			background var(--dur-fast) var(--ease),
 			color var(--dur-fast) var(--ease),
-			border-color var(--dur-fast) var(--ease);
+			border-color var(--dur-fast) var(--ease),
+			filter var(--dur-fast) var(--ease);
+	}
+
+	.hero-rx__cta--primary {
+		background: var(--rx-fg);
+		color: color-mix(in srgb, var(--accent) 18%, #0a0a0a);
+		border-color: var(--rx-fg);
+	}
+
+	.hero-rx__cta--primary:hover {
+		filter: brightness(1.04);
+	}
+
+	.hero-rx__cta--secondary {
+		background: transparent;
+		color: var(--rx-fg);
+		border-color: color-mix(in srgb, var(--rx-fg) 65%, transparent);
+	}
+
+	.hero-rx__cta--secondary:hover {
+		border-color: var(--rx-fg);
+		background: color-mix(in srgb, var(--rx-fg) 10%, transparent);
 	}
 
 	.hero-rx__cta:active {
 		transform: scale(0.98);
-	}
-
-	.hero-rx__cta:hover {
-		border-color: var(--rx-fg);
-		background: color-mix(in srgb, var(--rx-fg) 10%, transparent);
 	}
 
 	.hero-rx__stats {
@@ -552,28 +623,75 @@
 		}
 	}
 
+	/* Mobile: shorter hero, tighter top spacing, row layouts for stats + CTAs. */
 	@media (max-width: 639px) {
-		.hero-rx__stats {
-			flex-direction: column;
-			flex-wrap: nowrap;
-			border-top: none;
-			padding-top: 8px;
+		.hero-rx {
+			min-height: min(78svh, 640px);
+			padding: 16px 16px 36px;
 		}
-		.hero-rx__stat {
-			padding-left: 0;
-			padding-right: 0;
-			border-bottom: 1px solid color-mix(in srgb, var(--rx-fg) 12%, transparent);
+		.hero-rx__inner {
+			padding-inline: 4px;
 		}
-		.hero-rx__stat:last-child {
-			border-bottom: none;
+		.hero-rx__badge {
+			margin-bottom: 10px;
+			padding: 6px 14px;
+			font-size: 10px;
+		}
+		.hero-rx__title {
+			font-size: clamp(1.85rem, 7.5vw, 2.45rem) !important;
+			--hero-rx-title-weight: 500;
+			line-height: 1.06;
+			margin-bottom: 12px;
+			letter-spacing: -0.03em;
+		}
+		.hero-rx__lede {
+			font-size: clamp(0.86rem, 3.4vw, 0.98rem) !important;
+			margin-bottom: 18px;
+			line-height: 1.45;
 		}
 		.hero-rx__ctas {
-			flex-direction: column;
+			flex-direction: row;
+			flex-wrap: nowrap;
+			justify-content: center;
+			gap: 10px;
 			width: 100%;
+			max-width: 100%;
+			margin-bottom: 20px;
 		}
 		.hero-rx__cta {
+			flex: 1 1 0;
+			min-width: 0;
 			width: auto;
-			max-width: min(100%, 320px);
+			max-width: none;
+			padding: 12px 14px;
+			font-size: 10px;
+			letter-spacing: 0.03em;
+			min-height: 44px;
+		}
+		.hero-rx__stats {
+			flex-direction: row;
+			flex-wrap: nowrap;
+			align-items: stretch;
+			border-top: 1px solid color-mix(in srgb, var(--rx-fg) 14%, transparent);
+			padding-top: 10px;
+		}
+		.hero-rx__stat {
+			flex: 1 1 0;
+			min-width: 0;
+			padding: 8px 4px;
+			border-bottom: none;
+		}
+		.hero-rx__stat-rule {
+			display: block;
+			margin: 8px 0;
+		}
+		.hero-rx__stat-value {
+			font-size: clamp(1rem, 4.2vw, 1.25rem);
+		}
+		.hero-rx__stat-label {
+			font-size: 8px;
+			letter-spacing: 0.1em;
+			max-width: none;
 		}
 	}
 

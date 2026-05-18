@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { config } from '$lib/config.svelte';
 	import AccessGate from '$lib/components/AccessGate.svelte';
-	import ShopGrid from '$lib/components/ShopGrid.svelte';
+	import ShopCatalog from '$lib/components/ShopCatalog.svelte';
 	import SEO from '$lib/components/SEO.svelte';
 	import HomepageProductSlider from '$lib/components/HomepageProductSlider.svelte';
 	import ReviewSlider from '$lib/components/ReviewSlider.svelte';
@@ -17,6 +18,7 @@
 	import ContactForm from '$lib/components/ContactForm.svelte';
 
 	const shopModules = $derived(config.data.shop?.modules ?? []);
+	const shopSearch = $derived(page.url.searchParams.get('search') ?? '');
 
 	const shopBreadcrumb = $derived.by(() => {
 		const origin = typeof window !== 'undefined'
@@ -42,7 +44,11 @@
 <SEO title="Shop" description={`${config.data.brand_name} — browse all products`} url={shopUrl} type="website" schema={shopBreadcrumb} />
 
 <AccessGate requires="products">
-	<ShopGrid title="Shop" spacing_h={config.data.shop?.spacing_h ?? 'normal'} />
+	<ShopCatalog
+		spacing_v="normal"
+		spacing_h={config.data.shop?.spacing_h ?? 'normal'}
+		searchQuery={shopSearch}
+	/>
 
 	{#each shopModules as mod}
 		{#if mod.type === 'product_slider'}

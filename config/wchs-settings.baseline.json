@@ -35,8 +35,9 @@
     "internal_rate_limit_enabled": true,
 
     "header_links": [
-      { "label": "Shop",    "url": "/shop",    "display": "text", "icon": "",     "accent": false, "mobile_pin": false },
-      { "label": "Account", "url": "/account", "display": "icon", "icon": "user", "accent": true,  "mobile_pin": false }
+      { "label": "Shop",        "url": "/shop",        "display": "text", "icon": "",     "accent": false, "mobile_pin": false },
+      { "label": "COA Library", "url": "/coa-library", "display": "text", "icon": "",     "accent": false, "mobile_pin": false },
+      { "label": "Account",     "url": "/account",     "display": "icon", "icon": "user", "accent": true,  "mobile_pin": false }
     ],
     "header_toggle_accent": true,
     "header_cart_accent": true,

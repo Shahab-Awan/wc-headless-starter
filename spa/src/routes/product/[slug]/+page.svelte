@@ -526,9 +526,9 @@
 					attribute: attr.name,
 					value: selection[attr.name]
 				}));
-				await cart.addItem(selectedVariationId, quantity, variationPayload);
+				await cart.addItem(selectedVariationId, quantity, variationPayload, { clicked_from: 'product_page' });
 			} else {
-				await cart.addItem(product.id, quantity);
+				await cart.addItem(product.id, quantity, [], { clicked_from: 'product_page' });
 			}
 			justAdded = true;
 			setTimeout(() => (justAdded = false), 1500);

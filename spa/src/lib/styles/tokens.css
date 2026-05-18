@@ -1,1 +1,175 @@
-../../../../wp/mu-plugins/wchs-design-system/assets/tokens.css
+/*
+ * Design tokens — Runway-inspired (see dev/skills/reference/awesome-design-md/design-md/runwayml).
+ *
+ * Commitment: one typeface (Inter) does everything. No mono, no display
+ * pairing. Variety comes from size, weight, case, and tracking.
+ *
+ * Dark-dominant palette with cool-slate neutrals. Zero shadows — depth
+ * lives in section alternation, not CSS box-shadow.
+ *
+ * Consumed by both the SPA (via symlink at spa/src/lib/styles/tokens.css)
+ * and the WP shim theme (via wp_enqueue_style in functions.php).
+ */
+
+:root,
+[data-theme='light'] {
+	/* Surfaces */
+	--bg: #ffffff;
+	--bg-elevated: #ffffff;
+	--bg-muted: #f4f5f7;
+	--bg-sunken: #e9ecf2;  /* Runway "cool cloud" */
+
+	/* Foreground */
+	--fg: #0c0c0c;          /* Runway "dark link" — near-black, not pure */
+	--fg-strong: #000000;
+	--fg-muted: #767d88;    /* Runway "cool slate" — cool blue-gray secondary */
+	--fg-faint: #a7a7a7;    /* Runway "muted gray" */
+
+	/* Borders — light */
+	--border: #c9ccd1;      /* Runway "cool silver" */
+	--border-strong: #7d848e;
+	--border-faint: #e9ecf2;
+
+	/* Accent / CTA */
+	--accent: #0c0c0c;
+	--accent-fg: #ffffff;
+
+	/* Overlay / status */
+	--overlay: rgba(0, 0, 0, 0.5);
+	--danger: #a30000;
+	--danger-bg: rgba(163, 0, 0, 0.08);
+	--success: #0a7a2f;
+	--success-bg: rgba(10, 122, 47, 0.08);
+
+	/* Elevation — Runway uses ZERO shadows; these are reserved for
+	   product-card hover micro-lift only */
+	--shadow-lift: 0 8px 24px rgba(12, 12, 12, 0.06);
+
+	/* Focus */
+	--focus-ring: 0 0 0 2px var(--fg);
+
+	/* Type */
+	--font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	/* Kept for any truly tabular contexts where we need fixed-width
+	   digit columns — but per Runway we prefer Inter with font-variant-numeric */
+	--font-mono: 'Inter', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+	/* Radius — Runway is subtly rounded, never pill */
+	--radius-xs: 2px;
+	--radius-sm: 4px;
+	--radius-md: 6px;
+	--radius-lg: 8px;
+
+	/* Motion */
+	--ease: cubic-bezier(0.4, 0, 0.2, 1);
+	--ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+	--ease-snap: cubic-bezier(0.5, 0, 0.2, 1);
+	--dur-micro: 120ms;
+	--dur-fast: 180ms;
+	--dur-med: 280ms;
+	--dur-slow: 400ms;
+
+	/* Homepage / module vertical rhythm (overridable via WCHS Design tokens) */
+	--wchs-spacing-v-normal: 48px;
+	--wchs-spacing-v-compact: 20px;
+	--wchs-spacing-v-spacious: 72px;
+}
+
+[data-theme='dark'] {
+	--bg: #000000;              /* Runway Black — true black */
+	--bg-elevated: #0a0a0a;
+	--bg-muted: #141414;
+	--bg-sunken: #1a1a1a;
+
+	--fg: #ffffff;
+	--fg-strong: #ffffff;
+	--fg-muted: #7d848e;        /* Runway "mid slate" — cool tertiary */
+	--fg-faint: #5a5f66;
+
+	--border: #27272a;          /* Runway border dark */
+	--border-strong: #3a3a3f;
+	--border-faint: #1a1a1a;
+
+	--accent: #ffffff;
+	--accent-fg: #000000;
+
+	--overlay: rgba(0, 0, 0, 0.78);
+	--danger: #ff6b6b;
+	--danger-bg: rgba(255, 107, 107, 0.12);
+	--success: #4ade80;
+	--success-bg: rgba(74, 222, 128, 0.12);
+
+	--shadow-lift: 0 8px 28px rgba(0, 0, 0, 0.55);
+	--focus-ring: 0 0 0 2px #ffffff;
+}
+
+/* Auto dark mode for users who haven't explicitly toggled */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		--bg: #000000;
+		--bg-elevated: #0a0a0a;
+		--bg-muted: #141414;
+		--bg-sunken: #1a1a1a;
+		--fg: #ffffff;
+		--fg-strong: #ffffff;
+		--fg-muted: #7d848e;
+		--fg-faint: #5a5f66;
+		--border: #27272a;
+		--border-strong: #3a3a3f;
+		--border-faint: #1a1a1a;
+		--accent: #ffffff;
+		--accent-fg: #000000;
+		--overlay: rgba(0, 0, 0, 0.78);
+		--danger: #ff6b6b;
+		--danger-bg: rgba(255, 107, 107, 0.12);
+		--success: #4ade80;
+		--success-bg: rgba(74, 222, 128, 0.12);
+		--shadow-lift: 0 8px 28px rgba(0, 0, 0, 0.55);
+		--focus-ring: 0 0 0 2px #ffffff;
+	}
+}
+
+html {
+	background: var(--bg);
+	color: var(--fg);
+	font-family: var(--font-sans);
+	font-feature-settings: 'cv11', 'ss01', 'ss03';  /* Inter: cleaner a/g/l */
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+/* color-scheme MUST be per-theme, not generic "light dark". The generic
+   value causes native browser controls (scrollbars, selects, date
+   pickers) to follow the OS preference even when data-theme is set
+   to the opposite, creating a visible flash on component mount. */
+html[data-theme='light'] { color-scheme: light; }
+html[data-theme='dark']  { color-scheme: dark; }
+
+/* Tabular-numerals helper. Use on price columns, quantity displays,
+   countdowns — anywhere digit alignment matters. Inter has excellent
+   tabular figures baked in. */
+.tabular-nums,
+[data-tabular] {
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: 'tnum' on, 'lnum' on;
+}
+
+/* Shared storefront module titles — FAQs, catalog rails, category grid, comparison, etc. */
+.wchs-section-heading {
+	font-family: var(--font-heading, var(--font-sans));
+	font-size: clamp(1.5rem, 3.25vw, 2.125rem);
+	font-weight: 800;
+	letter-spacing: -0.025em;
+	line-height: 1.15;
+	color: var(--fg-strong);
+	text-transform: none;
+	margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after {
+		animation-duration: 0.001ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.001ms !important;
+		scroll-behavior: auto !important;
+	}
+}

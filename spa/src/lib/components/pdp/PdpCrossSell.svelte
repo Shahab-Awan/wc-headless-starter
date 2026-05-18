@@ -1,7 +1,7 @@
 <script lang="ts">
 	import EmblaCarousel, { type EmblaCarouselType, type EmblaOptionsType } from 'embla-carousel';
 	import { onDestroy } from 'svelte';
-	import { config } from '$lib/config.svelte';
+	import { config, isCartCrossSellBlockedProduct } from '$lib/config.svelte';
 	import ProductCard from '$lib/components/ProductCard.svelte';
 	import type { StoreProduct } from '$lib/wc/products';
 
@@ -18,7 +18,11 @@
 	const viewAllUrl = $derived(copy.view_all_url ?? '/shop');
 
 	const visible = $derived(
-		products.filter((p) => config.data.product_card?.show_oos_cards !== false || p.is_in_stock !== false)
+		products.filter(
+			(p) =>
+				!isCartCrossSellBlockedProduct(p.id, p.slug) &&
+				(config.data.product_card?.show_oos_cards !== false || p.is_in_stock !== false)
+		)
 	);
 
 	let viewport: HTMLElement;

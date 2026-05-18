@@ -373,7 +373,9 @@ function wchs_cro_product_data( $product ) {
 		'regular_price'  => (int) round( $regular_major * $minor ),
 		'tier_type'      => wchs_cro_get_tier_rules( $product )['type'],
 		'tiers'          => wchs_cro_build_tier_rows( $product ),
-		'cross_sell_ids' => array_values( array_map( 'intval', (array) $product->get_cross_sell_ids() ) ),
+		'cross_sell_ids' => wchs_cro_filter_cart_cross_sell_ids(
+			array_values( array_map( 'intval', (array) $product->get_cross_sell_ids() ) )
+		),
 		'coa_url'        => $coa_url ? esc_url_raw( $coa_url ) : '',
 		'coa_batch'      => wchs_cro_coa_meta( $product_id, '_wchs_coa_batch', $parent_id ),
 		'coa_lab'        => wchs_cro_coa_meta( $product_id, '_wchs_coa_lab', $parent_id ),
@@ -565,7 +567,9 @@ function wchs_cro_cart_item_data( $cart_item ) {
 		'savings_pct'          => $savings_pct,
 		'next_tier'            => $next_tier,
 		'bundle_label'         => wchs_cro_cart_item_bundle_label( $qty, $savings_line, $native_rules, $rules_data ),
-		'cross_sell_ids'       => array_values( array_map( 'intval', (array) $product->get_cross_sell_ids() ) ),
+		'cross_sell_ids'       => wchs_cro_filter_cart_cross_sell_ids(
+			array_values( array_map( 'intval', (array) $product->get_cross_sell_ids() ) )
+		),
 	];
 }
 
@@ -583,12 +587,21 @@ function wchs_cro_cart_item_schema() {
 }
 
 /**
- * Default product slugs never shown in the slide-cart "You might also like" rail.
+ * Default product slugs hidden from shop/catalog and never recommended.
  *
  * @return string[]
  */
 function wchs_cro_cart_cross_sell_default_exclude_slugs(): array {
 	return [ 'bac-water-10ml', 'shipping-protection' ];
+}
+
+/**
+ * Product IDs excluded from shop grids, sliders, and recommendations.
+ *
+ * @return int[]
+ */
+function wchs_cro_catalog_excluded_product_ids(): array {
+	return wchs_cro_cart_cross_sell_excluded_product_ids();
 }
 
 /**
@@ -966,4 +979,42 @@ add_action(
 	},
 	15,
 	1
+);
+
+/**
+ * Keep ancillary products (shipping protection, BAC water) out of Store API catalog queries.
+ */
+add_filter(
+	'woocommerce_product_data_store_cpt_get_products_query',
+	static function ( $query, $query_vars ) {
+		unset( $query_vars );
+		if ( is_admin() && ! wp_doing_ajax() && ! ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+			return $query;
+		}
+		$exclude = wchs_cro_catalog_excluded_product_ids();
+		if ( empty( $exclude ) ) {
+			return $query;
+		}
+		$existing              = isset( $query['post__not_in'] ) ? (array) $query['post__not_in'] : [];
+		$query['post__not_in'] = array_values( array_unique( array_merge( $existing, $exclude ) ) );
+		return $query;
+	},
+	10,
+	2
+);
+
+add_filter(
+	'woocommerce_rest_product_object_query',
+	static function ( $args, $request ) {
+		unset( $request );
+		$exclude = wchs_cro_catalog_excluded_product_ids();
+		if ( empty( $exclude ) ) {
+			return $args;
+		}
+		$existing           = isset( $args['post__not_in'] ) ? (array) $args['post__not_in'] : [];
+		$args['post__not_in'] = array_values( array_unique( array_merge( $existing, $exclude ) ) );
+		return $args;
+	},
+	10,
+	2
 );

@@ -327,8 +327,19 @@ class AdminPage {
 			'turnstile_site_key'          => '',
 			'turnstile_secret_key'        => '',
 			'internal_rate_limit_enabled' => true,
+			'announcement_bar_enabled'    => true,
+			'announcement_bar_items'    => [
+				'UP TO 40% OFF TODAY',
+				'Fast & Discreet Shipping',
+				'Third-Party Tested',
+				'Fulfilled in the USA',
+			],
 			'header_links'                => [
+				[ 'label' => 'Home', 'url' => '/', 'display' => 'text', 'icon' => '', 'accent' => false, 'mobile_pin' => false ],
 				[ 'label' => 'Shop', 'url' => '/shop', 'display' => 'text', 'icon' => '', 'accent' => false, 'mobile_pin' => false ],
+				[ 'label' => 'About', 'url' => '/about', 'display' => 'text', 'icon' => '', 'accent' => false, 'mobile_pin' => false ],
+				[ 'label' => 'COA Library', 'url' => '/coa-library', 'display' => 'text', 'icon' => '', 'accent' => false, 'mobile_pin' => false ],
+				[ 'label' => 'Contact', 'url' => '/contact', 'display' => 'text', 'icon' => '', 'accent' => false, 'mobile_pin' => false ],
 				[ 'label' => 'Account', 'url' => '/account', 'display' => 'icon', 'icon' => 'user', 'accent' => true, 'mobile_pin' => false ],
 			],
 			'header_toggle_accent'        => true,
@@ -361,7 +372,7 @@ class AdminPage {
 			'logo_invert_on_dark'         => true,      // auto-invert the header logo in dark mode
 			'logo_dark_id'                => 0,         // optional WP attachment ID; when set, wins over invert in dark mode
 			'logo_size'                   => 'standard', // 'compact' | 'standard' | 'prominent' | 'xl' — desktop only; mobile stays constrained
-			'brand_position'              => 'left',     // 'left' | 'center' — desktop only; mobile is always centered
+			'brand_position'              => 'nav-center', // 'left' | 'center' | 'nav-center' — desktop only
 			'active_scripts'              => [],         // [{ id, enabled, params:{} }] — shop_manager toggles what's active from the admin-curated script registry
 			'typography_heading_font'     => 'inter',     // 'inter' | 'barlow' | 'bebas' | 'playfair' | 'space_grotesk' | 'archivo' | 'oswald'
 			'typography_body_font'        => 'inter',
@@ -991,22 +1002,22 @@ class AdminPage {
 	public static function homepage_defaults(): array {
 		return [
 			'hero' => [
-				'headline'               => 'Precision peptides. Uncompromised purity.',
+				'headline'               => 'A leading grade provider of research peptides.',
 				'content_mode'           => 'text',
 				'logo_source'            => 'site_logo',
 				'logo_url'               => '',
 				'logo_dark_url'          => '',
 				'logo_size'              => 'large',
 				'headline_size'          => 'l',
-				'headline_weight'        => 'bold',
+				'headline_weight'        => 'medium',
 				'headline_font'          => 'inter',
 				'text_color_mode'        => 'white',
 				'subheadline'            => 'Independently verified. Third-party tested. Every batch held to the highest standard.',
 				'subheadline_size'       => 'm',
-				'cta_text'               => 'Browse catalog →',
+				'cta_text'               => 'Shop All Peptides',
 				'cta_link'               => '/shop',
-				'cta_secondary_text'     => '',
-				'cta_secondary_link'     => '',
+				'cta_secondary_text'     => 'View COA Library',
+				'cta_secondary_link'     => '/coa-library',
 				'research_badge'         => '• RESEARCH USE ONLY',
 				'research_stats'         => [
 					[ 'value' => '≥99%', 'label' => 'VERIFIED PURITY' ],
@@ -1218,11 +1229,29 @@ class AdminPage {
 		}
 		if ( empty( $header_links ) ) {
 			$header_links = [
+				[ 'label' => 'Home', 'url' => '/', 'display' => 'text', 'icon' => '', 'accent' => false, 'mobile_pin' => false ],
 				[ 'label' => 'Shop', 'url' => '/shop', 'display' => 'text', 'icon' => '', 'accent' => false, 'mobile_pin' => false ],
+				[ 'label' => 'About', 'url' => '/about', 'display' => 'text', 'icon' => '', 'accent' => false, 'mobile_pin' => false ],
+				[ 'label' => 'COA Library', 'url' => '/coa-library', 'display' => 'text', 'icon' => '', 'accent' => false, 'mobile_pin' => false ],
+				[ 'label' => 'Contact', 'url' => '/contact', 'display' => 'text', 'icon' => '', 'accent' => false, 'mobile_pin' => false ],
 				[ 'label' => 'Account', 'url' => '/account', 'display' => 'icon', 'icon' => 'user', 'accent' => true, 'mobile_pin' => false ],
 			];
 		}
 		$s['header_links']         = $header_links;
+		$s['announcement_bar_enabled'] = ! empty( $_POST['announcement_bar_enabled'] );
+		$raw_ann                       = sanitize_textarea_field( wp_unslash( $_POST['announcement_bar_items'] ?? '' ) );
+		$ann_items                     = array_values(
+			array_filter(
+				array_map( 'trim', preg_split( '/\r\n|\r|\n/', $raw_ann ) ?: [] )
+			)
+		);
+		if ( empty( $ann_items ) ) {
+			$ann_items = [
+				'UP TO 40% OFF TODAY',
+				'Fast & Discreet Shipping',
+			];
+		}
+		$s['announcement_bar_items'] = $ann_items;
 		$s['header_toggle_accent'] = ! empty( $_POST['header_toggle_accent'] );
 		$s['header_cart_accent']   = ! empty( $_POST['header_cart_accent'] );
 		$s['header_inverted']      = ! empty( $_POST['header_inverted'] );
@@ -1244,7 +1273,7 @@ class AdminPage {
 		$s['logo_size'] = $logo_size;
 
 		$brand_position = sanitize_text_field( wp_unslash( $_POST['brand_position'] ?? 'left' ) );
-		if ( ! in_array( $brand_position, [ 'left', 'center' ], true ) ) {
+		if ( ! in_array( $brand_position, [ 'left', 'center', 'nav-center' ], true ) ) {
 			$brand_position = 'left';
 		}
 		$s['brand_position'] = $brand_position;
@@ -2252,6 +2281,27 @@ class AdminPage {
 			</div><!-- /Design tokens -->
 
 			<div class="wchs-section wchs-section--collapsed">
+			<h2 class="wchs-section__toggle">Announcement bar <?php echo self::hint_icon('Scrolling promo strip above the header. One message per line. Uses your accent color.'); ?></h2>
+			<div class="wchs-section__body">
+			<?php
+			$ann_items = $settings['announcement_bar_items'] ?? [];
+			$ann_text  = is_array( $ann_items ) ? implode( "\n", $ann_items ) : '';
+			?>
+			<div class="wchs-field" style="margin-bottom:16px">
+				<label class="wchs-toggle">
+					<input type="checkbox" name="announcement_bar_enabled" value="1" <?php checked( ! empty( $settings['announcement_bar_enabled'] ) ); ?> />
+					<span class="wchs-toggle__track"><span class="wchs-toggle__thumb"></span></span>
+					<span>Show scrolling announcement bar</span>
+				</label>
+			</div>
+			<div class="wchs-field">
+				<label>Messages <?php echo self::hint_icon('One line per message. Example: UP TO 40% OFF TODAY'); ?></label>
+				<textarea name="announcement_bar_items" rows="5" style="width:100%;max-width:480px;font-family:monospace;font-size:13px"><?php echo esc_textarea( $ann_text ); ?></textarea>
+			</div>
+			</div>
+			</div><!-- /Announcement bar -->
+
+			<div class="wchs-section wchs-section--collapsed">
 			<h2 class="wchs-section__toggle">Header Navigation <?php echo self::hint_icon('Links shown in the site header. Each can display as text, icon, or both.'); ?></h2>
 			<div class="wchs-section__body">
 			<?php
@@ -2404,8 +2454,9 @@ class AdminPage {
 			<div class="wchs-field" style="margin-bottom:24px">
 				<label>Logo / brand position (desktop)</label>
 				<div class="wchs-radios">
-					<label class="wchs-radio"><input type="radio" name="brand_position" value="left"   <?php checked( $brand_position, 'left' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Left-aligned (default)</span></label>
-					<label class="wchs-radio"><input type="radio" name="brand_position" value="center" <?php checked( $brand_position, 'center' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Centered</span> <?php echo self::hint_icon('Mobile brand is always centered regardless of this setting.'); ?></label>
+					<label class="wchs-radio"><input type="radio" name="brand_position" value="left"   <?php checked( $brand_position, 'left' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Left — nav on right</span></label>
+					<label class="wchs-radio"><input type="radio" name="brand_position" value="nav-center" <?php checked( $brand_position, 'nav-center' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Left logo — nav centered</span> <?php echo self::hint_icon('Desktop only. Logo stays left; Shop/About/links sit in the horizontal center of the header.'); ?></label>
+					<label class="wchs-radio"><input type="radio" name="brand_position" value="center" <?php checked( $brand_position, 'center' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Centered logo — nav on right</span> <?php echo self::hint_icon('Mobile brand is always centered regardless of this setting.'); ?></label>
 				</div>
 			</div>
 

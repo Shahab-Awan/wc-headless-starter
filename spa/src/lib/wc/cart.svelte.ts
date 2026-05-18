@@ -278,7 +278,12 @@ class CartStore {
 		window.location.href = await this.beginCheckout();
 	}
 
-	async addItem(id: number, quantity = 1, variation: { attribute: string; value: string }[] = []) {
+	async addItem(
+		id: number,
+		quantity = 1,
+		variation: { attribute: string; value: string }[] = [],
+		analytics?: { clicked_from?: string },
+	) {
 		const beforeQuantities = new Map((this.cart?.items ?? []).map((item) => [item.key, item.quantity]));
 		await this.mutate(() =>
 			request<StoreApiCart>('/cart/add-item', { method: 'POST', body: { id, quantity, variation } })
@@ -311,6 +316,7 @@ class CartStore {
 					quantity,
 					permalink: (added as { permalink?: string }).permalink,
 					image: added.images?.[0]?.src,
+					clicked_from: analytics?.clicked_from,
 				};
 				a.trackAddToCart(item);
 				a.trackOmnisendAddedProductToCart(item);

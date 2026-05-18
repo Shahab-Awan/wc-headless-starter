@@ -26,6 +26,8 @@
 	import { loadFont, HERO_FONTS } from '$lib/hero-fonts';
 	import type { HeroFontKey } from '$lib/config.svelte';
 	import { applyProductCardTokens } from '$lib/product-card-tokens';
+	import AnnouncementBar from '$lib/components/AnnouncementBar.svelte';
+	import HeaderSearch from '$lib/components/HeaderSearch.svelte';
 	import '$lib/styles/header.css';
 
 	let { children } = $props();
@@ -413,11 +415,36 @@
 		if (e.key === 'Escape') drawerOpen = false;
 	}
 
+	function syncDrawerTop() {
+		const stack = document.querySelector('.site-header-stack');
+		if (!stack) return;
+		document.documentElement.style.setProperty(
+			'--wchs-header-stack-height',
+			`${stack.getBoundingClientRect().bottom}px`
+		);
+	}
+
+	const hasAnnouncementBar = $derived(
+		Boolean(config.data.announcement_bar_enabled && (config.data.announcement_bar_items?.length ?? 0) > 0)
+	);
+
 	$effect(() => {
 		const isAdmin = auth.isAdmin;
 		const hasModeBanner = isAdmin && config.data.access_mode !== 3;
 		document.body.classList.toggle('has-admin-bar', isAdmin);
 		document.body.classList.toggle('has-mode-banner', hasModeBanner);
+		document.body.classList.toggle('has-announcement-bar', hasAnnouncementBar);
+	});
+
+	$effect(() => {
+		if (!drawerOpen) return;
+		syncDrawerTop();
+		window.addEventListener('resize', syncDrawerTop);
+		window.addEventListener('scroll', syncDrawerTop, { passive: true });
+		return () => {
+			window.removeEventListener('resize', syncDrawerTop);
+			window.removeEventListener('scroll', syncDrawerTop);
+		};
 	});
 
 	function bumpCart() {
@@ -440,15 +467,16 @@
 {:else}
 	<AdminBar />
 
-	<header
-		class="site-header"
-		data-hamburger-side={config.data.mobile_hamburger_side}
-		data-logo-size={config.data.logo_url ? (config.data.logo_size ?? 'standard') : 'none'}
-		data-brand-position={config.data.brand_position ?? 'left'}
-		class:has-admin-bar={auth.isAdmin}
-		class:site-header--inverted={config.data.header_inverted}
-		class:site-header--borderless={config.data.header_borderless}
-	>
+	<div class="site-header-stack" class:has-admin-bar={auth.isAdmin}>
+		<AnnouncementBar />
+		<header
+			class="site-header"
+			data-hamburger-side={config.data.mobile_hamburger_side}
+			data-logo-size={config.data.logo_url ? (config.data.logo_size ?? 'standard') : 'none'}
+			data-brand-position={config.data.brand_position ?? 'left'}
+			class:site-header--inverted={config.data.header_inverted}
+			class:site-header--borderless={config.data.header_borderless}
+		>
 		<a class="site-header__brand" href="/">
 			{#if config.data.logo_url}
 				<img
@@ -476,42 +504,51 @@
 			     when mobile_hamburger_side='off'. Hidden by CSS when the
 			     hamburger is active. -->
 			<div class="site-header__nav-inline">
-				{#each config.data.header_links as link}
-					{#if link.display === 'icon' || link.display === 'both'}
-						<a href={link.url} class="site-header__icon-link" class:is-accent={link.accent} aria-label={link.label}>
-							{#if link.icon && icons[link.icon]}
-								<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">{@html icons[link.icon]}</svg>
-							{/if}
-							{#if link.display === 'both'}
-								<span>{link.label}</span>
-							{/if}
-						</a>
-					{:else}
-						<a href={link.url} class="site-header__nav-link" class:is-accent={link.accent}>{link.label}</a>
+				<div class="site-header__nav-menu">
+					{#each config.data.header_links as link}
+						{#if link.display === 'text'}
+							<a href={link.url} class="site-header__nav-link" class:is-accent={link.accent}>{link.label}</a>
+						{/if}
+					{/each}
+				</div>
+				<div class="site-header__nav-actions">
+					<HeaderSearch />
+					{#each config.data.header_links as link}
+						{#if link.display === 'icon' || link.display === 'both'}
+							<a href={link.url} class="site-header__icon-link" class:is-accent={link.accent} aria-label={link.label}>
+								{#if link.icon && icons[link.icon]}
+									<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">{@html icons[link.icon]}</svg>
+								{/if}
+								{#if link.display === 'both'}
+									<span>{link.label}</span>
+								{/if}
+							</a>
+						{/if}
+					{/each}
+					{#if themeToggleVisible}
+						<span class:is-accent-toggle={config.data.header_toggle_accent}>
+							<ThemeToggle />
+						</span>
 					{/if}
-				{/each}
-				{#if themeToggleVisible}
-					<span class:is-accent-toggle={config.data.header_toggle_accent}>
-						<ThemeToggle />
-					</span>
-				{/if}
-				<button
-					type="button"
-					class="site-header__cart"
-					class:is-accent={config.data.header_cart_accent}
-					class:is-bumping={cartBumping}
-					onclick={() => cart.toggle()}
-					aria-label="Open cart"
-				>
-					<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-					<span class="site-header__cart-count tabular-nums">{cart.itemCount}</span>
-				</button>
+					<button
+						type="button"
+						class="site-header__cart"
+						class:is-accent={config.data.header_cart_accent}
+						class:is-bumping={cartBumping}
+						onclick={() => cart.toggle()}
+						aria-label="Open cart"
+					>
+						<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+						<span class="site-header__cart-count tabular-nums">{cart.itemCount}</span>
+					</button>
+				</div>
 			</div>
 
 			<!-- Mobile pinned cluster — shows only on mobile when
 			     hamburger is active. Up to 3 items. -->
 			{#if config.data.mobile_hamburger_side !== 'off'}
 				<div class="site-header__nav-group--pinned">
+					<HeaderSearch />
 					{#each pinnedItems as entry}
 						{#if entry.kind === 'link'}
 							{#if entry.link.display === 'icon' || entry.link.display === 'both'}
@@ -551,7 +588,10 @@
 					aria-label="Open menu"
 					aria-expanded={drawerOpen}
 					aria-controls="site-drawer"
-					onclick={() => (drawerOpen = !drawerOpen)}
+					onclick={() => {
+						if (!drawerOpen) syncDrawerTop();
+						drawerOpen = !drawerOpen;
+					}}
 				>
 					<svg class="site-header__burger-open" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
 						<path d="M3 6h18M3 12h18M3 18h18"/>
@@ -563,6 +603,7 @@
 			{/if}
 		</nav>
 	</header>
+	</div>
 
 	<!-- Mobile drawer — rendered as a sibling of the header since it's
 	     position:fixed. `hidden` attribute gates visibility. -->
@@ -574,7 +615,6 @@
 			aria-label="Navigation menu"
 			hidden={!drawerOpen}
 		>
-			<a class="site-header-drawer__item" href="/" onclick={() => (drawerOpen = false)}>Home</a>
 			{#each drawerItems as entry}
 				{#if entry.kind === 'link'}
 					<a
@@ -716,10 +756,7 @@
 	:global(body.has-mode-banner) {
 		padding-top: 60px;
 	}
-	.has-admin-bar {
-		top: 32px;
-	}
-	:global(body.has-mode-banner) .site-header {
+	:global(body.has-mode-banner) .site-header-stack {
 		top: 60px;
 	}
 </style>

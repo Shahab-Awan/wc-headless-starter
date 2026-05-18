@@ -181,7 +181,7 @@
 			const variation = product.has_options
 				? Object.entries(s.attrs).map(([k, v]) => ({ attribute: k, value: v }))
 				: [];
-			await cart.addItem(vid ?? product.id, s.qty, variation);
+			await cart.addItem(vid ?? product.id, s.qty, variation, { clicked_from: 'cart_cross_sell' });
 			miniStates.set(product.id, { ...s, justAdded: true });
 			miniStates = new Map(miniStates);
 			setTimeout(() => {
@@ -275,7 +275,7 @@
 			const variation = modalProduct.has_options
 				? Object.entries(modalState.attrs).map(([k, v]) => ({ attribute: k, value: v }))
 				: [];
-			await cart.addItem(vid ?? modalProduct.id, modalState.qty, variation);
+			await cart.addItem(vid ?? modalProduct.id, modalState.qty, variation, { clicked_from: 'cart_cross_sell' });
 			miniStates.set(modalProduct.id, { ...modalState, justAdded: true });
 			miniStates = new Map(miniStates);
 			closeModal();
@@ -347,7 +347,7 @@
 		if (addingId !== null) return;
 		addingId = product.id;
 		try {
-			await cart.addItem(product.id, 1);
+			await cart.addItem(product.id, 1, [], { clicked_from: 'cart_cross_sell' });
 		} finally {
 			addingId = null;
 		}

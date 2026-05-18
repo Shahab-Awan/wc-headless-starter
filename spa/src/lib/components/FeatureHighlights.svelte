@@ -263,4 +263,33 @@
 		line-height: 1.55;
 		color: var(--fg-muted);
 	}
+
+	@media (max-width: 639px) {
+		.fh__grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 12px;
+		}
+		.fh-card {
+			padding: 14px 12px 16px;
+			border-radius: 14px;
+		}
+		.fh-card__icon {
+			width: 36px;
+			height: 36px;
+			border-radius: 10px;
+			margin-bottom: 10px;
+		}
+		.fh-card__icon svg {
+			width: 18px;
+			height: 18px;
+		}
+		.fh-card__title {
+			font-size: 13px;
+			margin-bottom: 6px;
+		}
+		.fh-card__desc {
+			font-size: 11px;
+			line-height: 1.45;
+		}
+	}
 </style>

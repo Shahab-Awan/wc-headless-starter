@@ -1,4 +1,10 @@
 import { request } from './store-api';
+import { isCartCrossSellBlockedProduct } from '$lib/config.svelte';
+
+/** Drop ancillary products (shipping protection, BAC water) from storefront listings. */
+export function filterCatalogProducts(products: StoreProduct[]): StoreProduct[] {
+	return products.filter((p) => !isCartCrossSellBlockedProduct(p.id, p.slug));
+}
 
 export type StoreProductAttributeTerm = { id: number; name: string; slug: string; default?: boolean };
 
@@ -105,14 +111,15 @@ export type ProductListParams = {
 	on_sale?: boolean;
 	search?: string;
 	category?: string;
-	orderby?: 'date' | 'popularity' | 'price' | 'rating' | 'menu_order' | 'title';
+	orderby?: 'date' | 'popularity' | 'price' | 'rating' | 'title';
 	order?: 'asc' | 'desc';
 	min_price?: number;
 	max_price?: number;
 };
 
 export async function listProducts(params: ProductListParams = {}): Promise<StoreProduct[]> {
-	return request<StoreProduct[]>('/products', { query: params });
+	const rows = await request<StoreProduct[]>('/products', { query: params });
+	return filterCatalogProducts(rows);
 }
 
 export type StoreCategory = {
@@ -121,15 +128,20 @@ export type StoreCategory = {
 	slug: string;
 	count: number;
 	parent: number;
+	description?: string;
 };
 
-export async function listCategories(): Promise<StoreCategory[]> {
-	return request<StoreCategory[]>('/products/categories', { query: { per_page: 100 } });
+export async function listCategories(opts?: { parent?: number }): Promise<StoreCategory[]> {
+	const query: Record<string, string | number> = { per_page: 100, orderby: 'name', order: 'asc' };
+	if (opts?.parent !== undefined) query.parent = opts.parent;
+	return request<StoreCategory[]>('/products/categories', { query });
 }
 
 export async function getProduct(slug: string): Promise<StoreProduct | null> {
 	const results = await request<StoreProduct[]>('/products', { query: { slug } });
-	return results[0] ?? null;
+	const product = results[0] ?? null;
+	if (product && isCartCrossSellBlockedProduct(product.id, product.slug)) return null;
+	return product;
 }
 
 /**
@@ -139,9 +151,10 @@ export async function getProduct(slug: string): Promise<StoreProduct | null> {
  */
 export async function getProductsByIds(ids: number[]): Promise<StoreProduct[]> {
 	if (ids.length === 0) return [];
-	return request<StoreProduct[]>('/products', {
+	const rows = await request<StoreProduct[]>('/products', {
 		query: { include: ids.join(','), per_page: ids.length }
 	});
+	return filterCatalogProducts(rows);
 }
 
 /**

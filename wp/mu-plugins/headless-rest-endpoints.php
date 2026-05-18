@@ -16,6 +16,7 @@
  *   POST   /wp-json/wchs/v1/newsletter                — newsletter signup
  *   POST   /wp-json/wchs/v1/contact                   — contact form submit
  *   GET    /wp-json/wchs/v1/order-payment/{id}?key=   — thank-you/payment details
+ *   GET    /wp-json/wchs/v1/coa-library               — products with COA PDFs attached
  *
  * Security posture
  *   - Reviews: public, read-only, capped at 20 per request, only "approved"
@@ -356,6 +357,7 @@ function wchs_rest_rate_limit( string $bucket ): bool {
 		'my-orders'      => 30,
 		'session'        => 120,
 		'session_delete' => 10,
+		'coa_library'    => 60,
 	];
 	$max = $limits[ $bucket ] ?? 10;
 
@@ -589,8 +591,115 @@ add_action(
 				],
 			]
 		);
+
+		register_rest_route(
+			'wchs/v1',
+			'/coa-library',
+			[
+				'methods'             => 'GET',
+				'callback'            => 'wchs_rest_coa_library',
+				'permission_callback' => '__return_true',
+			]
+		);
 	}
 );
+
+/**
+ * GET /wchs/v1/coa-library — published products/variations with a COA PDF URL.
+ *
+ * @return \WP_REST_Response|\WP_Error
+ */
+function wchs_rest_coa_library( \WP_REST_Request $request ) {
+	if ( ! wchs_rest_rate_limit( 'coa_library' ) ) {
+		return new \WP_Error( 'rate_limited', 'Too many requests', [ 'status' => 429 ] );
+	}
+
+	if ( ! function_exists( 'wc_get_product' ) ) {
+		return rest_ensure_response( [ 'products' => [] ] );
+	}
+
+	$ids = get_posts(
+		[
+			'post_type'      => [ 'product', 'product_variation' ],
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+			'meta_query'     => [
+				[
+					'key'     => '_wchs_coa_url',
+					'value'   => '',
+					'compare' => '!=',
+				],
+			],
+		]
+	);
+
+	$groups = [];
+
+	foreach ( $ids as $post_id ) {
+		$post_id = (int) $post_id;
+		$product = wc_get_product( $post_id );
+		if ( ! $product ) {
+			continue;
+		}
+
+		$url = esc_url_raw( (string) get_post_meta( $post_id, '_wchs_coa_url', true ) );
+		if ( '' === $url ) {
+			continue;
+		}
+
+		$parent_id = (int) $product->get_parent_id();
+		if ( $parent_id > 0 ) {
+			$parent = wc_get_product( $parent_id );
+			if ( ! $parent || 'publish' !== $parent->get_status() ) {
+				continue;
+			}
+			$group_id = $parent_id;
+			$name     = $parent->get_name();
+			$slug     = $parent->get_slug();
+		} else {
+			$group_id = $post_id;
+			$name     = $product->get_name();
+			$slug     = $product->get_slug();
+		}
+
+		$variation_label = '';
+		if ( $parent_id > 0 && function_exists( 'wc_get_formatted_variation' ) ) {
+			$variation_label = wc_get_formatted_variation( $product, true, false );
+		}
+
+		$post     = get_post( $post_id );
+		$modified = $post instanceof \WP_Post ? get_post_modified_time( 'c', false, $post ) : '';
+
+		if ( ! isset( $groups[ $group_id ] ) ) {
+			$groups[ $group_id ] = [
+				'id'           => $group_id,
+				'name'         => $name,
+				'slug'         => $slug,
+				'certificates' => [],
+			];
+		}
+
+		$groups[ $group_id ]['certificates'][] = [
+			'id'              => $post_id,
+			'variation_label' => $variation_label,
+			'coa_url'         => $url,
+			'batch'           => (string) get_post_meta( $post_id, '_wchs_coa_batch', true ),
+			'lab'             => (string) get_post_meta( $post_id, '_wchs_coa_lab', true ),
+			'tested'          => $modified,
+		];
+	}
+
+	$list = array_values( $groups );
+	usort(
+		$list,
+		static function ( array $a, array $b ): int {
+			return strcasecmp( (string) $a['name'], (string) $b['name'] );
+		}
+	);
+
+	return rest_ensure_response( [ 'products' => $list ] );
+}
 
 /**
  * POST /wchs/v1/newsletter — footer newsletter signup.
@@ -1039,8 +1148,20 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 		'review_write_enabled' => function_exists( 'wchs_get_review_provider' ) ? wchs_get_review_provider()->supports_write() : true,
 		'turnstile_site_key' => ! empty( $site_settings['anti_bot_enabled'] ) ? ( $site_settings['turnstile_site_key'] ?? '' ) : '',
 		'internal_rate_limit_enabled' => (bool) ( $site_settings['internal_rate_limit_enabled'] ?? true ),
+		'announcement_bar_enabled' => (bool) ( $site_settings['announcement_bar_enabled'] ?? true ),
+		'announcement_bar_items'   => array_values(
+			array_filter(
+				array_map(
+					'strval',
+					is_array( $site_settings['announcement_bar_items'] ?? null )
+						? $site_settings['announcement_bar_items']
+						: []
+				)
+			)
+		),
 		'header_links'    => $site_settings['header_links'] ?? [
 			[ 'label' => 'Shop', 'url' => '/shop', 'display' => 'text', 'icon' => '', 'accent' => false, 'mobile_pin' => false ],
+			[ 'label' => 'COA Library', 'url' => '/coa-library', 'display' => 'text', 'icon' => '', 'accent' => false, 'mobile_pin' => false ],
 			[ 'label' => 'Account', 'url' => '/account', 'display' => 'icon', 'icon' => 'user', 'accent' => true, 'mobile_pin' => false ],
 		],
 		'header_toggle_accent'     => $site_settings['header_toggle_accent'] ?? true,
@@ -1054,7 +1175,7 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 		'theme_default'            => in_array( $site_settings['theme_default'] ?? 'system', [ 'system', 'light', 'dark' ], true ) ? ( $site_settings['theme_default'] ?? 'system' ) : 'system',
 		'logo_invert_on_dark'      => (bool) ( $site_settings['logo_invert_on_dark'] ?? true ),
 		'logo_size'                => in_array( $site_settings['logo_size'] ?? 'standard', [ 'compact', 'standard', 'prominent', 'xl' ], true ) ? ( $site_settings['logo_size'] ?? 'standard' ) : 'standard',
-		'brand_position'           => in_array( $site_settings['brand_position'] ?? 'left', [ 'left', 'center' ], true ) ? ( $site_settings['brand_position'] ?? 'left' ) : 'left',
+		'brand_position'           => in_array( $site_settings['brand_position'] ?? 'left', [ 'left', 'center', 'nav-center' ], true ) ? ( $site_settings['brand_position'] ?? 'left' ) : 'left',
 		'typography'               => [
 			'heading_font'   => $site_settings['typography_heading_font'] ?? 'inter',
 			'body_font'      => $site_settings['typography_body_font'] ?? 'inter',

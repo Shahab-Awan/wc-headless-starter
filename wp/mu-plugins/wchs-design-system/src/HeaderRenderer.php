@@ -40,7 +40,11 @@ class HeaderRenderer {
 			? \WCHS\Admin\AdminPage::get_site_settings()
 			: [];
 		$header_links = $site_settings['header_links'] ?? [
+			[ 'label' => 'Home', 'url' => '/' ],
 			[ 'label' => 'Shop', 'url' => '/shop' ],
+			[ 'label' => 'About', 'url' => '/about' ],
+			[ 'label' => 'COA Library', 'url' => '/coa-library' ],
+			[ 'label' => 'Contact', 'url' => '/contact' ],
 			[ 'label' => 'Account', 'url' => '/account' ],
 		];
 
@@ -83,11 +87,21 @@ class HeaderRenderer {
 
 		$inverted   = ! empty( $site_settings['header_inverted'] );
 		$borderless = ! empty( $site_settings['header_borderless'] );
+		$logo_size  = $site_settings['logo_size'] ?? 'standard';
+		if ( ! in_array( $logo_size, [ 'compact', 'standard', 'prominent', 'xl' ], true ) ) {
+			$logo_size = 'standard';
+		}
+		$brand_position = $site_settings['brand_position'] ?? 'left';
+		if ( ! in_array( $brand_position, [ 'left', 'center', 'nav-center' ], true ) ) {
+			$brand_position = 'left';
+		}
 		$header_cls = 'site-header';
 		if ( $inverted ) $header_cls .= ' site-header--inverted';
 		if ( $borderless ) $header_cls .= ' site-header--borderless';
 		?>
-<header class="<?php echo esc_attr( $header_cls ); ?>" data-hamburger-side="<?php echo esc_attr( $hamburger_side ); ?>">
+<div class="site-header-stack">
+		<?php $this->render_announcement_bar( $site_settings ); ?>
+<header class="<?php echo esc_attr( $header_cls ); ?>" data-hamburger-side="<?php echo esc_attr( $hamburger_side ); ?>" data-logo-size="<?php echo esc_attr( $logo_url ? $logo_size : 'none' ); ?>" data-brand-position="<?php echo esc_attr( $brand_position ); ?>">
 	<a class="site-header__brand" href="<?php echo esc_url( $spa_url ); ?>">
 		<?php if ( $logo_url ) : ?>
 			<img class="site-header__logo" src="<?php echo esc_url( $logo_url ); ?>" alt="<?php echo $brand; ?>" />
@@ -98,22 +112,35 @@ class HeaderRenderer {
 	<nav class="site-header__nav">
 		<!-- Full inline nav — desktop always + mobile when hamburger='off' -->
 		<div class="site-header__nav-inline">
-			<?php foreach ( $header_links as $hl ) : ?>
-				<?php echo $this->render_item_inline( $hl, $spa_url ); ?>
-			<?php endforeach; ?>
-			<?php if ( $show_toggle ) : ?>
-				<span class="<?php echo $toggle_accent ? 'is-accent-toggle' : ''; ?>">
-					<?php echo $this->render_theme_toggle(); ?>
-				</span>
-			<?php endif; ?>
-			<a href="<?php echo $cart_url; ?>" class="site-header__cart<?php echo $cart_accent ? ' is-accent' : ''; ?>" aria-label="Open cart in store">
-				<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-			</a>
+			<div class="site-header__nav-menu">
+				<?php foreach ( $header_links as $hl ) : ?>
+					<?php if ( ( $hl['display'] ?? 'text' ) === 'text' ) : ?>
+						<?php echo $this->render_item_inline( $hl, $spa_url ); ?>
+					<?php endif; ?>
+				<?php endforeach; ?>
+			</div>
+			<div class="site-header__nav-actions">
+				<?php echo $this->render_search_button( $spa_url ); ?>
+				<?php foreach ( $header_links as $hl ) : ?>
+					<?php if ( in_array( $hl['display'] ?? 'text', [ 'icon', 'both' ], true ) ) : ?>
+						<?php echo $this->render_item_inline( $hl, $spa_url ); ?>
+					<?php endif; ?>
+				<?php endforeach; ?>
+				<?php if ( $show_toggle ) : ?>
+					<span class="<?php echo $toggle_accent ? 'is-accent-toggle' : ''; ?>">
+						<?php echo $this->render_theme_toggle(); ?>
+					</span>
+				<?php endif; ?>
+				<a href="<?php echo $cart_url; ?>" class="site-header__cart<?php echo $cart_accent ? ' is-accent' : ''; ?>" aria-label="Open cart in store">
+					<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+				</a>
+			</div>
 		</div>
 
 		<?php if ( $hamburger_side !== 'off' ) : ?>
 			<!-- Mobile pinned cluster — max 3 items -->
 			<div class="site-header__nav-group--pinned">
+				<?php echo $this->render_search_button( $spa_url ); ?>
 				<?php foreach ( $pinned_items as $entry ) : ?>
 					<?php if ( $entry['kind'] === 'link' ) : ?>
 						<?php echo $this->render_item_inline( $entry['data'], $spa_url ); ?>
@@ -139,9 +166,9 @@ class HeaderRenderer {
 		<?php endif; ?>
 	</nav>
 </header>
+</div>
 <?php if ( $hamburger_side !== 'off' ) : ?>
 	<div class="site-header-drawer" id="site-drawer" role="dialog" aria-label="Navigation menu" hidden>
-		<a class="site-header-drawer__item" href="<?php echo esc_url( $spa_url ); ?>">Home</a>
 		<?php foreach ( $drawer_items as $entry ) : ?>
 			<?php if ( $entry['kind'] === 'link' ) :
 				$hl      = $entry['data'];
@@ -174,14 +201,31 @@ class HeaderRenderer {
 		var btn = document.getElementById('wchs-burger');
 		var drawer = document.getElementById('site-drawer');
 		if (!btn || !drawer) return;
+		if (document.querySelector('.site-announcement')) {
+			document.body.classList.add('has-announcement-bar');
+		}
+		function syncDrawerTop() {
+			var stack = document.querySelector('.site-header-stack');
+			if (stack) {
+				document.documentElement.style.setProperty(
+					'--wchs-header-stack-height',
+					stack.getBoundingClientRect().bottom + 'px'
+				);
+			}
+		}
 		function setOpen(open) {
 			btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-			if (open) drawer.removeAttribute('hidden');
-			else drawer.setAttribute('hidden', '');
+			if (open) {
+				syncDrawerTop();
+				drawer.removeAttribute('hidden');
+			} else {
+				drawer.setAttribute('hidden', '');
+			}
 		}
 		btn.addEventListener('click', function () {
 			setOpen(btn.getAttribute('aria-expanded') !== 'true');
 		});
+		window.addEventListener('resize', syncDrawerTop);
 		drawer.addEventListener('click', function (e) {
 			if (e.target.closest('.site-header-drawer__item a, a.site-header-drawer__item')) setOpen(false);
 		});
@@ -192,6 +236,14 @@ class HeaderRenderer {
 	</script>
 <?php endif; ?>
 		<?php
+	}
+
+	private function render_search_button( string $spa_url ): string {
+		$href = esc_url( add_query_arg( 'open_search', '1', $spa_url . '/shop' ) );
+		return '<a href="' . $href . '" class="site-header__icon-link site-header__search-trigger" aria-label="'
+			. esc_attr__( 'Search products', 'wchs' ) . '">'
+			. $this->icon_svg( 'search' )
+			. '</a>';
 	}
 
 	private function render_item_inline( array $hl, string $spa_url ): string {
@@ -276,6 +328,32 @@ class HeaderRenderer {
 			return rtrim( WCHS_SPA_URL, '/' );
 		}
 		return untrailingslashit( home_url( '/' ) );
+	}
+
+	private function render_announcement_bar( array $site_settings ): void {
+		if ( empty( $site_settings['announcement_bar_enabled'] ) ) {
+			return;
+		}
+		$items = $site_settings['announcement_bar_items'] ?? [];
+		if ( ! is_array( $items ) || empty( $items ) ) {
+			return;
+		}
+		$loop = array_merge( $items, $items );
+		$check = '<svg class="site-announcement__check" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">'
+			. '<polyline points="2 6 5 9 10 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+			. '</svg>';
+		?>
+<div class="site-announcement" role="region" aria-label="<?php echo esc_attr__( 'Promotions and shipping', 'wchs' ); ?>">
+	<div class="site-announcement__track">
+		<?php foreach ( $loop as $item ) : ?>
+			<span class="site-announcement__item">
+				<?php echo $check; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+				<span><?php echo esc_html( (string) $item ); ?></span>
+			</span>
+		<?php endforeach; ?>
+	</div>
+</div>
+		<?php
 	}
 
 }

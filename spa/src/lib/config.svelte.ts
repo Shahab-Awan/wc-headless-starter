@@ -579,6 +579,8 @@ export type SiteConfig = {
 	google_ads_conversion_label: string;
 	review_write_enabled: boolean;
 	turnstile_site_key: string;
+	announcement_bar_enabled: boolean;
+	announcement_bar_items: string[];
 	header_links: HeaderLink[];
 	header_toggle_accent: boolean;
 	header_cart_accent: boolean;
@@ -599,7 +601,7 @@ export type SiteConfig = {
 	/** Desktop logo height preset. Mobile stays constrained regardless. */
 	logo_size: 'compact' | 'standard' | 'prominent' | 'xl';
 	/** Desktop brand / logo position. Mobile is always centered. */
-	brand_position: 'left' | 'center';
+	brand_position: 'left' | 'center' | 'nav-center';
 	/** Global typography settings from Appearance tab. */
 	typography: {
 		heading_font: string;
@@ -698,23 +700,23 @@ const DEFAULTS: SiteConfig = {
 	google_ads_conversion_label: '',
 	homepage: {
 		hero: {
-			headline: 'Precision peptides. Uncompromised purity.',
+			headline: 'A leading grade provider of research peptides.',
 			content_mode: 'text',
 			logo_source: 'site_logo',
 			logo_url: '',
 			logo_dark_url: '',
 			logo_size: 'large',
 			headline_size: 'l',
-			headline_weight: 'bold',
+			headline_weight: 'medium',
 			headline_font: 'inter',
 			text_color_mode: 'white',
 			subheadline:
 				'Independently verified. Third-party tested. Every batch held to the highest standard.',
 			subheadline_size: 'm',
-			cta_text: 'Browse catalog →',
+			cta_text: 'Shop All Peptides',
 			cta_link: '/shop',
-			cta_secondary_text: '',
-			cta_secondary_link: '',
+			cta_secondary_text: 'View COA Library',
+			cta_secondary_link: '/coa-library',
 			research_badge: '• RESEARCH USE ONLY',
 			research_stats: [
 				{ value: '≥99%', label: 'VERIFIED PURITY' },
@@ -864,8 +866,19 @@ const DEFAULTS: SiteConfig = {
 	},
 	review_write_enabled: true,
 	turnstile_site_key: '',
+	announcement_bar_enabled: true,
+	announcement_bar_items: [
+		'UP TO 40% OFF TODAY',
+		'Fast & Discreet Shipping',
+		'Third-Party Tested',
+		'Fulfilled in the USA',
+	],
 	header_links: [
+		{ label: 'Home', url: '/', display: 'text', icon: '', accent: false, mobile_pin: false },
 		{ label: 'Shop', url: '/shop', display: 'text', icon: '', accent: false, mobile_pin: false },
+		{ label: 'About', url: '/about', display: 'text', icon: '', accent: false, mobile_pin: false },
+		{ label: 'COA Library', url: '/coa-library', display: 'text', icon: '', accent: false, mobile_pin: false },
+		{ label: 'Contact', url: '/contact', display: 'text', icon: '', accent: false, mobile_pin: false },
 		{ label: 'Account', url: '/account', display: 'icon', icon: 'user', accent: true, mobile_pin: false },
 	],
 	header_toggle_accent: true,
@@ -879,7 +892,7 @@ const DEFAULTS: SiteConfig = {
 	theme_default: 'light',
 	logo_invert_on_dark: true,
 	logo_size: 'standard',
-	brand_position: 'left',
+	brand_position: 'nav-center',
 	typography: { heading_font: 'inter', body_font: 'inter', heading_weight: 'semibold', body_size: 'm' },
 	seo_nosnippet_products: true,
 	pdp: {
