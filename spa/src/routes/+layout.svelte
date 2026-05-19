@@ -127,7 +127,7 @@
 				report();
 				requestAnimationFrame(report);
 			});
-			[60, 180, 420, 900, 1500].forEach(delay => {
+			[60, 180, 420, 900, 1500, 3000, 5000].forEach(delay => {
 				timers.push(setTimeout(report, delay));
 			});
 		};
@@ -712,15 +712,18 @@
 	/* Preview mode (?preview=1) — strip artificial min-heights so the
 	   canvas artboard measures the true content size. Hero mobile floor
 	   (1010px + 530px padding) and main's calc(100vh) are the two
-	   biggest offenders; remove both only in preview, never in live. */
+	   biggest offenders; remove both only in preview, never in live.
+	   Homepage uses .hero-rx (research-motion), not .hero — include both. */
 	:global(html[data-preview] main) {
 		min-height: 0;
 	}
-	:global(html[data-preview] .hero) {
+	:global(html[data-preview] .hero),
+	:global(html[data-preview] .hero-rx) {
 		min-height: auto;
 	}
 	@media (max-width: 639px) {
-		:global(html[data-preview] .hero) {
+		:global(html[data-preview] .hero),
+		:global(html[data-preview] .hero-rx) {
 			padding-bottom: 40px;
 		}
 	}

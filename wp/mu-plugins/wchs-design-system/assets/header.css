@@ -315,7 +315,7 @@
 [data-theme='dark'] .theme-toggle .theme-toggle__sun { display: block; }
 [data-theme='dark'] .theme-toggle .theme-toggle__moon { display: none; }
 
-/* Icon link — default (no accent) */
+/* Icon link — default (no accent); icon-only, no box border */
 .site-header__icon-link {
 	display: inline-flex;
 	align-items: center;
@@ -326,7 +326,7 @@
 	padding: 0 6px;
 	background: transparent;
 	color: var(--fg);
-	border: 1px solid var(--border);
+	border: none;
 	border-radius: 0;
 	text-decoration: none;
 	font-size: 11px;
@@ -335,47 +335,20 @@
 	letter-spacing: 0.08em;
 	cursor: pointer;
 	transition:
-		background var(--dur-fast, 180ms) var(--ease, ease),
 		color var(--dur-fast, 180ms) var(--ease, ease),
-		border-color var(--dur-fast, 180ms) var(--ease, ease);
+		opacity var(--dur-fast, 180ms) var(--ease, ease);
 }
 .site-header__icon-link:hover {
-	background: var(--fg);
-	color: var(--bg);
-	border-color: var(--fg);
+	color: var(--fg-muted);
+	opacity: 0.85;
 }
 /* Icon link — accent variant */
 .site-header__icon-link.is-accent {
 	color: var(--accent);
-	border-color: var(--accent);
 }
 .site-header__icon-link.is-accent:hover {
-	background: var(--accent);
-	color: var(--accent-fg);
-	border-color: var(--accent);
-}
-
-/* Borderless variant -- removes outlines from icon links + cart */
-.site-header--borderless .site-header__icon-link {
-	border-color: transparent;
-}
-.site-header--borderless .site-header__icon-link:hover {
-	border-color: var(--fg);
-}
-.site-header--borderless .site-header__icon-link.is-accent:hover {
-	border-color: var(--accent);
-}
-.site-header--borderless .site-header__cart {
-	border-color: transparent;
-}
-.site-header--borderless .site-header__cart:hover {
-	border-color: var(--fg);
-}
-.site-header--borderless .site-header__cart.is-accent {
-	border-color: transparent;
-}
-.site-header--borderless .site-header__cart.is-accent:hover {
-	border-color: var(--accent);
+	color: var(--accent);
+	opacity: 0.85;
 }
 
 /* Header search */
@@ -495,7 +468,7 @@
 	align-items: center;
 	gap: 6px;
 	padding: 9px 3px;
-	border: 1px solid var(--fg);
+	border: none;
 	border-radius: 0;
 	background: transparent;
 	color: var(--fg);
@@ -509,22 +482,22 @@
 	flex-shrink: 0;
 	cursor: pointer;
 	transition:
-		background var(--dur-fast, 180ms) var(--ease, ease),
 		color var(--dur-fast, 180ms) var(--ease, ease),
-		border-color var(--dur-fast, 180ms) var(--ease, ease),
+		opacity var(--dur-fast, 180ms) var(--ease, ease),
 		transform var(--dur-med, 280ms) var(--ease-out, ease);
 }
 @media (min-width: 640px) { .site-header__cart { padding: 10px 3px; } }
-.site-header__cart:hover { background: var(--fg); color: var(--bg); }
+.site-header__cart:hover {
+	color: var(--fg-muted);
+	opacity: 0.85;
+}
 /* Cart button — accent variant */
 .site-header__cart.is-accent {
 	color: var(--accent);
-	border-color: var(--accent);
 }
 .site-header__cart.is-accent:hover {
-	background: var(--accent);
-	color: var(--accent-fg);
-	border-color: var(--accent);
+	color: var(--accent);
+	opacity: 0.85;
 }
 .site-header__cart:active { transform: scale(0.96); }
 .site-header__cart-count { opacity: 0.7; font-weight: 450; }

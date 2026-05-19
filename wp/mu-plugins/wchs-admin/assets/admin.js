@@ -3775,9 +3775,10 @@
 			}
 		}
 
-		// Read modules from the hidden JSON input
-		var modulesInput = document.querySelector('[name="modules_json"]');
+		// Read modules from the homepage modlist only (never shop/pdp hidden fields).
 		var modules = [];
+		var modlist = document.querySelector('.wchs-modlist[data-context="homepage"]');
+		var modulesInput = modlist ? modlist.querySelector('[name="modules_json"]') : null;
 		if (modulesInput) {
 			try { modules = JSON.parse(modulesInput.value); } catch(e) {}
 		}
@@ -3793,8 +3794,9 @@
 		if (cx) shop.cols_max = parseInt(cx.value, 10);
 		var sh = document.querySelector('[name="shop_spacing_h"]');
 		if (sh) shop.spacing_h = sh.value;
-		var modulesInput = document.querySelector('[name="modules_json"]');
 		var modules = [];
+		var shopList = document.querySelector('.wchs-modlist[data-context="shop"]');
+		var modulesInput = shopList ? shopList.querySelector('[name="modules_json"]') : null;
 		if (modulesInput) {
 			try { modules = JSON.parse(modulesInput.value); } catch(e) {}
 		}
@@ -3817,8 +3819,9 @@
 				.map(Number)
 				.filter(Boolean);
 		}
-		var modulesInput = document.querySelector('[name="modules_json"]');
 		var modules = [];
+		var pdpList = document.querySelector('.wchs-modlist[data-context="pdp"]');
+		var modulesInput = pdpList ? pdpList.querySelector('[name="modules_json"]') : null;
 		if (modulesInput) {
 			try { modules = JSON.parse(modulesInput.value); } catch(e) {}
 		}
