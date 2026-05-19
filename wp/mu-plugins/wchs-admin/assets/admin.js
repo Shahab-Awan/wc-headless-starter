@@ -174,6 +174,9 @@
 	var TYPE_LABELS = {
 		hero: 'Hero',
 		product_slider: 'Product Slider', review_slider: 'Review Slider',
+		listicle: 'Listicle',
+		promo_offer: 'Promo offer (split)',
+		reviews_listicle: 'Reviews listicle',
 		accordion: 'Accordion', trust_bar: 'Trust Bar', text_block: 'Text Block',
 		gallery: 'Gallery', contact_form: 'Contact Form', shop_grid: 'Shop Grid',
 		category_grid: 'Category Grid', 		split_features: 'Split Features',
@@ -188,7 +191,8 @@
 		hero: 'branding', trust_bar: 'branding', logo_strip: 'branding',
 		product_slider: 'commerce', review_slider: 'commerce',
 		shop_grid: 'commerce', category_grid: 'commerce',
-		accordion: 'content', text_block: 'content', gallery: 'content',
+		accordion: 'content', listicle: 'content', reviews_listicle: 'content', text_block: 'content', gallery: 'content',
+		promo_offer: 'commerce',
 		split_features: 'content', split_value: 'commerce', feature_highlights: 'content',
 		order_handling: 'content',
 		cta: 'content', spacer: 'content',
@@ -210,6 +214,8 @@
 		review_slider: ['homepage','shop','pdp','pages'],
 		text_block: ['homepage','shop','pdp','pages'],
 		listicle: ['homepage','shop','pdp','pages'],
+		promo_offer: ['homepage','shop','pdp','pages'],
+		reviews_listicle: ['homepage','shop','pdp','pages'],
 		accordion: ['homepage','shop','pdp','pages'],
 		gallery: ['homepage','shop','pdp','pages'],
 		cta: ['homepage','shop','pdp','pages'],
@@ -344,6 +350,50 @@
 				],
 				cta_label: 'Shop research-grade peptides',
 				cta_href: '/shop',
+			};
+		}
+		if (type === 'reviews_listicle') {
+			return {
+				headline: 'Amazing Reviews with a 4.9 Rating',
+				items: [
+					{
+						quote: 'COAs matched the batch numbers on our vials. Documentation was clear and easy to file for our lab records.',
+						name: 'Vincent R.',
+						rating: 5,
+					},
+					{
+						quote: 'Ordering was straightforward and fulfillment was faster than our previous supplier. Purity reports were posted before we checked out.',
+						name: 'Justin F.',
+						rating: 5,
+					},
+					{
+						quote: 'Consistent quality across reorders — no surprises between batches. Support answered technical questions the same day.',
+						name: 'Carlos B.',
+						rating: 5,
+					},
+				],
+			};
+		}
+		if (type === 'promo_offer') {
+			return {
+				intro_headline: '',
+				intro_subheadline:
+					'✨ We don\'t hand these out every day… consider this an exclusive Alyve hookup, just for you.',
+				badge_text: 'LIMITED TIME OFFER ✨',
+				image: '/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp',
+				image_alt: 'Alyve research-grade peptides — Buy one get one free',
+				ribbon_text: 'PUBLISHED COAs + BATCH DOCS WITH EVERY ORDER',
+				offer_primary: 'UP TO 40% OFF',
+				offer_secondary: 'FOR A LIMITED TIME ONLY!',
+				scarcity_text: 'High demand — popular batches sell out quickly.',
+				cta_label: 'GET 40% OFF',
+				cta_href: '/shop',
+				show_countdown: true,
+				countdown_end_at: '',
+				status_label: 'Sell-out risk:',
+				status_value: 'High',
+				status_note: 'Faster shipping',
+				footer_text: 'Try it today with a 60-Day Money-Back Guarantee!',
 			};
 		}
 		if (type === 'order_handling') {
@@ -1069,6 +1119,44 @@
 					if (textareas[0]) textareas[0].value = item.body || '';
 				});
 				break;
+			case 'reviews_listicle':
+				setVal(container, '[data-field="rl_headline"]', cfg.headline || '');
+				populateRepeaterItems(container, '.wchs-reviews-listicle-items', cfg.items || [], function (item, el) {
+					var textareas = el.querySelectorAll('textarea');
+					var inputs = el.querySelectorAll('input');
+					if (textareas[0]) textareas[0].value = item.quote || '';
+					if (inputs[0]) inputs[0].value = item.name || '';
+					if (inputs[1]) inputs[1].value = item.rating != null ? String(item.rating) : '5';
+				});
+				break;
+			case 'promo_offer':
+				setVal(container, '[data-field="po_intro_subheadline"]', cfg.intro_subheadline || cfg.intro_headline || '');
+				setVal(container, '[data-field="po_badge_text"]', cfg.badge_text || '');
+				setVal(container, '[data-field="po_image"]', cfg.image || '');
+				setVal(container, '[data-field="po_image_alt"]', cfg.image_alt || '');
+				setVal(container, '[data-field="po_ribbon_text"]', cfg.ribbon_text || '');
+				setVal(container, '[data-field="po_offer_primary"]', cfg.offer_primary || '');
+				setVal(container, '[data-field="po_offer_secondary"]', cfg.offer_secondary || '');
+				setVal(container, '[data-field="po_scarcity_text"]', cfg.scarcity_text || '');
+				setVal(container, '[data-field="po_cta_label"]', cfg.cta_label || '');
+				setVal(container, '[data-field="po_cta_href"]', cfg.cta_href || '');
+				setCheck(container, '[data-field="po_show_countdown"]', cfg.show_countdown !== false);
+				setVal(container, '[data-field="po_countdown_end_at"]', isoToLocal(cfg.countdown_end_at || ''));
+				setVal(container, '[data-field="po_status_label"]', cfg.status_label || '');
+				setVal(container, '[data-field="po_status_value"]', cfg.status_value || '');
+				setVal(container, '[data-field="po_status_note"]', cfg.status_note || '');
+				setVal(container, '[data-field="po_footer_text"]', cfg.footer_text || '');
+				(function () {
+					var input = container.querySelector('[data-field="po_image"]');
+					if (!input) return;
+					var field = input.closest('.wchs-field');
+					var preview = field && field.querySelector('.wchs-media-preview');
+					var removeBtn = field && field.querySelector('.wchs-media-remove');
+					if (input.value && preview) { preview.src = input.value; preview.style.display = ''; }
+					else if (preview) { preview.src = ''; preview.style.display = 'none'; }
+					if (removeBtn) removeBtn.style.display = input.value ? '' : 'none';
+				})();
+				break;
 			case 'text_block':
 				setVal(container, '[data-field="tb_layout"]', cfg.layout || 'auto');
 				setVal(container, '[data-field="tb_headline"]', cfg.headline || '');
@@ -1338,6 +1426,39 @@
 				cfg.items = readListicleItems(container);
 				delete cfg.title;
 				break;
+			case 'reviews_listicle':
+				cfg.headline = getVal(container, '[data-field="rl_headline"]') || '';
+				cfg.items = readReviewsListicleItems(container);
+				delete cfg.title;
+				break;
+			case 'promo_offer':
+				cfg.intro_headline = '';
+				cfg.intro_subheadline = getVal(container, '[data-field="po_intro_subheadline"]') || '';
+				cfg.badge_text = getVal(container, '[data-field="po_badge_text"]') || '';
+				cfg.image = getVal(container, '[data-field="po_image"]') || '';
+				cfg.image_alt = getVal(container, '[data-field="po_image_alt"]') || '';
+				cfg.ribbon_text = getVal(container, '[data-field="po_ribbon_text"]') || '';
+				cfg.offer_primary = getVal(container, '[data-field="po_offer_primary"]') || '';
+				cfg.offer_secondary = getVal(container, '[data-field="po_offer_secondary"]') || '';
+				cfg.scarcity_text = getVal(container, '[data-field="po_scarcity_text"]') || '';
+				cfg.cta_label = getVal(container, '[data-field="po_cta_label"]') || '';
+				cfg.cta_href = getVal(container, '[data-field="po_cta_href"]') || '';
+				cfg.show_countdown = getCheck(container, '[data-field="po_show_countdown"]');
+				(function () {
+					var localEnd = getVal(container, '[data-field="po_countdown_end_at"]') || '';
+					if (localEnd) {
+						var isoEnd = localToIso(localEnd);
+						if (isoEnd) cfg.countdown_end_at = isoEnd;
+					} else {
+						cfg.countdown_end_at = '';
+					}
+				})();
+				cfg.status_label = getVal(container, '[data-field="po_status_label"]') || '';
+				cfg.status_value = getVal(container, '[data-field="po_status_value"]') || '';
+				cfg.status_note = getVal(container, '[data-field="po_status_note"]') || '';
+				cfg.footer_text = getVal(container, '[data-field="po_footer_text"]') || '';
+				delete cfg.title;
+				break;
 			case 'text_block':
 				cfg.layout = getVal(container, '[data-field="tb_layout"]') || 'auto';
 				cfg.headline = getVal(container, '[data-field="tb_headline"]') || '';
@@ -1546,9 +1667,26 @@
 		var items = [];
 		ctx.querySelectorAll('.wchs-accordion-items .wchs-accordion-item').forEach(function (el) {
 			if (el.closest('.wchs-listicle-items')) return;
+			if (el.closest('.wchs-reviews-listicle-items')) return;
 			var inputs = el.querySelectorAll('input');
 			var textareas = el.querySelectorAll('textarea');
 			items.push({ q: inputs[0] ? inputs[0].value : '', a: textareas[0] ? textareas[0].value : '' });
+		});
+		return items;
+	}
+
+	function readReviewsListicleItems(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-reviews-listicle-items .wchs-accordion-item').forEach(function (el) {
+			var textareas = el.querySelectorAll('textarea');
+			var inputs = el.querySelectorAll('input');
+			var quote = textareas[0] ? textareas[0].value.trim() : '';
+			var name = inputs[0] ? inputs[0].value.trim() : '';
+			if (!quote || !name) return;
+			var rating = parseInt(inputs[1] ? inputs[1].value : '5', 10);
+			if (isNaN(rating)) rating = 5;
+			rating = Math.min(5, Math.max(1, rating));
+			items.push({ quote: quote, name: name, rating: rating });
 		});
 		return items;
 	}
@@ -2208,6 +2346,20 @@
 			container.appendChild(div);
 		}
 		// Modal-context add buttons (accordion + split_features inside module editor modal)
+		var addReviewsListicleModal = e.target.closest('.wchs-add-reviews-listicle-item-modal');
+		if (addReviewsListicleModal) {
+			var rlWrap = addReviewsListicleModal.closest('.wchs-field').querySelector('.wchs-reviews-listicle-items');
+			if (!rlWrap) return;
+			var rlTpl = rlWrap.querySelector('.wchs-accordion-item');
+			if (!rlTpl) return;
+			var rlClone = rlTpl.cloneNode(true);
+			rlClone.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
+			var rlRating = rlClone.querySelector('input[type="number"]');
+			if (rlRating) rlRating.value = '5';
+			rlWrap.appendChild(rlClone);
+			return;
+		}
+
 		var addListicleModal = e.target.closest('.wchs-add-listicle-item-modal');
 		if (addListicleModal) {
 			var lcWrap = addListicleModal.closest('.wchs-field').querySelector('.wchs-listicle-items');

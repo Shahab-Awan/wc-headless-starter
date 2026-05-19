@@ -244,6 +244,37 @@ export type ListicleItem = {
 	body?: string;
 };
 
+export type PromoOfferModuleConfig = {
+	intro_headline?: string;
+	intro_subheadline?: string;
+	badge_text?: string;
+	image?: string;
+	image_alt?: string;
+	ribbon_text?: string;
+	offer_primary?: string;
+	offer_secondary?: string;
+	scarcity_text?: string;
+	cta_label?: string;
+	cta_href?: string;
+	show_countdown?: boolean;
+	countdown_end_at?: string;
+	status_label?: string;
+	status_value?: string;
+	status_note?: string;
+	footer_text?: string;
+};
+
+export type ReviewsListicleItem = {
+	quote?: string;
+	name?: string;
+	rating?: number;
+};
+
+export type ReviewsListicleModuleConfig = {
+	headline?: string;
+	items?: ReviewsListicleItem[];
+};
+
 export type ListicleModuleConfig = {
 	headline?: string;
 	intro?: string;
@@ -425,6 +456,8 @@ export type HomepageModule =
 	| (ModuleBase & { type: 'trust_bar'; config: TrustBarModuleConfig })
 	| (ModuleBase & { type: 'text_block'; config: TextBlockModuleConfig })
 	| (ModuleBase & { type: 'listicle'; config: ListicleModuleConfig })
+	| (ModuleBase & { type: 'promo_offer'; config: PromoOfferModuleConfig })
+	| (ModuleBase & { type: 'reviews_listicle'; config: ReviewsListicleModuleConfig })
 	| (ModuleBase & { type: 'gallery'; config: GalleryModuleConfig })
 	| (ModuleBase & { type: 'category_grid'; config: CategoryGridModuleConfig })
 	| (ModuleBase & { type: 'split_features'; config: SplitFeaturesModuleConfig })

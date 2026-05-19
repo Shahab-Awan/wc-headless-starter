@@ -4666,6 +4666,84 @@ class AdminPage {
 			<?php $this->render_module_common_fields(); ?>
 		</div>
 
+		<!-- Promo offer (split) -->
+		<div id="wchs-mod-tpl-promo_offer" style="display:none">
+			<div class="wchs-module__fields" style="display:flex;flex-direction:column;gap:14px">
+				<div class="wchs-field wchs-field--full"><label>Intro heading (above box)</label><input type="text" data-field="po_intro_subheadline" placeholder="✨ We don't hand these out every day…" /></div>
+				<div class="wchs-field wchs-field--full"><label>Top badge</label><input type="text" data-field="po_badge_text" placeholder="LIMITED TIME OFFER ✨" /></div>
+				<div class="wchs-field wchs-field--full">
+					<label>Product image (left column)</label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="po_image" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:140px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Image alt text</label><input type="text" data-field="po_image_alt" /></div>
+				<div class="wchs-field wchs-field--full"><label>Ribbon line</label><input type="text" data-field="po_ribbon_text" placeholder="PUBLISHED COAs + BATCH DOCS WITH EVERY ORDER" /></div>
+				<div class="wchs-field wchs-field--full"><label>Offer line (accent)</label><input type="text" data-field="po_offer_primary" placeholder="UP TO 40% OFF" /></div>
+				<div class="wchs-field wchs-field--full"><label>Offer line (secondary)</label><input type="text" data-field="po_offer_secondary" placeholder="FOR A LIMITED TIME ONLY!" /></div>
+				<div class="wchs-field wchs-field--full"><label>Scarcity text</label><input type="text" data-field="po_scarcity_text" /></div>
+				<div class="wchs-field wchs-field--full"><label>CTA label</label><input type="text" data-field="po_cta_label" placeholder="GET 40% OFF" /></div>
+				<div class="wchs-field wchs-field--full"><label>CTA link</label><input type="text" data-field="po_cta_href" placeholder="/shop" /></div>
+				<div class="wchs-field">
+					<label style="display:inline-flex;align-items:center;gap:8px;font-weight:500">
+						<input type="checkbox" data-field="po_show_countdown" checked /> Show countdown timer
+					</label>
+				</div>
+				<div class="wchs-field wchs-field--full">
+					<label>Countdown ends at <?php echo self::hint_icon( 'Local time. Leave blank to hide the timer.' ); ?></label>
+					<input type="datetime-local" data-field="po_countdown_end_at" />
+				</div>
+				<div class="wchs-field"><label>Status label</label><input type="text" data-field="po_status_label" placeholder="Sell-out risk:" /></div>
+				<div class="wchs-field"><label>Status value</label><input type="text" data-field="po_status_value" placeholder="High" /></div>
+				<div class="wchs-field wchs-field--full"><label>Status note</label><input type="text" data-field="po_status_note" placeholder="Faster shipping" /></div>
+				<div class="wchs-field wchs-field--full"><label>Footer line</label><input type="text" data-field="po_footer_text" placeholder="Try it today with a 60-Day Money-Back Guarantee!" /></div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+					Accent color override
+					<?php echo self::hint_icon( 'Badge, CTA, offer highlight, countdown digits, and status emphasis.' ); ?>
+				</label>
+				<?php echo self::accent_override_swatches(); ?>
+			</div>
+			<?php $this->render_module_common_fields(); ?>
+		</div>
+
+		<!-- Reviews listicle -->
+		<div id="wchs-mod-tpl-reviews_listicle" style="display:none">
+			<div class="wchs-module__fields" style="display:flex;flex-direction:column;gap:14px">
+				<div class="wchs-field wchs-field--full">
+					<label>Headline <?php echo self::hint_icon( 'No review count — e.g. “Amazing Reviews with a 4.9 Rating”.' ); ?></label>
+					<input type="text" data-field="rl_headline" placeholder="Amazing Reviews with a 4.9 Rating" />
+				</div>
+				<div class="wchs-field wchs-field--full">
+					<label>Reviews (shows up to 3)</label>
+					<div class="wchs-reviews-listicle-items wchs-accordion-items" style="display:flex;flex-direction:column;gap:10px">
+						<div class="wchs-accordion-item" style="display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #ddd;background:#fafafa">
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Review quote</label>
+							<textarea rows="4" placeholder="Customer quote"></textarea>
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Name</label>
+							<input type="text" placeholder="e.g. Vincent R." />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Star rating (1–5)</label>
+							<input type="number" min="1" max="5" value="5" style="max-width:80px" />
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-reviews-listicle-item-modal" style="margin-top:10px">+ Add review</button>
+				</div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+					Accent color override
+					<?php echo self::hint_icon( 'Filled star color.' ); ?>
+				</label>
+				<?php echo self::accent_override_swatches(); ?>
+			</div>
+			<?php $this->render_module_common_fields(); ?>
+		</div>
+
 		<!-- Text Block -->
 		<div id="wchs-mod-tpl-text_block" style="display:none">
 			<div class="wchs-module__fields">

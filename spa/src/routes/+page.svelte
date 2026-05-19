@@ -18,6 +18,8 @@
 	import LogoStrip from '$lib/components/LogoStrip.svelte';
 	import Video from '$lib/components/Video.svelte';
 	import Listicle from '$lib/components/Listicle.svelte';
+	import PromoOffer from '$lib/components/PromoOffer.svelte';
+	import ReviewsListicle from '$lib/components/ReviewsListicle.svelte';
 	import SEO from '$lib/components/SEO.svelte';
 	import {
 		config,
@@ -103,6 +105,10 @@
 			<Accordion config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 		{:else if mod.type === 'listicle'}
 			<Listicle config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
+		{:else if mod.type === 'promo_offer'}
+			<PromoOffer config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
+		{:else if mod.type === 'reviews_listicle'}
+			<ReviewsListicle config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 		{:else if mod.type === 'text_block'}
 			<TextBlock config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 		{:else if mod.type === 'gallery'}

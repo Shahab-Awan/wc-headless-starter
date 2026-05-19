@@ -22,6 +22,8 @@
 	import LogoStrip from '$lib/components/LogoStrip.svelte';
 	import Video from '$lib/components/Video.svelte';
 	import Listicle from '$lib/components/Listicle.svelte';
+	import PromoOffer from '$lib/components/PromoOffer.svelte';
+	import ReviewsListicle from '$lib/components/ReviewsListicle.svelte';
 	import SEO from '$lib/components/SEO.svelte';
 
 	const pageData = $derived(
@@ -130,6 +132,10 @@
 					<TrustBar config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} resolved={mod.resolved} />
 				{:else if mod.type === 'listicle'}
 					<Listicle config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
+				{:else if mod.type === 'promo_offer'}
+					<PromoOffer config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
+				{:else if mod.type === 'reviews_listicle'}
+					<ReviewsListicle config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 				{:else if mod.type === 'text_block'}
 					<TextBlock config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 				{:else if mod.type === 'gallery'}
@@ -176,8 +182,32 @@
 		padding: 56px 28px 64px;
 	}
 	.content-page--listicle {
+		/* Half-padding per block → 64px between sections (32px + 32px). */
+		--wchs-page-section-half: 32px;
+		--wchs-page-section-bottom: 72px;
 		max-width: none;
-		padding: 0;
+		padding: 0 0 var(--wchs-page-section-bottom);
+		display: flex;
+		flex-direction: column;
+	}
+
+	.content-page--listicle > :global(section.listicle),
+	.content-page--listicle > :global(section.promo-offer),
+	.content-page--listicle > :global(section.reviews-listicle),
+	.content-page--listicle > :global(section.compare) {
+		--mod-pt: var(--wchs-page-section-half);
+		--mod-pb: var(--wchs-page-section-half);
+	}
+
+	.content-page--listicle > :global(section:first-child) {
+		--mod-pt: clamp(44px, 6vw, 64px);
+	}
+
+	@media (max-width: 640px) {
+		.content-page--listicle {
+			--wchs-page-section-half: 24px;
+			--wchs-page-section-bottom: 48px;
+		}
 	}
 	.content-page__title {
 		font-family: var(--font-heading, var(--font-sans));
