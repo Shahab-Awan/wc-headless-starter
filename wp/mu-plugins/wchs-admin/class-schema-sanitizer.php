@@ -212,6 +212,10 @@ class SchemaSanitizer {
 			case 'image':
 				return esc_url_raw( wp_unslash( (string) $value ) );
 
+			case 'color':
+				$v = sanitize_text_field( wp_unslash( (string) $value ) );
+				return ( $v !== '' && preg_match( '/^#[0-9a-fA-F]{6}$/', $v ) ) ? $v : '';
+
 			case 'product_list':
 				$raw = $value;
 				if ( is_array( $raw ) ) {

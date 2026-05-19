@@ -402,6 +402,7 @@ export type FeatureHighlightsModuleConfig = {
 
 export type OrderHandlingStep = {
 	variant: string;
+	icon_url?: string;
 	headline: string;
 	description: string;
 };
@@ -412,6 +413,7 @@ export type OrderHandlingModuleConfig = {
 	badge_text: string;
 	headline: string;
 	subheadline: string;
+	bg_color?: string;
 	steps: OrderHandlingStep[];
 	metrics_title: string;
 	metrics: OrderHandlingMetric[];
@@ -796,8 +798,9 @@ const DEFAULTS: SiteConfig = {
 				{ value: '6-panel', label: 'COA EVERY BATCH' },
 				{ value: '60+', label: 'RESEARCH COMPOUNDS' },
 			],
-			variant: 'research-motion',
-			layout: 'center',
+			variant: 'webgl-variant-6',
+			layout: 'left',
+			show_eyebrow: true,
 			image_desktop: '',
 			image_mobile: '',
 			image_position_x: 50,
@@ -806,7 +809,6 @@ const DEFAULTS: SiteConfig = {
 			image_position_mobile_y: 80,
 			image_zoom: 100,
 			image_zoom_mobile: 100,
-			show_eyebrow: false,
 			cta_accent: true,
 			show_cta: true,
 			show_rating: false,
@@ -901,6 +903,7 @@ const DEFAULTS: SiteConfig = {
 					headline: 'How Every Order Is Handled',
 					subheadline:
 						'From verification to delivery, we ensure each step meets our highest standards.',
+					bg_color: '',
 					steps: [
 						{
 							variant: 'verified',

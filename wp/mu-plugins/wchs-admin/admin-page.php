@@ -460,8 +460,104 @@ class AdminPage {
 		}
 		if ( empty( $saved['modules'] ) || ! is_array( $saved['modules'] ) ) {
 			$saved['modules'] = $defaults['modules'];
+		} else {
+			$saved['modules'] = self::merge_homepage_modules_with_defaults(
+				$saved['modules'],
+				$defaults['modules']
+			);
+		}
+		if ( function_exists( 'wchs_homepage_ensure_feature_highlights_module' ) ) {
+			$saved['modules'] = wchs_homepage_ensure_feature_highlights_module( $saved['modules'] );
+		}
+		if ( function_exists( 'wchs_homepage_ensure_order_handling_module' ) ) {
+			$saved['modules'] = wchs_homepage_ensure_order_handling_module( $saved['modules'] );
 		}
 		return $saved;
+	}
+
+	/**
+	 * Merge saved homepage modules with schema defaults (add missing modules, fill empty repeaters).
+	 *
+	 * @param array<int, array<string, mixed>> $saved_modules
+	 * @param array<int, array<string, mixed>> $default_modules
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function merge_homepage_modules_with_defaults( array $saved_modules, array $default_modules ): array {
+		$list = $saved_modules;
+		foreach ( $default_modules as $def ) {
+			if ( ! is_array( $def ) || empty( $def['type'] ) ) {
+				continue;
+			}
+			$type = (string) $def['type'];
+			$idx  = -1;
+			foreach ( $list as $i => $m ) {
+				if ( is_array( $m ) && ( $m['type'] ?? '' ) === $type ) {
+					$idx = $i;
+					break;
+				}
+			}
+			if ( $idx < 0 ) {
+				$list[] = $def;
+				continue;
+			}
+			$saved_cfg = is_array( $list[ $idx ]['config'] ?? null ) ? $list[ $idx ]['config'] : [];
+			$def_cfg   = is_array( $def['config'] ?? null ) ? $def['config'] : [];
+			$list[ $idx ]['config'] = self::merge_homepage_module_config( $type, $saved_cfg, $def_cfg );
+		}
+		return $list;
+	}
+
+	/**
+	 * @param array<string, mixed> $saved
+	 * @param array<string, mixed> $defaults
+	 * @return array<string, mixed>
+	 */
+	private static function merge_homepage_module_config( string $type, array $saved, array $defaults ): array {
+		$merged = wp_parse_args( $saved, $defaults );
+		if ( 'feature_highlights' === $type && isset( $defaults['items'] ) ) {
+			$merged['items'] = self::merge_homepage_repeater_rows(
+				is_array( $saved['items'] ?? null ) ? $saved['items'] : [],
+				(array) $defaults['items']
+			);
+		}
+		if ( 'order_handling' === $type ) {
+			if ( isset( $defaults['steps'] ) ) {
+				$merged['steps'] = self::merge_homepage_repeater_rows(
+					is_array( $saved['steps'] ?? null ) ? $saved['steps'] : [],
+					(array) $defaults['steps']
+				);
+			}
+			if ( isset( $defaults['metrics'] ) ) {
+				$merged['metrics'] = self::merge_homepage_repeater_rows(
+					is_array( $saved['metrics'] ?? null ) ? $saved['metrics'] : [],
+					(array) $defaults['metrics']
+				);
+			}
+		}
+		return $merged;
+	}
+
+	/**
+	 * @param array<int, array<string, mixed>> $saved
+	 * @param array<int, array<string, mixed>> $defaults
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function merge_homepage_repeater_rows( array $saved, array $defaults ): array {
+		if ( empty( $saved ) ) {
+			return $defaults;
+		}
+		$out = [];
+		$n   = max( count( $saved ), count( $defaults ) );
+		for ( $i = 0; $i < $n; $i++ ) {
+			if ( isset( $defaults[ $i ], $saved[ $i ] ) && is_array( $defaults[ $i ] ) && is_array( $saved[ $i ] ) ) {
+				$out[] = array_merge( $defaults[ $i ], $saved[ $i ] );
+			} elseif ( isset( $saved[ $i ] ) && is_array( $saved[ $i ] ) ) {
+				$out[] = $saved[ $i ];
+			} elseif ( isset( $defaults[ $i ] ) && is_array( $defaults[ $i ] ) ) {
+				$out[] = $defaults[ $i ];
+			}
+		}
+		return $out;
 	}
 
 	public static function get_pdp_config(): array {
@@ -1024,8 +1120,8 @@ class AdminPage {
 					[ 'value' => '6-panel', 'label' => 'COA EVERY BATCH' ],
 					[ 'value' => '60+', 'label' => 'RESEARCH COMPOUNDS' ],
 				],
-				'variant'                => 'research-motion',
-				'layout'                 => 'center',
+				'variant'                => 'webgl-variant-6',
+				'layout'                 => 'left',
 				'image_desktop'          => '',
 				'image_mobile'           => '',
 				'image_position_x'       => 50,
@@ -1034,7 +1130,7 @@ class AdminPage {
 				'image_position_mobile_y' => 80,
 				'image_zoom'             => 100,
 				'image_zoom_mobile'      => 100,
-				'show_eyebrow'           => false,
+				'show_eyebrow'           => true,
 				'cta_accent'             => true,
 				'show_cta'               => true,
 				'show_rating'            => false,
@@ -1105,6 +1201,47 @@ class AdminPage {
 						],
 						'cta_label'       => 'Buy 1 Get 1 Free',
 						'cta_href'        => '/shop',
+					],
+				],
+				[
+					'type'          => 'order_handling',
+					'visibility'    => 'all',
+					'spacing_v'     => 'normal',
+					'spacing_h'     => 'normal',
+					'center_header' => true,
+					'config'        => [
+						'badge_text'    => 'Our Process',
+						'headline'      => 'How Every Order Is Handled',
+						'subheadline'   => 'From verification to delivery, we ensure each step meets our highest standards.',
+						'bg_color'      => '',
+						'steps'         => [
+							[
+								'variant'     => 'verified',
+								'headline'    => 'Verified Batches',
+								'description' => 'Every batch undergoes rigorous quality control and verification before release.',
+							],
+							[
+								'variant'     => 'lab',
+								'headline'    => '3rd Party Testing',
+								'description' => 'Independent laboratory testing ensures purity and consistency you can trust.',
+							],
+							[
+								'variant'     => 'shipping',
+								'headline'    => 'Ships Same Day',
+								'description' => 'Discreetly packaged and dispatched within 24 hours from our U.S. facility.',
+							],
+							[
+								'variant'     => 'support',
+								'headline'    => '24/7 Support',
+								'description' => 'Round-the-clock customer service for any questions before or after your order.',
+							],
+						],
+						'metrics_title' => 'Quality Metrics',
+						'metrics'       => [
+							[ 'value' => '99.8%', 'label' => 'Batch Accuracy' ],
+							[ 'value' => '100%', 'label' => 'Verified Testing' ],
+							[ 'value' => '24/7', 'label' => 'Support Response' ],
+						],
 					],
 				],
 				[
@@ -5080,20 +5217,31 @@ class AdminPage {
 				<div class="wchs-field wchs-field--full"><label>Headline</label><input type="text" data-field="oh_headline" placeholder="How Every Order Is Handled" /></div>
 				<div class="wchs-field wchs-field--full"><label>Subheadline</label><input type="text" data-field="oh_subheadline" /></div>
 				<div class="wchs-field wchs-field--full">
+					<label>Section background <?php echo self::hint_icon( 'Optional hex (e.g. #f4f7f9). Leave empty for the default site background.' ); ?></label>
+					<input type="text" data-field="oh_bg_color" placeholder="#f8fafb (optional)" maxlength="7" />
+				</div>
+				<div class="wchs-field wchs-field--full">
 					<label>Process steps</label>
 					<div class="wchs-oh-steps wchs-accordion-items" style="display:flex;flex-direction:column;gap:10px">
 						<div class="wchs-accordion-item" style="display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #ddd;background:#fafafa">
-							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Icon</label>
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Built-in icon style</label>
 							<select data-field="oh_step_variant">
 								<option value="verified">Verified batches</option>
 								<option value="lab">Lab testing</option>
 								<option value="shipping">Shipping</option>
 								<option value="support">Support</option>
 							</select>
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Custom icon (optional) <?php echo self::hint_icon( 'Upload replaces the built-in icon for this step. SVG or PNG recommended.' ); ?></label>
+							<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+								<input type="text" data-field="oh_step_icon" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+								<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+								<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+							</div>
+							<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:48px;margin-top:8px;border:1px solid #e0e0e0" />
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Title</label>
-							<input type="text" placeholder="Step title" />
+							<input type="text" data-field="oh_step_headline" placeholder="Step title" />
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Description</label>
-							<input type="text" placeholder="Step description" />
+							<input type="text" data-field="oh_step_description" placeholder="Step description" />
 							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
 						</div>
 					</div>

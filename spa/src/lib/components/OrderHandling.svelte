@@ -27,13 +27,20 @@
 		return ((STEP_VARIANTS as readonly string[]).includes(v) ? v : 'verified') as StepVariant;
 	}
 
-	const accentStyle = $derived(resolved?.accent_color ? `--oh-accent: ${resolved.accent_color};` : '');
+	const sectionStyle = $derived.by(() => {
+		const parts: string[] = [];
+		if (resolved?.accent_color) parts.push(`--oh-accent: ${resolved.accent_color}`);
+		const bg = config.bg_color?.trim() ?? '';
+		if (/^#[0-9a-fA-F]{6}$/.test(bg)) parts.push(`background: ${bg}`);
+		return parts.join('; ');
+	});
 
 	const steps = $derived(
 		(config.steps ?? [])
 			.map((row, i) => ({
 				step: i + 1,
 				variant: normVariant(row.variant),
+				iconUrl: row.icon_url?.trim() || '',
 				headline: row.headline?.trim() || '',
 				description: row.description?.trim() || '',
 			}))
@@ -63,7 +70,7 @@
 		class:is-h-compact={spacing_h === 'compact'}
 		class:is-h-spacious={spacing_h === 'spacious'}
 		class:is-centered={center_header}
-		style={accentStyle}
+		style={sectionStyle}
 		aria-label={headline || 'Order handling'}
 	>
 		<header class="oh__head">
@@ -93,7 +100,9 @@
 				<article class="oh-card oh-card--{step.variant}">
 					<span class="oh-card__num" aria-hidden="true">{step.step}</span>
 					<div class="oh-card__icon" aria-hidden="true">
-						{#if step.variant === 'verified'}
+						{#if step.iconUrl}
+							<img class="oh-card__icon-img" src={step.iconUrl} alt="" />
+						{:else if step.variant === 'verified'}
 							<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
 								<path d="M20 6 9 17l-5-5" />
 							</svg>
@@ -282,6 +291,11 @@
 		height: 48px;
 		border-radius: 12px;
 		margin-bottom: 16px;
+	}
+	.oh-card__icon-img {
+		width: 28px;
+		height: 28px;
+		object-fit: contain;
 	}
 
 	.oh-card--verified .oh-card__icon {

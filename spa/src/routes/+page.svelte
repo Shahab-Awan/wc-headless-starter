@@ -26,23 +26,14 @@
 		config,
 		homepageModulesWithSplitValueAfterHero,
 		isHomepageModuleShown,
-		type HomepageHeroConfig,
 	} from '$lib/config.svelte';
 
-	const hero = $derived(config.data.homepage.hero);
-
-	const homepageTopHero = $derived.by((): HomepageHeroConfig => {
+	const hero = $derived.by(() => {
 		const h = config.data.homepage.hero;
-		return {
-			...h,
-			variant: 'research-motion',
-			content_mode: 'text',
-			layout: 'center',
-			image_desktop: '',
-			image_mobile: '',
-			show_eyebrow: false,
-			text_color_mode: 'white',
-		};
+		if (h.variant === 'research-motion') {
+			return { ...h, variant: 'webgl-variant-6' as const, layout: 'left' as const };
+		}
+		return h;
 	});
 
 	const modules = $derived(
@@ -85,7 +76,7 @@
 />
 
 <AccessGate requires="products">
-<Hero hero={homepageTopHero} />
+<Hero hero={hero} />
 
 {#each modules as mod}
 	<div class="wchs-mod-wrap" data-module-type={mod.type} data-module-id={mod.id ?? ''} style="display: contents">

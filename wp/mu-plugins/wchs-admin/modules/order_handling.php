@@ -17,6 +17,11 @@ return [
 		[ 'id' => 'headline',    'type' => 'text', 'default' => 'How Every Order Is Handled' ],
 		[ 'id' => 'subheadline', 'type' => 'text', 'default' => '' ],
 		[
+			'id'      => 'bg_color',
+			'type'    => 'color',
+			'default' => '',
+		],
+		[
 			'id'               => 'steps',
 			'type'             => 'repeater',
 			'default'          => [],
@@ -32,6 +37,7 @@ return [
 						'support'  => 'Support',
 					],
 				],
+				[ 'id' => 'icon_url',    'type' => 'image', 'default' => '' ],
 				[ 'id' => 'headline',    'type' => 'text', 'default' => '' ],
 				[ 'id' => 'description', 'type' => 'text', 'default' => '' ],
 			],

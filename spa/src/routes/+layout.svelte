@@ -442,13 +442,14 @@
 	});
 
 	$effect(() => {
-		if (!drawerOpen) return;
+		if (!config.ready) return;
 		syncDrawerTop();
-		window.addEventListener('resize', syncDrawerTop);
-		window.addEventListener('scroll', syncDrawerTop, { passive: true });
+		const onResize = () => syncDrawerTop();
+		window.addEventListener('resize', onResize);
+		window.addEventListener('scroll', onResize, { passive: true });
 		return () => {
-			window.removeEventListener('resize', syncDrawerTop);
-			window.removeEventListener('scroll', syncDrawerTop);
+			window.removeEventListener('resize', onResize);
+			window.removeEventListener('scroll', onResize);
 		};
 	});
 

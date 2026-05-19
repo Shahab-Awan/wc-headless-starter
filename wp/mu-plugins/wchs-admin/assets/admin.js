@@ -433,6 +433,7 @@
 				badge_text: 'Our Process',
 				headline: 'How Every Order Is Handled',
 				subheadline: 'From verification to delivery, we ensure each step meets our highest standards.',
+				bg_color: '',
 				steps: [
 					{ variant: 'verified', headline: 'Verified Batches', description: 'Every batch undergoes rigorous quality control and verification before release.' },
 					{ variant: 'lab', headline: '3rd Party Testing', description: 'Independent laboratory testing ensures purity and consistency you can trust.' },
@@ -1310,7 +1311,7 @@
 				setVal(container, '[data-field="fh_subheadline"]', cfg.subheadline || '');
 				setVal(container, '[data-field="fh_cta_label"]', cfg.cta_label || '');
 				setVal(container, '[data-field="fh_cta_href"]', cfg.cta_href || '');
-				populateRepeaterItems(container, '.wchs-fh-items', cfg.items || [], function (item, el) {
+				populateRepeaterItems(container, '.wchs-fh-items', fhItemsForAdmin(cfg), function (item, el) {
 					var sel = el.querySelector('[data-field="fh_variant"]');
 					if (sel) sel.value = item.variant || 'pin';
 					var inputs = el.querySelectorAll('input[type="text"]');
@@ -1322,15 +1323,17 @@
 				setVal(container, '[data-field="oh_badge_text"]', cfg.badge_text || '');
 				setVal(container, '[data-field="oh_headline"]', cfg.headline || '');
 				setVal(container, '[data-field="oh_subheadline"]', cfg.subheadline || '');
+				setVal(container, '[data-field="oh_bg_color"]', cfg.bg_color || '');
 				setVal(container, '[data-field="oh_metrics_title"]', cfg.metrics_title || '');
-				populateRepeaterItems(container, '.wchs-oh-steps', cfg.steps || [], function (item, el) {
+				populateRepeaterItems(container, '.wchs-oh-steps', ohStepsForAdmin(cfg), function (item, el) {
 					var sel = el.querySelector('[data-field="oh_step_variant"]');
 					if (sel) sel.value = item.variant || 'verified';
-					var inputs = el.querySelectorAll('input[type="text"]');
-					if (inputs[0]) inputs[0].value = item.headline || '';
-					if (inputs[1]) inputs[1].value = item.description || '';
+					setVal(el, '[data-field="oh_step_headline"]', item.headline || '');
+					setVal(el, '[data-field="oh_step_description"]', item.description || '');
+					setVal(el, '[data-field="oh_step_icon"]', item.icon_url || '');
+					syncOhStepMedia(el);
 				});
-				populateOhMetrics(container, cfg.metrics || []);
+				populateOhMetrics(container, ohMetricsForAdmin(cfg));
 				break;
 			case 'cta':
 				setVal(container, '[data-field="cta_label"]', cfg.label || '');
@@ -1596,6 +1599,7 @@
 				cfg.badge_text = getVal(container, '[data-field="oh_badge_text"]') || '';
 				cfg.headline = getVal(container, '[data-field="oh_headline"]') || '';
 				cfg.subheadline = getVal(container, '[data-field="oh_subheadline"]') || '';
+				cfg.bg_color = getVal(container, '[data-field="oh_bg_color"]') || '';
 				cfg.metrics_title = getVal(container, '[data-field="oh_metrics_title"]') || '';
 				cfg.steps = readOhSteps(container);
 				cfg.metrics = readOhMetrics(container);
@@ -1708,14 +1712,29 @@
 		ctx.querySelectorAll('.wchs-oh-steps .wchs-accordion-item').forEach(function (el) {
 			var sel = el.querySelector('[data-field="oh_step_variant"]');
 			var variant = sel ? sel.value : 'verified';
-			var inputs = el.querySelectorAll('input[type="text"]');
 			items.push({
 				variant: variant,
-				headline: inputs[0] ? inputs[0].value : '',
-				description: inputs[1] ? inputs[1].value : '',
+				icon_url: getVal(el, '[data-field="oh_step_icon"]') || '',
+				headline: getVal(el, '[data-field="oh_step_headline"]') || '',
+				description: getVal(el, '[data-field="oh_step_description"]') || '',
 			});
 		});
 		return items;
+	}
+
+	function syncOhStepMedia(el) {
+		var input = el.querySelector('[data-field="oh_step_icon"]');
+		if (!input) return;
+		var preview = el.querySelector('.wchs-media-preview');
+		var removeBtn = el.querySelector('.wchs-media-remove');
+		if (input.value && preview) {
+			preview.src = input.value;
+			preview.style.display = '';
+		} else if (preview) {
+			preview.src = '';
+			preview.style.display = 'none';
+		}
+		if (removeBtn) removeBtn.style.display = input.value ? '' : 'none';
 	}
 
 	function readOhMetrics(ctx) {
@@ -1790,6 +1809,57 @@
 	function listicleItemsForAdmin(cfg) {
 		var saved = cfg.items || [];
 		var defaults = defaultConfigFor('listicle').items || [];
+		if (!defaults.length) return saved;
+		if (!saved.length) return defaults.slice();
+		var out = [];
+		for (var i = 0; i < defaults.length; i++) {
+			out.push(Object.assign({}, defaults[i], saved[i] || {}));
+		}
+		if (saved.length > defaults.length) {
+			for (var j = defaults.length; j < saved.length; j++) {
+				out.push(saved[j]);
+			}
+		}
+		return out;
+	}
+
+	function fhItemsForAdmin(cfg) {
+		var saved = cfg.items || [];
+		var defaults = defaultConfigFor('feature_highlights').items || [];
+		if (!defaults.length) return saved;
+		if (!saved.length) return defaults.slice();
+		var out = [];
+		for (var i = 0; i < defaults.length; i++) {
+			out.push(Object.assign({}, defaults[i], saved[i] || {}));
+		}
+		if (saved.length > defaults.length) {
+			for (var j = defaults.length; j < saved.length; j++) {
+				out.push(saved[j]);
+			}
+		}
+		return out;
+	}
+
+	function ohStepsForAdmin(cfg) {
+		var saved = cfg.steps || [];
+		var defaults = defaultConfigFor('order_handling').steps || [];
+		if (!defaults.length) return saved;
+		if (!saved.length) return defaults.slice();
+		var out = [];
+		for (var i = 0; i < defaults.length; i++) {
+			out.push(Object.assign({}, defaults[i], saved[i] || {}));
+		}
+		if (saved.length > defaults.length) {
+			for (var j = defaults.length; j < saved.length; j++) {
+				out.push(saved[j]);
+			}
+		}
+		return out;
+	}
+
+	function ohMetricsForAdmin(cfg) {
+		var saved = cfg.metrics || [];
+		var defaults = defaultConfigFor('order_handling').metrics || [];
 		if (!defaults.length) return saved;
 		if (!saved.length) return defaults.slice();
 		var out = [];
@@ -2555,6 +2625,7 @@
 			var ohSel = ohEl.querySelector('[data-field="oh_step_variant"]');
 			if (ohSel) ohSel.value = 'verified';
 			ohEl.querySelectorAll('input[type="text"]').forEach(function (inp) { inp.value = ''; });
+			syncOhStepMedia(ohEl);
 			ohWrap.appendChild(ohEl);
 		}
 		var addOhMetricModal = e.target.closest('.wchs-add-oh-metric-modal');

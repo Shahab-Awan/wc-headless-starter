@@ -228,6 +228,7 @@ function wchs_homepage_ensure_order_handling_module( array $mods ): array {
 				'badge_text'    => 'Our Process',
 				'headline'      => 'How Every Order Is Handled',
 				'subheadline'   => 'From verification to delivery, we ensure each step meets our highest standards.',
+				'bg_color'      => '',
 				'steps'         => [
 					[
 						'variant'     => 'verified',
