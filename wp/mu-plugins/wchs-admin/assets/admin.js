@@ -177,6 +177,7 @@
 		listicle: 'Listicle',
 		promo_offer: 'Promo offer (split)',
 		reviews_listicle: 'Reviews listicle',
+		listicle_faqs: 'Listicle FAQs',
 		accordion: 'Accordion', trust_bar: 'Trust Bar', text_block: 'Text Block',
 		gallery: 'Gallery', contact_form: 'Contact Form', shop_grid: 'Shop Grid',
 		category_grid: 'Category Grid', 		split_features: 'Split Features',
@@ -191,7 +192,7 @@
 		hero: 'branding', trust_bar: 'branding', logo_strip: 'branding',
 		product_slider: 'commerce', review_slider: 'commerce',
 		shop_grid: 'commerce', category_grid: 'commerce',
-		accordion: 'content', listicle: 'content', reviews_listicle: 'content', text_block: 'content', gallery: 'content',
+		accordion: 'content', listicle: 'content', reviews_listicle: 'content', listicle_faqs: 'content', text_block: 'content', gallery: 'content',
 		promo_offer: 'commerce',
 		split_features: 'content', split_value: 'commerce', feature_highlights: 'content',
 		order_handling: 'content',
@@ -216,6 +217,7 @@
 		listicle: ['homepage','shop','pdp','pages'],
 		promo_offer: ['homepage','shop','pdp','pages'],
 		reviews_listicle: ['homepage','shop','pdp','pages'],
+		listicle_faqs: ['homepage','shop','pdp','pages'],
 		accordion: ['homepage','shop','pdp','pages'],
 		gallery: ['homepage','shop','pdp','pages'],
 		cta: ['homepage','shop','pdp','pages'],
@@ -323,8 +325,10 @@
 		}
 		if (type === 'listicle') {
 			return {
+				section_eyebrow: '',
 				headline: '5 Reasons Researchers Choose Verified Peptide Suppliers Over Gray-Market Listings',
-				intro: '<p>Many labs still source peptides from unverified sellers because the price looks right and the listing looks legitimate.</p><p>That shortcut often means missing batch documentation, inconsistent purity claims, and no traceable COA before you commit budget to a run.</p><p>Here is why more research teams standardize on documented, batch-tested supply:</p>',
+				intro: '<p>Many labs still source peptides from unverified sellers because the price looks right and the listing looks legitimate.</p><p>That shortcut often means missing batch documentation, inconsistent purity claims, and no traceable COA before you commit budget to a run.</p>',
+				items_headline: 'Here is why more research teams standardize on documented, batch-tested supply:',
 				closing: '<p>So why have more research teams switched to Alyve Peptides? Because documented purity, published COAs, and predictable domestic fulfillment are not extras—they are the baseline.</p>',
 				items: [
 					{
@@ -350,6 +354,34 @@
 				],
 				cta_label: 'Shop research-grade peptides',
 				cta_href: '/shop',
+			};
+		}
+		if (type === 'listicle_faqs') {
+			return {
+				eyebrow: 'COMMON QUESTIONS',
+				headline: 'What researchers ask before ordering',
+				items: [
+					{
+						q: 'How much bacteriostatic water do I use to reconstitute?',
+						a: '<p>Follow the reconstitution guidance on your product label and COA. A common starting point for research vials is adding the volume of bacteriostatic water (BAC) that yields your target concentration—many protocols use 1–2 mL per vial, but always defer to the compound-specific instructions supplied with the batch.</p>',
+					},
+					{
+						q: 'Are COAs available before I purchase?',
+						a: '<p>Yes. Every batch is tested by independent third-party laboratories. Certificates of Analysis confirming purity are published on product pages and available before you add items to cart.</p>',
+					},
+					{
+						q: 'What is your return policy?',
+						a: '<p>Unopened products in original packaging may be returned within 30 days of delivery. Opened or reconstituted materials cannot be accepted due to research-use handling requirements. Contact support with your order number to start a return.</p>',
+					},
+					{
+						q: 'How quickly does the order ship?',
+						a: '<p>Orders ship within 1–2 business days from our U.S. facility. You will receive tracking as soon as the carrier scans the package. Free shipping applies on qualifying order totals shown at checkout.</p>',
+					},
+					{
+						q: 'What testing methodology do you use to verify purity?',
+						a: '<p>Each batch undergoes third-party laboratory testing—including HPLC for purity and identity—with results documented on the COA. We publish methodology summaries and batch numbers so your team can align material qualification with your protocol.</p>',
+					},
+				],
 			};
 		}
 		if (type === 'reviews_listicle') {
@@ -1107,16 +1139,41 @@
 				});
 				break;
 			case 'listicle':
+				setVal(container, '[data-field="lc_section_eyebrow"]', cfg.section_eyebrow || '');
 				setVal(container, '[data-field="lc_headline"]', cfg.headline || '');
+				setVal(container, '[data-field="lc_hero_image"]', cfg.hero_image || '');
+				setVal(container, '[data-field="lc_hero_image_alt"]', cfg.hero_image_alt || '');
 				setVal(container, '[data-field="lc_intro"]', cfg.intro || '');
+				setVal(container, '[data-field="lc_items_headline"]', cfg.items_headline || '');
 				setVal(container, '[data-field="lc_closing"]', cfg.closing || '');
 				setVal(container, '[data-field="lc_cta_label"]', cfg.cta_label || '');
 				setVal(container, '[data-field="lc_cta_href"]', cfg.cta_href || '');
-				populateRepeaterItems(container, '.wchs-listicle-items', cfg.items || [], function (item, el) {
+				syncListicleHeroMedia(container);
+				populateRepeaterItems(container, '.wchs-listicle-items', listicleItemsForAdmin(cfg), function (item, el) {
+					setVal(el, '[data-field="lc_item_number"]', item.number || '');
+					setVal(el, '[data-field="lc_item_label"]', item.label || '');
+					setVal(el, '[data-field="lc_item_headline"]', item.headline || '');
+					setVal(el, '[data-field="lc_item_body"]', item.body || '');
+					setVal(el, '[data-field="lc_item_callout"]', item.callout || '');
+					setVal(el, '[data-field="lc_item_image"]', item.image || '');
+					setVal(el, '[data-field="lc_item_image_alt"]', item.image_alt || '');
+					syncListicleItemMedia(el);
+				});
+				break;
+			case 'listicle_faqs':
+				setVal(container, '[data-field="lf_eyebrow"]', cfg.eyebrow || '');
+				setVal(
+					container,
+					'[data-field="lf_headline"]',
+					cfg.headline ||
+						[cfg.headline_prefix, cfg.headline_accent].filter(Boolean).join('') ||
+						''
+				);
+				populateRepeaterItems(container, '.wchs-listicle-faqs-items', cfg.items || [], function (item, el) {
 					var inputs = el.querySelectorAll('input[type="text"]');
 					var textareas = el.querySelectorAll('textarea');
-					if (inputs[0]) inputs[0].value = item.headline || '';
-					if (textareas[0]) textareas[0].value = item.body || '';
+					if (inputs[0]) inputs[0].value = item.q || '';
+					if (textareas[0]) textareas[0].value = item.a || '';
 				});
 				break;
 			case 'reviews_listicle':
@@ -1418,8 +1475,12 @@
 				cfg.items = readAccordionItems(container);
 				break;
 			case 'listicle':
+				cfg.section_eyebrow = getVal(container, '[data-field="lc_section_eyebrow"]') || '';
 				cfg.headline = getVal(container, '[data-field="lc_headline"]') || '';
+				cfg.hero_image = getVal(container, '[data-field="lc_hero_image"]') || '';
+				cfg.hero_image_alt = getVal(container, '[data-field="lc_hero_image_alt"]') || '';
 				cfg.intro = getVal(container, '[data-field="lc_intro"]') || '';
+				cfg.items_headline = getVal(container, '[data-field="lc_items_headline"]') || '';
 				cfg.closing = getVal(container, '[data-field="lc_closing"]') || '';
 				cfg.cta_label = getVal(container, '[data-field="lc_cta_label"]') || '';
 				cfg.cta_href = getVal(container, '[data-field="lc_cta_href"]') || '';
@@ -1429,6 +1490,12 @@
 			case 'reviews_listicle':
 				cfg.headline = getVal(container, '[data-field="rl_headline"]') || '';
 				cfg.items = readReviewsListicleItems(container);
+				delete cfg.title;
+				break;
+			case 'listicle_faqs':
+				cfg.eyebrow = getVal(container, '[data-field="lf_eyebrow"]') || '';
+				cfg.headline = getVal(container, '[data-field="lf_headline"]') || '';
+				cfg.items = readListicleFaqsItems(container);
 				delete cfg.title;
 				break;
 			case 'promo_offer':
@@ -1668,9 +1735,23 @@
 		ctx.querySelectorAll('.wchs-accordion-items .wchs-accordion-item').forEach(function (el) {
 			if (el.closest('.wchs-listicle-items')) return;
 			if (el.closest('.wchs-reviews-listicle-items')) return;
+			if (el.closest('.wchs-listicle-faqs-items')) return;
 			var inputs = el.querySelectorAll('input');
 			var textareas = el.querySelectorAll('textarea');
 			items.push({ q: inputs[0] ? inputs[0].value : '', a: textareas[0] ? textareas[0].value : '' });
+		});
+		return items;
+	}
+
+	function readListicleFaqsItems(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-listicle-faqs-items .wchs-accordion-item').forEach(function (el) {
+			var inputs = el.querySelectorAll('input[type="text"]');
+			var textareas = el.querySelectorAll('textarea');
+			var q = inputs[0] ? inputs[0].value.trim() : '';
+			var a = textareas[0] ? textareas[0].value : '';
+			if (!q || !a.trim()) return;
+			items.push({ q: q, a: a });
 		});
 		return items;
 	}
@@ -1691,16 +1772,67 @@
 		return items;
 	}
 
+	function syncListicleItemMedia(el) {
+		var input = el.querySelector('[data-field="lc_item_image"]');
+		if (!input) return;
+		var preview = el.querySelector('.wchs-media-preview');
+		var removeBtn = el.querySelector('.wchs-media-remove');
+		if (input.value && preview) {
+			preview.src = input.value;
+			preview.style.display = '';
+		} else if (preview) {
+			preview.src = '';
+			preview.style.display = 'none';
+		}
+		if (removeBtn) removeBtn.style.display = input.value ? '' : 'none';
+	}
+
+	function listicleItemsForAdmin(cfg) {
+		var saved = cfg.items || [];
+		var defaults = defaultConfigFor('listicle').items || [];
+		if (!defaults.length) return saved;
+		if (!saved.length) return defaults.slice();
+		var out = [];
+		for (var i = 0; i < defaults.length; i++) {
+			out.push(Object.assign({}, defaults[i], saved[i] || {}));
+		}
+		if (saved.length > defaults.length) {
+			for (var j = defaults.length; j < saved.length; j++) {
+				out.push(saved[j]);
+			}
+		}
+		return out;
+	}
+
+	function syncListicleHeroMedia(ctx) {
+		var input = ctx.querySelector('[data-field="lc_hero_image"]');
+		if (!input) return;
+		var field = input.closest('.wchs-field');
+		var preview = field && field.querySelector('.wchs-media-preview');
+		var removeBtn = field && field.querySelector('.wchs-media-remove');
+		if (input.value && preview) {
+			preview.src = input.value;
+			preview.style.display = '';
+		} else if (preview) {
+			preview.src = '';
+			preview.style.display = 'none';
+		}
+		if (removeBtn) removeBtn.style.display = input.value ? '' : 'none';
+	}
+
 	function readListicleItems(ctx) {
 		var items = [];
 		ctx.querySelectorAll('.wchs-listicle-items .wchs-accordion-item').forEach(function (el) {
-			var inputs = el.querySelectorAll('input[type="text"]');
-			var textareas = el.querySelectorAll('textarea');
-			var headline = inputs[0] ? inputs[0].value.trim() : '';
+			var headline = getVal(el, '[data-field="lc_item_headline"]').trim();
 			if (!headline) return;
 			items.push({
+				number: getVal(el, '[data-field="lc_item_number"]'),
+				label: getVal(el, '[data-field="lc_item_label"]'),
 				headline: headline,
-				body: textareas[0] ? textareas[0].value : '',
+				body: getVal(el, '[data-field="lc_item_body"]'),
+				callout: getVal(el, '[data-field="lc_item_callout"]'),
+				image: getVal(el, '[data-field="lc_item_image"]'),
+				image_alt: getVal(el, '[data-field="lc_item_image_alt"]'),
 			});
 		});
 		return items;
@@ -2346,6 +2478,18 @@
 			container.appendChild(div);
 		}
 		// Modal-context add buttons (accordion + split_features inside module editor modal)
+		var addListicleFaqsModal = e.target.closest('.wchs-add-listicle-faqs-item-modal');
+		if (addListicleFaqsModal) {
+			var lfWrap = addListicleFaqsModal.closest('.wchs-field').querySelector('.wchs-listicle-faqs-items');
+			if (!lfWrap) return;
+			var lfTpl = lfWrap.querySelector('.wchs-accordion-item');
+			if (!lfTpl) return;
+			var lfClone = lfTpl.cloneNode(true);
+			lfClone.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
+			lfWrap.appendChild(lfClone);
+			return;
+		}
+
 		var addReviewsListicleModal = e.target.closest('.wchs-add-reviews-listicle-item-modal');
 		if (addReviewsListicleModal) {
 			var rlWrap = addReviewsListicleModal.closest('.wchs-field').querySelector('.wchs-reviews-listicle-items');
@@ -2368,6 +2512,7 @@
 			if (!lcTpl) return;
 			var lcClone = lcTpl.cloneNode(true);
 			lcClone.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
+			syncListicleItemMedia(lcClone);
 			lcWrap.appendChild(lcClone);
 			return;
 		}

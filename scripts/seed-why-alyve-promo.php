@@ -125,6 +125,49 @@ foreach ( $cfg['pages'] as $i => $page ) {
 		$modules[] = $why_alyve_block;
 	}
 
+	$listicle_faqs_defaults = [
+		'type'       => 'listicle_faqs',
+		'visibility' => 'all',
+		'spacing_v'  => 'normal',
+		'spacing_h'  => 'normal',
+		'config'     => [
+			'eyebrow'   => 'COMMON QUESTIONS',
+			'headline'  => 'What researchers ask before ordering',
+			'items'            => [
+				[
+					'q' => 'How much bacteriostatic water do I use to reconstitute?',
+					'a' => '<p>Follow the reconstitution guidance on your product label and COA. A common starting point for research vials is adding the volume of bacteriostatic water (BAC) that yields your target concentration—many protocols use 1–2 mL per vial, but always defer to the compound-specific instructions supplied with the batch.</p>',
+				],
+				[
+					'q' => 'Are COAs available before I purchase?',
+					'a' => '<p>Yes. Every batch is tested by independent third-party laboratories. Certificates of Analysis confirming purity are published on product pages and available before you add items to cart.</p>',
+				],
+				[
+					'q' => 'What is your return policy?',
+					'a' => '<p>Unopened products in original packaging may be returned within 30 days of delivery. Opened or reconstituted materials cannot be accepted due to research-use handling requirements. Contact support with your order number to start a return.</p>',
+				],
+				[
+					'q' => 'How quickly does the order ship?',
+					'a' => '<p>Orders ship within 1–2 business days from our U.S. facility. You will receive tracking as soon as the carrier scans the package. Free shipping applies on qualifying order totals shown at checkout.</p>',
+				],
+				[
+					'q' => 'What testing methodology do you use to verify purity?',
+					'a' => '<p>Each batch undergoes third-party laboratory testing—including HPLC for purity and identity—with results documented on the COA. We publish methodology summaries and batch numbers so your team can align material qualification with your protocol.</p>',
+				],
+			],
+		],
+	];
+	$has_faqs = false;
+	foreach ( $modules as $m ) {
+		if ( ( $m['type'] ?? '' ) === 'listicle_faqs' ) {
+			$has_faqs = true;
+			break;
+		}
+	}
+	if ( ! $has_faqs ) {
+		$modules[] = $listicle_faqs_defaults;
+	}
+
 	$cfg['pages'][ $i ]['modules'] = \WCHS\Admin\SchemaSanitizer::sanitize_modules( $modules, 'pages' );
 	break;
 }

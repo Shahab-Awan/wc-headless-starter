@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import { page } from '$app/state';
 	import { cart } from '$lib/wc/cart.svelte';
 	import { auth } from '$lib/wc/auth.svelte';
 	import { primeSession } from '$lib/wc/store-api';
@@ -43,6 +44,10 @@
 
 	const themeToggleVisible = $derived(
 		Boolean(config.data.features?.dark_mode && config.data.header_show_toggle)
+	);
+
+	const logoOnlyHeader = $derived(
+		page.url.pathname.replace(/\/$/, '') === '/why-alyve'
 	);
 
 	type DrawerEntry =
@@ -473,9 +478,10 @@
 			class="site-header"
 			data-hamburger-side={config.data.mobile_hamburger_side}
 			data-logo-size={config.data.logo_url ? (config.data.logo_size ?? 'standard') : 'none'}
-			data-brand-position={config.data.brand_position ?? 'left'}
+			data-brand-position={logoOnlyHeader ? 'left' : (config.data.brand_position ?? 'left')}
 			class:site-header--inverted={config.data.header_inverted}
 			class:site-header--borderless={config.data.header_borderless}
+			class:site-header--logo-only={logoOnlyHeader}
 		>
 		<a class="site-header__brand" href="/">
 			{#if config.data.logo_url}
@@ -499,6 +505,7 @@
 			{/if}
 		</a>
 
+		{#if !logoOnlyHeader}
 		<nav class="site-header__nav">
 			<!-- Full inline nav — renders on desktop always, and on mobile
 			     when mobile_hamburger_side='off'. Hidden by CSS when the
@@ -602,12 +609,13 @@
 				</button>
 			{/if}
 		</nav>
+		{/if}
 	</header>
 	</div>
 
 	<!-- Mobile drawer — rendered as a sibling of the header since it's
 	     position:fixed. `hidden` attribute gates visibility. -->
-	{#if config.data.mobile_hamburger_side !== 'off'}
+	{#if config.data.mobile_hamburger_side !== 'off' && !logoOnlyHeader}
 		<div
 			class="site-header-drawer"
 			id="site-drawer"

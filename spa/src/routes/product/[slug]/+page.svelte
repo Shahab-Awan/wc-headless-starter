@@ -26,6 +26,7 @@
 	import Listicle from '$lib/components/Listicle.svelte';
 	import PromoOffer from '$lib/components/PromoOffer.svelte';
 	import ReviewsListicle from '$lib/components/ReviewsListicle.svelte';
+	import ListicleFaqs from '$lib/components/ListicleFaqs.svelte';
 	import Gallery from '$lib/components/Gallery.svelte';
 	import CategoryGrid from '$lib/components/CategoryGrid.svelte';
 	import SplitFeatures from '$lib/components/SplitFeatures.svelte';
@@ -651,6 +652,8 @@
 			<PromoOffer config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 		{:else if mod.type === 'reviews_listicle'}
 			<ReviewsListicle config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
+		{:else if mod.type === 'listicle_faqs'}
+			<ListicleFaqs config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 		{:else if mod.type === 'text_block'}
 			<TextBlock config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 		{:else if mod.type === 'gallery'}

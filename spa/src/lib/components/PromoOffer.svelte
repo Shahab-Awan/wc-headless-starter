@@ -317,6 +317,7 @@
 		background: var(--po-badge-bg);
 		color: var(--accent-fg);
 		border: 1px solid var(--po-badge-bg);
+		border-radius: 14px;
 		text-decoration: none;
 		font-size: 13px;
 		font-weight: 700;

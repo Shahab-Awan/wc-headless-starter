@@ -240,8 +240,13 @@ export type TrustBarModuleConfig = {
 export type TextBlockComparisonRow = { heading: string };
 
 export type ListicleItem = {
+	number?: string;
+	label?: string;
 	headline: string;
 	body?: string;
+	callout?: string;
+	image?: string;
+	image_alt?: string;
 };
 
 export type PromoOfferModuleConfig = {
@@ -264,6 +269,21 @@ export type PromoOfferModuleConfig = {
 	footer_text?: string;
 };
 
+export type ListicleFaqsItem = {
+	q?: string;
+	a?: string;
+};
+
+export type ListicleFaqsModuleConfig = {
+	eyebrow?: string;
+	headline?: string;
+	/** @deprecated Use headline — kept for saved configs before merge. */
+	headline_prefix?: string;
+	/** @deprecated Use headline — kept for saved configs before merge. */
+	headline_accent?: string;
+	items?: ListicleFaqsItem[];
+};
+
 export type ReviewsListicleItem = {
 	quote?: string;
 	name?: string;
@@ -276,8 +296,12 @@ export type ReviewsListicleModuleConfig = {
 };
 
 export type ListicleModuleConfig = {
+	section_eyebrow?: string;
 	headline?: string;
+	hero_image?: string;
+	hero_image_alt?: string;
 	intro?: string;
+	items_headline?: string;
 	closing?: string;
 	items?: ListicleItem[];
 	cta_label?: string;
@@ -458,6 +482,7 @@ export type HomepageModule =
 	| (ModuleBase & { type: 'listicle'; config: ListicleModuleConfig })
 	| (ModuleBase & { type: 'promo_offer'; config: PromoOfferModuleConfig })
 	| (ModuleBase & { type: 'reviews_listicle'; config: ReviewsListicleModuleConfig })
+	| (ModuleBase & { type: 'listicle_faqs'; config: ListicleFaqsModuleConfig })
 	| (ModuleBase & { type: 'gallery'; config: GalleryModuleConfig })
 	| (ModuleBase & { type: 'category_grid'; config: CategoryGridModuleConfig })
 	| (ModuleBase & { type: 'split_features'; config: SplitFeaturesModuleConfig })

@@ -24,6 +24,7 @@
 	import Listicle from '$lib/components/Listicle.svelte';
 	import PromoOffer from '$lib/components/PromoOffer.svelte';
 	import ReviewsListicle from '$lib/components/ReviewsListicle.svelte';
+	import ListicleFaqs from '$lib/components/ListicleFaqs.svelte';
 	import SEO from '$lib/components/SEO.svelte';
 
 	const pageData = $derived(
@@ -85,8 +86,8 @@
 		});
 		// FAQPage — only if the page has accordion modules
 		const faqItems = (pageData.modules ?? [])
-			.filter(m => m.type === 'accordion')
-			.flatMap(m => ((m.config as any).items ?? []));
+			.filter((m) => m.type === 'accordion' || m.type === 'listicle_faqs')
+			.flatMap((m) => ((m.config as any).items ?? []));
 		if (faqItems.length > 0) {
 			out.push({
 				'@context': 'https://schema.org',
@@ -136,6 +137,8 @@
 					<PromoOffer config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 				{:else if mod.type === 'reviews_listicle'}
 					<ReviewsListicle config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
+				{:else if mod.type === 'listicle_faqs'}
+					<ListicleFaqs config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 				{:else if mod.type === 'text_block'}
 					<TextBlock config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 				{:else if mod.type === 'gallery'}
@@ -194,6 +197,7 @@
 	.content-page--listicle > :global(section.listicle),
 	.content-page--listicle > :global(section.promo-offer),
 	.content-page--listicle > :global(section.reviews-listicle),
+	.content-page--listicle > :global(section.listicle-faqs),
 	.content-page--listicle > :global(section.compare) {
 		--mod-pt: var(--wchs-page-section-half);
 		--mod-pb: var(--wchs-page-section-half);
@@ -201,6 +205,13 @@
 
 	.content-page--listicle > :global(section:first-child) {
 		--mod-pt: clamp(44px, 6vw, 64px);
+	}
+
+	.content-page--listicle :global(.listicle__cta),
+	.content-page--listicle :global(.promo-offer__cta),
+	.content-page--listicle :global(a.cta),
+	.content-page--listicle :global(button.cta) {
+		border-radius: 14px;
 	}
 
 	@media (max-width: 640px) {

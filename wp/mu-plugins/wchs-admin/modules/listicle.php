@@ -15,14 +15,34 @@ return [
 	],
 	'fields'   => [
 		[
+			'id'      => 'section_eyebrow',
+			'type'    => 'text',
+			'default' => '',
+		],
+		[
 			'id'      => 'headline',
 			'type'    => 'text',
 			'default' => '5 Reasons Researchers Choose Verified Peptide Suppliers Over Gray-Market Listings',
 		],
 		[
+			'id'      => 'hero_image',
+			'type'    => 'image',
+			'default' => '',
+		],
+		[
+			'id'      => 'hero_image_alt',
+			'type'    => 'text',
+			'default' => '',
+		],
+		[
 			'id'      => 'intro',
 			'type'    => 'wysiwyg',
-			'default' => '<p>Many labs still source peptides from unverified sellers because the price looks right and the listing looks legitimate.</p><p>That shortcut often means missing batch documentation, inconsistent purity claims, and no traceable COA before you commit budget to a run.</p><p>Here is why more research teams standardize on documented, batch-tested supply:</p>',
+			'default' => '<p>Many labs still source peptides from unverified sellers because the price looks right and the listing looks legitimate.</p><p>That shortcut often means missing batch documentation, inconsistent purity claims, and no traceable COA before you commit budget to a run.</p>',
+		],
+		[
+			'id'      => 'items_headline',
+			'type'    => 'text',
+			'default' => 'Here is why more research teams standardize on documented, batch-tested supply:',
 		],
 		[
 			'id'      => 'closing',
@@ -55,8 +75,13 @@ return [
 				],
 			],
 			'item'             => [
+				[ 'id' => 'number', 'type' => 'text', 'default' => '' ],
+				[ 'id' => 'label', 'type' => 'text', 'default' => '' ],
 				[ 'id' => 'headline', 'type' => 'text' ],
 				[ 'id' => 'body', 'type' => 'wysiwyg' ],
+				[ 'id' => 'callout', 'type' => 'wysiwyg', 'default' => '' ],
+				[ 'id' => 'image', 'type' => 'image', 'default' => '' ],
+				[ 'id' => 'image_alt', 'type' => 'text', 'default' => '' ],
 			],
 			'item_required'    => [ 'headline' ],
 		],

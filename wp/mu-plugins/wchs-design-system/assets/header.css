@@ -694,3 +694,39 @@ body.has-mode-banner .site-header-drawer {
 	30%  { transform: scale(1.12); }
 	100% { transform: scale(1); }
 }
+
+/* Landing pages: announcement bar + centered logo only (SPA: /why-alyve) */
+.site-header--logo-only {
+	justify-content: center;
+	min-height: 56px;
+	padding-top: 14px;
+	padding-bottom: 14px;
+}
+@media (min-width: 640px) {
+	.site-header--logo-only {
+		min-height: 68px;
+		padding-top: 18px;
+		padding-bottom: 18px;
+	}
+}
+@media (min-width: 900px) {
+	.site-header--logo-only {
+		min-height: 76px;
+		padding-top: 20px;
+		padding-bottom: 20px;
+	}
+}
+.site-header--logo-only .site-header__nav {
+	display: none;
+}
+.site-header--logo-only .site-header__brand {
+	position: static;
+	left: auto;
+	top: auto;
+	transform: none;
+	max-width: none;
+	width: 100%;
+	margin: 0;
+	text-align: center;
+	justify-content: center;
+}

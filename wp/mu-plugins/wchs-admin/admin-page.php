@@ -4637,26 +4637,54 @@ class AdminPage {
 		<!-- Listicle -->
 		<div id="wchs-mod-tpl-listicle" style="display:none">
 			<div class="wchs-module__fields" style="display:flex;flex-direction:column;gap:14px">
+				<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">First section (image left, copy right)</p>
+				<div class="wchs-field wchs-field--full"><label>Hero image (left column)</label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="lc_hero_image" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:180px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Hero image alt text</label><input type="text" data-field="lc_hero_image_alt" /></div>
+				<div class="wchs-field wchs-field--full"><label>Eyebrow (optional)</label><input type="text" data-field="lc_section_eyebrow" placeholder="THE FIVE REASONS" /></div>
 				<div class="wchs-field wchs-field--full"><label>Headline</label><input type="text" data-field="lc_headline" placeholder="5 Reasons Why…" /></div>
-				<div class="wchs-field wchs-field--full"><label>Intro paragraphs</label><textarea rows="6" data-field="lc_intro" data-wysiwyg="1" placeholder="Opening copy above the numbered list…"></textarea></div>
+				<div class="wchs-field wchs-field--full"><label>Description</label><textarea rows="5" data-field="lc_intro" data-wysiwyg="1" placeholder="Paragraphs under the headline, before the CTA…"></textarea></div>
+				<div class="wchs-field wchs-field--full"><label>CTA label</label><input type="text" data-field="lc_cta_label" placeholder="Shop research-grade peptides" /></div>
+				<div class="wchs-field wchs-field--full"><label>CTA link</label><input type="text" data-field="lc_cta_href" placeholder="/shop" /></div>
+				<p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Points section</p>
+				<div class="wchs-field wchs-field--full"><label>Points section heading</label><input type="text" data-field="lc_items_headline" placeholder="Here is why more research teams…" /></div>
 				<div class="wchs-field wchs-field--full"><label>Closing paragraph (optional)</label><textarea rows="3" data-field="lc_closing" data-wysiwyg="1" placeholder="So why have researchers switched…"></textarea></div>
 				<div class="wchs-field wchs-field--full">
-					<label>Numbered points</label>
+					<label>List points <?php echo self::hint_icon( 'Odd rows: text left, image right. Even rows: image left, text right.' ); ?></label>
 					<div class="wchs-listicle-items wchs-accordion-items" style="display:flex;flex-direction:column;gap:10px">
 						<div class="wchs-accordion-item wchs-listicle-item" style="display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #ddd;background:#fafafa">
-							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Point headline</label>
-							<input type="text" placeholder="Headline for this point" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Point number (optional)</label>
+							<input type="text" data-field="lc_item_number" placeholder="01" style="max-width:80px" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Category label</label>
+							<input type="text" data-field="lc_item_label" placeholder="U.S. MANUFACTURING" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Point headline</label>
+							<input type="text" data-field="lc_item_headline" placeholder="Headline for this point" />
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Body</label>
-							<textarea rows="4" placeholder="Supporting copy" data-wysiwyg="1"></textarea>
+							<textarea rows="4" data-field="lc_item_body" placeholder="Supporting copy" data-wysiwyg="1"></textarea>
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Callout box (optional)</label>
+							<textarea rows="3" data-field="lc_item_callout" placeholder="Highlighted summary line…" data-wysiwyg="1"></textarea>
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Image</label>
+							<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+								<input type="text" data-field="lc_item_image" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+								<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+								<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+							</div>
+							<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:140px;margin-top:8px;border:1px solid #e0e0e0" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Image alt text</label>
+							<input type="text" data-field="lc_item_image_alt" />
 							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
 						</div>
 					</div>
 					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-listicle-item-modal" style="margin-top:10px">+ Add point</button>
 				</div>
-				<div class="wchs-field wchs-field--full"><label>CTA label</label><input type="text" data-field="lc_cta_label" placeholder="Shop research-grade peptides" /></div>
-				<div class="wchs-field wchs-field--full"><label>CTA link</label><input type="text" data-field="lc_cta_href" placeholder="/shop" /></div>
 			</div>
-			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+						<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
 				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
 					Accent color override
 					<?php echo self::hint_icon( 'Number badges and CTA use this accent.' ); ?>
@@ -4738,6 +4766,35 @@ class AdminPage {
 				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
 					Accent color override
 					<?php echo self::hint_icon( 'Filled star color.' ); ?>
+				</label>
+				<?php echo self::accent_override_swatches(); ?>
+			</div>
+			<?php $this->render_module_common_fields(); ?>
+		</div>
+
+		<!-- Listicle FAQs -->
+		<div id="wchs-mod-tpl-listicle_faqs" style="display:none">
+			<div class="wchs-module__fields" style="display:flex;flex-direction:column;gap:14px">
+				<div class="wchs-field wchs-field--full"><label>Eyebrow</label><input type="text" data-field="lf_eyebrow" placeholder="COMMON QUESTIONS" /></div>
+				<div class="wchs-field wchs-field--full"><label>Headline</label><input type="text" data-field="lf_headline" placeholder="What researchers ask before ordering" /></div>
+				<div class="wchs-field wchs-field--full">
+					<label>FAQ items</label>
+					<div class="wchs-listicle-faqs-items wchs-accordion-items" style="display:flex;flex-direction:column;gap:10px">
+						<div class="wchs-accordion-item" style="display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #ddd;background:#fafafa">
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Question</label>
+							<input type="text" placeholder="Question" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Answer</label>
+							<textarea rows="4" placeholder="Answer" data-wysiwyg="1"></textarea>
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-listicle-faqs-item-modal" style="margin-top:10px">+ Add FAQ</button>
+				</div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+					Accent color override
+					<?php echo self::hint_icon( 'Eyebrow, headline accent, and chevron.' ); ?>
 				</label>
 				<?php echo self::accent_override_swatches(); ?>
 			</div>
