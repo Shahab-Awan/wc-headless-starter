@@ -689,18 +689,24 @@
 
 		.hero.hero--logo {
 			--hero-logo-copy-inset: clamp(28px, 8vw, 44px);
-			min-height: auto;
-			padding: calc(var(--wchs-header-stack-height, 116px) + 12px) 20px 40px;
-			align-items: flex-start;
+			flex-direction: column;
+			min-height: max(880px, calc(100svh + 24px));
+			padding: calc(var(--wchs-header-stack-height, 116px) + 12px) 20px
+				calc(var(--hero-mobile-pad, 520px) - 40px + env(safe-area-inset-bottom, 0px));
+			align-items: stretch;
 			justify-content: flex-start;
 			overflow-x: clip;
 		}
 		.hero--left.hero--logo .hero__inner,
 		.hero.hero--logo .hero__inner {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
 			align-items: flex-start;
 			text-align: left;
 			width: 100%;
 			max-width: 100%;
+			min-height: 0;
 			padding-inline: 0;
 			box-sizing: border-box;
 		}
@@ -716,6 +722,8 @@
 			justify-content: flex-start;
 		}
 		.hero.hero--logo .hero__lede {
+			margin-top: clamp(16px, 4vw, 24px);
+			margin-bottom: 14px;
 			max-width: none;
 			width: 100%;
 			margin-left: 0;
@@ -727,6 +735,7 @@
 			align-self: flex-start;
 			max-width: 100%;
 			margin-left: var(--hero-logo-copy-inset);
+			margin-bottom: 0;
 		}
 		.hero.hero--logo .hero__logo-lockup--statement {
 			--hero-logo-max-width: min(88vw, 300px);
@@ -737,6 +746,7 @@
 		.hero.hero--logo .hero__cta {
 			width: auto;
 			align-self: flex-start;
+			margin-top: 0;
 			padding-left: var(--hero-logo-copy-inset);
 			box-sizing: border-box;
 		}
