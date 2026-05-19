@@ -207,6 +207,13 @@
 		--mod-pt: clamp(44px, 6vw, 64px);
 	}
 
+	.content-page--listicle :global(.listicle__prose p),
+	.content-page--listicle :global(.listicle__intro p) {
+		font-size: 16px;
+		line-height: 1.75;
+		color: var(--fg);
+	}
+
 	.content-page--listicle :global(.listicle__cta),
 	.content-page--listicle :global(.promo-offer__cta),
 	.content-page--listicle :global(a.cta),

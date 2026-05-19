@@ -1160,6 +1160,7 @@
 					setVal(el, '[data-field="lc_item_image_alt"]', item.image_alt || '');
 					syncListicleItemMedia(el);
 				});
+				container.querySelectorAll('.wchs-listicle-items .wchs-accordion-item').forEach(syncListicleItemMedia);
 				break;
 			case 'listicle_faqs':
 				setVal(container, '[data-field="lf_eyebrow"]', cfg.eyebrow || '');
@@ -3249,30 +3250,44 @@
 	});
 
 	// ── Media library picker ──────────────────────────────────
+	function mediaPickerScope(btn) {
+		return btn.closest('.wchs-media-field') || btn.closest('.wchs-field');
+	}
+
 	document.addEventListener('click', function (e) {
 		var selectBtn = e.target.closest('.wchs-media-select');
 		if (selectBtn) {
-			var field = selectBtn.closest('.wchs-field');
-			var urlInput = field.querySelector('.wchs-media-url');
-			var removeBtn = field.querySelector('.wchs-media-remove');
-			var preview = field.querySelector('.wchs-media-preview');
+			var scope = mediaPickerScope(selectBtn);
+			if (!scope) return;
+			var urlInput = scope.querySelector('.wchs-media-url');
+			if (!urlInput) return;
+			var removeBtn = scope.querySelector('.wchs-media-remove');
+			var preview = scope.querySelector('.wchs-media-preview');
 			var frame = wp.media({ title: 'Select Image', multiple: false, library: { type: 'image' } });
 			frame.on('select', function () {
 				var attachment = frame.state().get('selection').first().toJSON();
 				urlInput.value = attachment.url;
+				urlInput.dispatchEvent(new Event('input', { bubbles: true }));
 				if (removeBtn) removeBtn.style.display = '';
 				if (preview) { preview.src = attachment.url; preview.style.display = ''; }
+				if (scope.closest('.wchs-listicle-items')) syncListicleItemMedia(scope.closest('.wchs-accordion-item') || scope);
+				if (scope.querySelector('[data-field="oh_step_icon"]')) syncOhStepMedia(scope.closest('.wchs-accordion-item') || scope);
 			});
 			frame.open();
 		}
 		var removeBtn = e.target.closest('.wchs-media-remove');
 		if (removeBtn) {
-			var field = removeBtn.closest('.wchs-field');
-			var urlInput = field.querySelector('.wchs-media-url');
-			var preview = field.querySelector('.wchs-media-preview');
+			var scope = mediaPickerScope(removeBtn);
+			if (!scope) return;
+			var urlInput = scope.querySelector('.wchs-media-url');
+			if (!urlInput) return;
+			var preview = scope.querySelector('.wchs-media-preview');
 			urlInput.value = '';
+			urlInput.dispatchEvent(new Event('input', { bubbles: true }));
 			removeBtn.style.display = 'none';
 			if (preview) { preview.src = ''; preview.style.display = 'none'; }
+			if (scope.closest('.wchs-listicle-items')) syncListicleItemMedia(scope.closest('.wchs-accordion-item') || scope);
+			if (scope.querySelector('[data-field="oh_step_icon"]')) syncOhStepMedia(scope.closest('.wchs-accordion-item') || scope);
 		}
 	});
 

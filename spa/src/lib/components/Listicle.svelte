@@ -111,9 +111,6 @@
 						<p class="listicle__eyebrow listicle__hero-eyebrow">{config.section_eyebrow.trim()}</p>
 					{/if}
 					<div class="listicle__hero-grid">
-						{#if config.headline?.trim()}
-							<h2 class="listicle__headline listicle__hero-headline">{config.headline.trim()}</h2>
-						{/if}
 						<div class="listicle__hero-media">
 							{#if config.hero_image?.trim()}
 								<img
@@ -125,15 +122,22 @@
 								<div class="listicle__hero-placeholder" aria-hidden="true"></div>
 							{/if}
 						</div>
-						<div class="listicle__hero-copy">
-						{#if introBody}
-							<div class="listicle__intro listicle__prose">{@html introBody}</div>
-						{/if}
-						{#if showCta}
-							<p class="listicle__cta-wrap">
-								<a href={config.cta_href!.trim()} class="listicle__cta">{config.cta_label!.trim()}</a>
-							</p>
-						{/if}
+						<div class="listicle__hero-aside">
+							{#if config.headline?.trim()}
+								<h2 class="listicle__headline listicle__hero-headline">{config.headline.trim()}</h2>
+							{/if}
+							{#if introBody || showCta}
+								<div class="listicle__hero-body">
+									{#if introBody}
+										<div class="listicle__intro listicle__prose">{@html introBody}</div>
+									{/if}
+									{#if showCta}
+										<p class="listicle__cta-wrap">
+											<a href={config.cta_href!.trim()} class="listicle__cta">{config.cta_label!.trim()}</a>
+										</p>
+									{/if}
+								</div>
+							{/if}
 						</div>
 					</div>
 				</header>
@@ -238,16 +242,32 @@
 	.listicle__hero-grid {
 		display: grid;
 		grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-		grid-template-rows: auto 1fr;
-		grid-template-areas:
-			'media headline'
-			'media copy';
+		grid-template-areas: 'media aside';
 		gap: clamp(28px, 4vw, 56px);
-		align-items: stretch;
+		align-items: center;
+	}
+
+	.listicle__hero-aside {
+		grid-area: aside;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: flex-start;
+		gap: 16px;
+		min-width: 0;
 	}
 
 	.listicle__hero-headline {
-		grid-area: headline;
+		margin: 0;
+	}
+
+	.listicle__hero-body {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 16px;
+		min-width: 0;
+		width: 100%;
 	}
 
 	.listicle__hero-media {
@@ -270,19 +290,6 @@
 		min-height: clamp(320px, 44vw, 480px);
 		aspect-ratio: 5 / 4;
 		background: color-mix(in srgb, var(--accent) 8%, var(--bg-muted) 92%);
-	}
-
-	.listicle__hero-copy {
-		grid-area: copy;
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		align-items: flex-start;
-		align-self: stretch;
-		text-align: left;
-		gap: 16px;
-		min-width: 0;
-		min-height: 100%;
 	}
 
 	.listicle__items-headline {
@@ -328,7 +335,7 @@
 		font-size: 16px;
 		font-weight: 400;
 		line-height: 1.75;
-		color: var(--fg-muted);
+		color: var(--fg);
 	}
 
 	.listicle__rows {
@@ -450,9 +457,9 @@
 	}
 
 	.listicle__prose :global(p) {
-		font-size: 15px;
-		line-height: 1.7;
-		color: var(--fg-muted);
+		font-size: 16px;
+		line-height: 1.75;
+		color: var(--fg);
 		margin: 0 0 14px;
 	}
 	.listicle__prose :global(p:last-child) {
@@ -476,24 +483,25 @@
 		}
 
 		.listicle__hero-grid {
-			grid-template-columns: 1fr;
-			grid-template-rows: auto;
-			grid-template-areas:
-				'headline'
-				'media'
-				'copy';
+			display: flex;
+			flex-direction: column;
 			gap: 20px;
-			justify-items: center;
+			align-items: center;
 			text-align: center;
 		}
 
-		.listicle__hero-headline,
-		.listicle__headline {
+		.listicle__hero-aside {
+			display: contents;
+		}
+
+		.listicle__hero-headline {
+			order: 1;
 			max-width: none;
 			width: 100%;
 		}
 
 		.listicle__hero-media {
+			order: 2;
 			width: 100%;
 			min-height: clamp(280px, 68vw, 420px);
 		}
@@ -502,12 +510,16 @@
 			min-height: clamp(280px, 68vw, 420px);
 		}
 
-		.listicle__hero-copy {
-			justify-content: flex-start;
+		.listicle__hero-body {
+			order: 3;
 			align-items: center;
-			min-height: 0;
 			width: 100%;
 			text-align: center;
+		}
+
+		.listicle__headline {
+			max-width: none;
+			width: 100%;
 		}
 
 		.listicle__intro {
