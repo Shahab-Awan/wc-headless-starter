@@ -512,9 +512,21 @@
 
 		.listicle__hero-body {
 			order: 3;
+			display: flex;
+			flex-direction: column;
 			align-items: center;
+			gap: 20px;
 			width: 100%;
 			text-align: center;
+		}
+
+		.listicle__hero-body .listicle__cta-wrap {
+			order: 1;
+			margin: 0;
+		}
+
+		.listicle__hero-body .listicle__intro {
+			order: 2;
 		}
 
 		.listicle__headline {
