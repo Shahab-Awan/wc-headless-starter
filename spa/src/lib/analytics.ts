@@ -44,6 +44,7 @@ declare global {
 		_cl?: {
 			pageview?: (eventName: string, properties: Record<string, unknown>) => void;
 			trackClick?: (eventName: string, properties: Record<string, unknown>) => void;
+			identify?: (properties: Record<string, unknown>) => void;
 			track?: (...args: unknown[]) => void;
 		};
 		CLabsgbVar?: { generalProps?: { uid?: string } };
@@ -364,7 +365,7 @@ export function trackRemoveFromCart(item: {
 }
 
 /**
- * Purchase completed. Fire from the SPA /order-received page after
+ * Purchase completed. Fire from the SPA /thank-you page after
  * order data loads. GTM consumers (Meta Pixel, Google Ads, TikTok
  * Pixel, Omnisend client-side, Klaviyo) listen for this event to
  * attribute conversions.
@@ -795,10 +796,16 @@ function clCheckoutCustomAttributes(cart: StoreApiCart): Record<string, CLScalar
 function clPurchasedCustomAttributes(order: StoreOrder): Record<string, CLScalar> {
 	const t = order.totals;
 	const currency = clCurrencyCode(t.currency_code);
+	const mu = t.currency_minor_unit;
 	return {
+		transaction_id: clStr(String(order.id)),
 		order_id: clStr(String(order.id)),
 		currency: clStr(currency),
-		value: clMajorFromMinor(t.total_price, currency, t.currency_minor_unit),
+		value: clMajorFromMinor(t.total_price, currency, mu),
+		subtotal: clMajorFromMinor(t.total_items, currency, mu),
+		shipping: clMajorFromMinor(t.total_shipping, currency, mu),
+		tax: clMajorFromMinor(t.total_tax, currency, mu),
+		page_url: clPageUrl(),
 	};
 }
 
@@ -993,6 +1000,25 @@ export function trackCustomerLabsCheckoutMade(cart: StoreApiCart): void {
 	});
 }
 
+function clIdentifyFromOrder(order: StoreOrder): void {
+	const email = order.billing_address?.email?.trim();
+	if (!email || typeof window._cl?.identify !== 'function') return;
+	const billing = order.billing_address;
+	const userAttributes: Record<string, CLScalar> = {
+		email: clStr(email),
+	};
+	if (billing.first_name) userAttributes.first_name = clStr(billing.first_name);
+	if (billing.last_name) userAttributes.last_name = clStr(billing.last_name);
+	if (billing.phone) userAttributes.phone = clStr(billing.phone);
+	window._cl?.identify?.({
+		customProperties: {
+			user_traits: { t: 'Object', v: userAttributes },
+			identify_by_email: { t: 'string', v: email, ib: true },
+		},
+	});
+}
+
+/** CustomerLabs Purchased — uses their uid polling pattern on thank-you. */
 export function trackCustomerLabsPurchased(order: StoreOrder): void {
 	if (typeof window === 'undefined') return;
 	const t = order.totals;
@@ -1021,7 +1047,9 @@ export function trackCustomerLabsPurchased(order: StoreOrder): void {
 		} catch {
 			/* private mode */
 		}
-		window._cl?.trackClick?.('Purchased', { productProperties, customProperties });
+		if (typeof window._cl?.trackClick !== 'function') return;
+		window._cl.trackClick('Purchased', { productProperties, customProperties });
+		clIdentifyFromOrder(order);
 		try {
 			sessionStorage.setItem(dedupeKey, '1');
 		} catch {
@@ -1029,6 +1057,17 @@ export function trackCustomerLabsPurchased(order: StoreOrder): void {
 		}
 	};
 
-	// Thank-you page: wait longer for the CustomerLabs snippet (per their docs).
-	whenCustomerLabsReady(fire, 150);
+	let attempts = 0;
+	const maxAttempts = 120;
+	const tick = () => {
+		const hasUid = Boolean(window.CLabsgbVar?.generalProps?.uid);
+		const hasApi = typeof window._cl?.trackClick === 'function';
+		if ((hasUid && hasApi) || attempts >= maxAttempts) {
+			if (hasApi) fire();
+			return;
+		}
+		attempts += 1;
+		setTimeout(tick, 500);
+	};
+	tick();
 }

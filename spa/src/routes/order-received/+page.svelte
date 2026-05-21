@@ -1,20 +1,11 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { getOrder, getOrderPayment, type StoreOrder, type OrderPaymentInfo } from '$lib/wc/orders';
 	import { cart } from '$lib/wc/cart.svelte';
 	import { clearShadow } from '$lib/wc/shadow-cart';
 	import { clearCartToken } from '$lib/wc/store-api';
-	import {
-		trackPurchase,
-		trackOmnisendPlacedOrder,
-		trackKlaviyoPlacedOrder, identifyKlaviyoContact,
-		trackMetaPurchase,
-		trackTikTokCompletePayment, identifyTikTokContact,
-		trackPinterestCheckout,
-		trackGoogleAdsConversion,
-		identifyClarityContact,
-	} from '$lib/analytics';
-	import { config } from '$lib/config.svelte';
+	import { readOrderReference, fireThankYouPurchaseEvents } from '$lib/thank-you/flow';
 	import { formatPrice } from '$lib/utils/format';
 
 	let order = $state<StoreOrder | null>(null);
@@ -24,46 +15,15 @@
 	let lastLoadedRef = '';
 	let activeLoad = 0;
 
-	function readOrderReference(): { id: number | null; key: string | null; email: string | null; ref: string } {
-		let id: number | null = null;
-		let key: string | null = null;
-		let email: string | null = null;
-
-		const u = page.url.searchParams;
-		const urlId = u.get('id');
-		const urlKey = u.get('key');
-		const urlEmail = u.get('email');
-
-		if (urlId && urlKey) {
-			id = parseInt(urlId, 10);
-			key = urlKey;
-			email = urlEmail;
-			try {
-				sessionStorage.setItem('wchs_order_received', JSON.stringify({ id, key, email }));
-			} catch {}
-			history.replaceState(null, '', page.url.pathname);
-		} else {
-			try {
-				const stashed = sessionStorage.getItem('wchs_order_received');
-				if (stashed) {
-					const parsed = JSON.parse(stashed);
-					id = parsed.id;
-					key = parsed.key;
-					email = parsed.email;
-				}
-			} catch {}
+	async function loadOrderReceived(): Promise<void> {
+		const incoming = page.url.searchParams;
+		if (incoming.get('id') && incoming.get('key')) {
+			const qs = incoming.toString();
+			await goto(qs ? `/thank-you?${qs}` : '/thank-you', { replaceState: true });
+			return;
 		}
 
-		return {
-			id,
-			key,
-			email,
-			ref: id && key ? `${id}:${key}:${email ?? ''}` : '',
-		};
-	}
-
-	async function loadOrderReceived(): Promise<void> {
-		const { id, key, email, ref } = readOrderReference();
+		const { id, key, email, ref } = readOrderReference(page);
 
 		if (!id || !key) {
 			if (lastLoadedRef === '__missing__') return;
@@ -97,36 +57,7 @@
 			order = orderData;
 			payment = paymentData;
 
-			const firePurchase = () => {
-				trackPurchase(orderData);
-				trackOmnisendPlacedOrder(orderData);
-				trackKlaviyoPlacedOrder(orderData);
-				trackMetaPurchase(orderData);
-				trackTikTokCompletePayment(orderData);
-				trackPinterestCheckout(orderData);
-				if (config.data.google_ads_conversion_id && config.data.google_ads_conversion_label) {
-					trackGoogleAdsConversion(orderData, config.data.google_ads_conversion_id, config.data.google_ads_conversion_label);
-				}
-				const email = orderData.billing_address?.email;
-				if (email) {
-					identifyKlaviyoContact(email, {
-						first_name: orderData.billing_address?.first_name,
-						last_name: orderData.billing_address?.last_name,
-					});
-					identifyTikTokContact(email);
-					identifyClarityContact(email);
-				}
-			};
-
-			try {
-				const firedKey = `wchs_purchase_fired_${orderData.id}`;
-				if (!sessionStorage.getItem(firedKey)) {
-					firePurchase();
-					sessionStorage.setItem(firedKey, '1');
-				}
-			} catch {
-				firePurchase();
-			}
+			fireThankYouPurchaseEvents(orderData);
 
 			await cart.fetch();
 		} catch (e) {

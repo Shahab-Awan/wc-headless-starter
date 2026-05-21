@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Headless Order Redirect
- * Description: After payment, redirect from the native WC /checkout/order-received/ page to the SPA /order-received route, passing order id + key (+ billing email for guests) as query params.
+ * Description: After payment, redirect from the native WC /checkout/order-received/ page to the SPA /thank-you route, passing order id + key (+ billing email for guests) as query params.
  * Version:     0.1.0
  * Author:      WCHS Contributors
 *
@@ -15,7 +15,7 @@
  * THE FIX
  *   Filter `woocommerce_get_return_url` — called by WC to decide where
  *   to send the user after order creation — to return a SPA URL
- *   carrying {id, key, email}. The SPA's /order-received route then
+ *   carrying {id, key, email}. The SPA's /thank-you route then
  *   calls the Store API `/order/{id}?key=&billing_email=` endpoint to
  *   render a native confirmation page.
  *
@@ -96,7 +96,7 @@ add_filter(
 				$params['email'] = $email;
 			}
 		}
-		return $origin . '/order-received?' . http_build_query( $params );
+		return $origin . '/thank-you?' . http_build_query( $params );
 	},
 	10,
 	2
@@ -126,7 +126,7 @@ add_action(
 		if ( isset( $_GET['wchs_upsell'] ) || isset( $_GET['wchs_upsell_accept'] ) || isset( $_GET['wchs_upsell_decline'] ) ) {
 			return;
 		}
-		// All orders redirect to the SPA order-received page.
+		// All orders redirect to the SPA thank-you page.
 
 		global $wp;
 		$order_id = absint( $wp->query_vars['order-received'] ?? 0 );
@@ -152,7 +152,7 @@ add_action(
 		// that depend on them (email marketing, loyalty, referrals,
 		// ERP sync, review requests, anything server-side) still get
 		// their callbacks. Client-side pixels still need to fire on
-		// the SPA /order-received route — those can't run here.
+		// the SPA /thank-you route — those can't run here.
 		//
 		// We guard against double-firing via a static flag and wrap
 		// the action dispatch in an output buffer so any stray HTML
@@ -178,7 +178,7 @@ add_action(
 			}
 		}
 
-		wp_redirect( $origin . '/order-received?' . http_build_query( $params ), 302 );
+		wp_redirect( $origin . '/thank-you?' . http_build_query( $params ), 302 );
 		exit;
 	},
 	20
