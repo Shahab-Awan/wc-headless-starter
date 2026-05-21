@@ -113,10 +113,7 @@ add_filter(
 add_action(
 	'template_redirect',
 	function () {
-		if ( ! function_exists( 'is_wc_endpoint_url' ) ) {
-			return;
-		}
-		if ( ! is_wc_endpoint_url( 'order-received' ) ) {
+		if ( ! function_exists( 'wchs_thankyou_is_order_received_request' ) || ! wchs_thankyou_is_order_received_request() ) {
 			return;
 		}
 		if ( isset( $_GET['wchs_bridge'] ) && $_GET['wchs_bridge'] === 'stay' ) {
@@ -126,10 +123,10 @@ add_action(
 		if ( isset( $_GET['wchs_upsell'] ) || isset( $_GET['wchs_upsell_accept'] ) || isset( $_GET['wchs_upsell_decline'] ) ) {
 			return;
 		}
-		// All orders redirect to the SPA thank-you page.
 
-		global $wp;
-		$order_id = absint( $wp->query_vars['order-received'] ?? 0 );
+		$order_id = function_exists( 'wchs_thankyou_request_order_id' )
+			? wchs_thankyou_request_order_id()
+			: 0;
 		if ( ! $order_id ) {
 			return;
 		}
@@ -139,25 +136,15 @@ add_action(
 			return;
 		}
 
-		// All orders redirect to the SPA — including offline gateways.
-		// The SPA order-received page handles cleanup (shadow cart,
-		// cart token) and renders order details for all payment methods.
-
-		$key = isset( $_GET['key'] ) ? sanitize_text_field( wp_unslash( $_GET['key'] ) ) : '';
+		$key = function_exists( 'wchs_thankyou_request_key' )
+			? wchs_thankyou_request_key()
+			: '';
 		if ( $key === '' || ! hash_equals( (string) $order->get_order_key(), $key ) ) {
 			return;
 		}
 
-		// Fire the standard WC thank-you server-side hooks so plugins
-		// that depend on them (email marketing, loyalty, referrals,
-		// ERP sync, review requests, anything server-side) still get
-		// their callbacks. Client-side pixels still need to fire on
-		// the SPA /thank-you route — those can't run here.
-		//
-		// We guard against double-firing via a static flag and wrap
-		// the action dispatch in an output buffer so any stray HTML
-		// from plugins doesn't break the redirect with "headers
-		// already sent."
+		// Server-side thank-you hooks (emails, ERP, etc.) — output buffered so
+		// plugin HTML does not break our tracking bridge or redirect.
 		if ( ! wchs_thankyou_fired( $order_id ) ) {
 			ob_start();
 			do_action( 'woocommerce_before_thankyou', $order_id );
@@ -178,10 +165,17 @@ add_action(
 			}
 		}
 
-		wp_redirect( $origin . '/thank-you?' . http_build_query( $params ), 302 );
+		$target = $origin . '/thank-you?' . http_build_query( $params );
+
+		// Fire CustomerLabs / dataLayer purchase, then hand off to SPA thank-you.
+		if ( function_exists( 'wchs_thankyou_bridge_redirect' ) ) {
+			wchs_thankyou_bridge_redirect( $order, $target );
+		}
+
+		wp_safe_redirect( $target, 302 );
 		exit;
 	},
-	20
+	5
 );
 
 // ─── Clear SPA cart state on any native thank-you render ───────
