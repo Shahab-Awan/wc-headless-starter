@@ -365,8 +365,9 @@ export function trackRemoveFromCart(item: {
 }
 
 /**
- * Purchase completed. Fire from the SPA /thank-you page after
- * order data loads. GTM consumers (Meta Pixel, Google Ads, TikTok
+ * Purchase completed. Primary path: native WC order-received
+ * (headless-thankyou-tracking.php). SPA /order-received uses this too.
+ * GTM consumers (Meta Pixel, Google Ads, TikTok
  * Pixel, Omnisend client-side, Klaviyo) listen for this event to
  * attribute conversions.
  *
@@ -1018,7 +1019,7 @@ function clIdentifyFromOrder(order: StoreOrder): void {
 	});
 }
 
-/** CustomerLabs Purchased — uses their uid polling pattern on thank-you. */
+/** CustomerLabs Purchased — uses their uid polling pattern on order confirmation. */
 export function trackCustomerLabsPurchased(order: StoreOrder): void {
 	if (typeof window === 'undefined') return;
 	const t = order.totals;

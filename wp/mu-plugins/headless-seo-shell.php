@@ -67,7 +67,7 @@ function wchs_seo_shell_payload_for_path( string $path ): ?array {
 		return wchs_seo_shell_private_payload( 'Account', 'Sign in to view your account.', $path );
 	}
 
-	if ( 'order-received' === $segments[0] || 'thank-you' === $segments[0] ) {
+	if ( 'order-received' === $segments[0] ) {
 		return wchs_seo_shell_private_payload( 'Order Received', 'Review your order confirmation.', $path );
 	}
 

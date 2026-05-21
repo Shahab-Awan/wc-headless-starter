@@ -66,7 +66,7 @@ plugin settings. Product catalog sync and order/customer sync run automatically.
    - `view_item_list` — shop grid / slider renders
    - `add_to_cart` — cart additions from anywhere
    - `remove_from_cart` — cart removals
-   - `purchase` — SPA /thank-you page load (once per order id)
+   - `purchase` — native `/checkout/order-received/` page load (once per order id)
 
    In GTM, configure triggers on each event name, then fire the email-marketing
    plugin's corresponding event. Omnisend documents this pattern explicitly for
@@ -102,7 +102,7 @@ that hook from our order-redirect code (see `headless-order-redirect.php`), so
 server-side conversion APIs (Meta CAPI, Google Enhanced Conversions) also work.
 
 ### Conversion pixels
-The SPA `/thank-you` route fires a `purchase` DataLayer event with full
+The native order-received page fires a `purchase` DataLayer event with full
 order details. This is where your pixels should attribute conversion.
 
 ---

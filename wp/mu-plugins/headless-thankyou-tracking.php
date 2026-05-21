@@ -1,22 +1,28 @@
 <?php
 /**
  * Plugin Name: Headless Thank-You Tracking
- * Description: CustomerLabs Purchased + GTM purchase on the native WC order-received page,
- *              and on a brief bridge page before SPA redirect so conversions are not lost.
- * Version:     0.1.0
+ * Description: Order confirmation copy + CustomerLabs Purchased + GTM purchase on native
+ *              /checkout/order-received/ (including post-upsell URLs).
+ * Version:     0.2.0
  * Author:      WCHS Contributors
  */
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Resolve order id from WC endpoint query var or /checkout/order-received/{id}/ path.
+ * Resolve order id from WC endpoint, path, or upsell query args.
  */
 function wchs_thankyou_request_order_id(): int {
 	global $wp;
 	$id = absint( $wp->query_vars['order-received'] ?? 0 );
 	if ( $id > 0 ) {
 		return $id;
+	}
+	if ( isset( $_GET['order_id'] ) ) {
+		$from_query = absint( $_GET['order_id'] );
+		if ( $from_query > 0 ) {
+			return $from_query;
+		}
 	}
 	$path = wp_parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH ) ?? '';
 	if ( preg_match( '#/checkout/order-received/(\d+)/?#', $path, $m ) ) {
@@ -26,18 +32,16 @@ function wchs_thankyou_request_order_id(): int {
 }
 
 /**
- * @return string Sanitized order key from query string, or empty.
+ * @return string Sanitized order key from query string (key or order_key).
  */
 function wchs_thankyou_request_key(): string {
-	return isset( $_GET['key'] ) ? sanitize_text_field( wp_unslash( $_GET['key'] ) ) : '';
-}
-
-function wchs_thankyou_is_order_received_request(): bool {
-	if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-received' ) ) {
-		return true;
+	if ( isset( $_GET['key'] ) ) {
+		return sanitize_text_field( wp_unslash( $_GET['key'] ) );
 	}
-	$path = wp_parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH ) ?? '';
-	return (bool) preg_match( '#/checkout/order-received/\d+/?#', $path );
+	if ( isset( $_GET['order_key'] ) ) {
+		return sanitize_text_field( wp_unslash( $_GET['order_key'] ) );
+	}
+	return '';
 }
 
 /**
@@ -48,10 +52,8 @@ function wchs_thankyou_purchase_scripts_html( \WC_Order $order ): string {
 	$currency = $order->get_currency();
 	$total    = round( (float) $order->get_total(), 4 );
 
-	$ga_items = [];
+	$ga_items    = [];
 	$cl_products = [];
-	$content_ids = [];
-	$num_items   = 0;
 
 	foreach ( $order->get_items() as $item ) {
 		if ( ! $item instanceof \WC_Order_Item_Product ) {
@@ -79,8 +81,6 @@ function wchs_thankyou_purchase_scripts_html( \WC_Order $order ): string {
 			'price'     => $unit,
 			'quantity'  => $qty,
 		];
-		$content_ids[] = (string) $pid;
-		$num_items    += $qty;
 
 		$cl_row = [
 			'product_id'       => [ 't' => 'number', 'v' => (string) $pid ],
@@ -94,7 +94,7 @@ function wchs_thankyou_purchase_scripts_html( \WC_Order $order ): string {
 		$cl_products[] = $cl_row;
 	}
 
-	$email = (string) $order->get_billing_email();
+	$email    = (string) $order->get_billing_email();
 	$subtotal = round( (float) $order->get_subtotal(), 4 );
 	$shipping = round( (float) $order->get_shipping_total(), 4 );
 	$tax      = round( (float) $order->get_total_tax(), 4 );
@@ -103,18 +103,16 @@ function wchs_thankyou_purchase_scripts_html( \WC_Order $order ): string {
 	$page_url = ( is_ssl() ? 'https://' : 'http://' ) . $host . $uri;
 
 	$payload = [
-		'orderId'      => (string) $order_id,
-		'currency'     => $currency,
-		'total'        => $total,
-		'subtotal'     => $subtotal,
-		'shipping'     => $shipping,
-		'tax'          => $tax,
-		'pageUrl'      => $page_url,
-		'email'        => $email,
-		'gaItems'      => $ga_items,
-		'clProducts'   => $cl_products,
-		'contentIds'   => $content_ids,
-		'numItems'     => $num_items,
+		'orderId'    => (string) $order_id,
+		'currency'   => $currency,
+		'total'      => $total,
+		'subtotal'   => $subtotal,
+		'shipping'   => $shipping,
+		'tax'        => $tax,
+		'pageUrl'    => $page_url,
+		'email'      => $email,
+		'gaItems'    => $ga_items,
+		'clProducts' => $cl_products,
 	];
 
 	ob_start();
@@ -184,48 +182,26 @@ function wchs_thankyou_purchase_scripts_html( \WC_Order $order ): string {
 }
 
 /**
- * Minimal HTML bridge: fire purchase pixels, then redirect to SPA thank-you.
- */
-function wchs_thankyou_bridge_redirect( \WC_Order $order, string $target_url ): void {
-	status_header( 200 );
-	header( 'Content-Type: text/html; charset=utf-8' );
-	nocache_headers();
-
-	$scripts = wchs_thankyou_purchase_scripts_html( $order );
-	$safe_url = esc_url( $target_url );
-	?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="utf-8" />
-	<meta name="referrer" content="no-referrer" />
-	<meta http-equiv="refresh" content="0;url=<?php echo esc_attr( $safe_url ); ?>" />
-	<title>Order received</title>
-	<?php
-	// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- script blob from trusted builder.
-	echo $scripts;
-	?>
-</head>
-<body>
-	<p>Order received. Redirecting…</p>
-	<script>location.replace(<?php echo wp_json_encode( $target_url ); ?>);</script>
-</body>
-</html>
-	<?php
-	exit;
-}
-
-/**
- * Extra copy + order number on the native WC thank-you template.
+ * Order confirmation copy + purchase pixels on the native thank-you template.
  */
 add_action(
 	'woocommerce_thankyou',
 	function ( $order_id ) {
+		$order_id = absint( $order_id );
+		if ( ! $order_id ) {
+			$order_id = wchs_thankyou_request_order_id();
+		}
 		if ( ! $order_id ) {
 			return;
 		}
+
 		$order = wc_get_order( $order_id );
 		if ( ! ( $order instanceof \WC_Order ) ) {
+			return;
+		}
+
+		$key = wchs_thankyou_request_key();
+		if ( $key !== '' && ! hash_equals( (string) $order->get_order_key(), $key ) ) {
 			return;
 		}
 

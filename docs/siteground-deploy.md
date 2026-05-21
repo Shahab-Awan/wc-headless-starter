@@ -462,7 +462,6 @@ RewriteRule ^shop(/.*)?$ /index.php [L]
 RewriteRule ^product(/.*)?$ /index.php [L]
 RewriteRule ^account(/.*)?$ /index.php [L]
 RewriteRule ^order-received(/.*)?$ /index.php [L]
-RewriteRule ^thank-you(/.*)?$ /index.php [L]
 RewriteRule ^[A-Za-z0-9_-]+/?$ /index.php [L]
 
 # 7. WooCommerce AJAX (?wc-ajax=update_order_review etc.) and the legacy
