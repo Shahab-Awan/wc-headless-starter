@@ -1,17 +1,65 @@
 <?php
 /**
  * Plugin Name: Headless Thank-You Tracking
- * Description: Order confirmation copy + CustomerLabs Purchased + GTM purchase on native
- *              /checkout/order-received/ (including post-upsell URLs).
- * Version:     0.2.0
+ * Description: Native /checkout/order-received/ confirmation copy + purchase pixels
+ *              (CustomerLabs Purchased, GTM purchase). Works with upsell URLs that use order_key.
+ * Version:     0.3.1
  * Author:      WCHS Contributors
  */
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Resolve order id from WC endpoint, path, or upsell query args.
+ * WC thank-you template only reads $_GET['key']; upsell links pass order_key.
  */
+add_filter(
+	'woocommerce_thankyou_order_key',
+	function ( $key ) {
+		if ( is_string( $key ) && $key !== '' ) {
+			return $key;
+		}
+		if ( isset( $_GET['order_key'] ) ) {
+			return sanitize_text_field( wp_unslash( $_GET['order_key'] ) );
+		}
+		return $key;
+	},
+	5
+);
+
+/**
+ * Normalize upsell URLs: WC only reads ?key=, Alyve upsell links pass ?order_key=.
+ */
+add_action(
+	'template_redirect',
+	function () {
+		if ( ! wchs_thankyou_is_order_received_request() ) {
+			return;
+		}
+		if ( isset( $_GET['key'] ) && (string) $_GET['key'] !== '' ) {
+			return;
+		}
+		if ( ! isset( $_GET['order_key'] ) || (string) $_GET['order_key'] === '' ) {
+			return;
+		}
+		$target = add_query_arg(
+			'key',
+			sanitize_text_field( wp_unslash( $_GET['order_key'] ) ),
+			remove_query_arg( 'key' )
+		);
+		wp_safe_redirect( $target, 302 );
+		exit;
+	},
+	4
+);
+
+function wchs_thankyou_is_order_received_request(): bool {
+	if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-received' ) ) {
+		return true;
+	}
+	$path = wp_parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH ) ?? '';
+	return (bool) preg_match( '#/checkout/order-received/\d+/?#', $path );
+}
+
 function wchs_thankyou_request_order_id(): int {
 	global $wp;
 	$id = absint( $wp->query_vars['order-received'] ?? 0 );
@@ -31,17 +79,62 @@ function wchs_thankyou_request_order_id(): int {
 	return 0;
 }
 
-/**
- * @return string Sanitized order key from query string (key or order_key).
- */
 function wchs_thankyou_request_key(): string {
 	if ( isset( $_GET['key'] ) ) {
-		return sanitize_text_field( wp_unslash( $_GET['key'] ) );
+		$key = sanitize_text_field( wp_unslash( $_GET['key'] ) );
+		if ( $key !== '' ) {
+			return $key;
+		}
 	}
 	if ( isset( $_GET['order_key'] ) ) {
 		return sanitize_text_field( wp_unslash( $_GET['order_key'] ) );
 	}
 	return '';
+}
+
+/**
+ * Resolve + validate the order for the current thank-you / upsell request.
+ */
+function wchs_thankyou_resolve_order(): ?\WC_Order {
+	$order_id = wchs_thankyou_request_order_id();
+	if ( ! $order_id ) {
+		return null;
+	}
+
+	$order = wc_get_order( $order_id );
+	if ( ! ( $order instanceof \WC_Order ) ) {
+		return null;
+	}
+
+	$key = wchs_thankyou_request_key();
+	if ( $key !== '' && ! hash_equals( (string) $order->get_order_key(), $key ) ) {
+		return null;
+	}
+
+	return $order;
+}
+
+function wchs_thankyou_confirmation_html( \WC_Order $order ): string {
+	$number = $order->get_order_number();
+	$email  = $order->get_billing_email();
+
+	ob_start();
+	?>
+	<div class="wchs-native-thankyou" style="max-width:36rem;margin:1.5rem auto 0;text-align:center;line-height:1.6;">
+		<p style="margin:0 0 0.75rem;font-size:1.05rem;">
+			<strong>Order #<?php echo esc_html( $number ); ?></strong>
+		</p>
+		<p style="margin:0 0 0.75rem;color:inherit;">
+			Thank you for your order — we have received it and are getting it ready.
+		</p>
+		<?php if ( $email ) : ?>
+			<p style="margin:0;color:inherit;opacity:0.85;">
+				A confirmation email will be sent to <strong><?php echo esc_html( $email ); ?></strong>.
+			</p>
+		<?php endif; ?>
+	</div>
+	<?php
+	return (string) ob_get_clean();
 }
 
 /**
@@ -171,8 +264,13 @@ function wchs_thankyou_purchase_scripts_html( \WC_Order $order ): string {
 
   var attempts = 0;
   var timer = setInterval(function () {
-    var ready = ((window.CLabsgbVar || {}).generalProps || {}).uid;
-    if ((ready && fireCl()) || attempts >= 120) clearInterval(timer);
+    var hasApi = typeof window._cl === 'object' && typeof window._cl.trackClick === 'function';
+    var hasUid = ((window.CLabsgbVar || {}).generalProps || {}).uid;
+    if ((hasApi && (hasUid || attempts >= 40)) && fireCl()) {
+      clearInterval(timer);
+      return;
+    }
+    if (attempts >= 120) clearInterval(timer);
     attempts++;
   }, 500);
 })();
@@ -181,51 +279,57 @@ function wchs_thankyou_purchase_scripts_html( \WC_Order $order ): string {
 	return (string) ob_get_clean();
 }
 
-/**
- * Order confirmation copy + purchase pixels on the native thank-you template.
- */
+function wchs_thankyou_emit_confirmation_once( \WC_Order $order ): void {
+	static $emitted = [];
+	$id = (int) $order->get_id();
+	if ( isset( $emitted[ $id ] ) ) {
+		return;
+	}
+	$emitted[ $id ] = true;
+	// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	echo wchs_thankyou_confirmation_html( $order );
+}
+
+function wchs_thankyou_emit_scripts_once( \WC_Order $order ): void {
+	static $emitted = [];
+	$id = (int) $order->get_id();
+	if ( isset( $emitted[ $id ] ) ) {
+		return;
+	}
+	$emitted[ $id ] = true;
+	// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	echo wchs_thankyou_purchase_scripts_html( $order );
+}
+
 add_action(
-	'woocommerce_thankyou',
-	function ( $order_id ) {
-		$order_id = absint( $order_id );
-		if ( ! $order_id ) {
-			$order_id = wchs_thankyou_request_order_id();
-		}
-		if ( ! $order_id ) {
+	'wp_body_open',
+	function () {
+		if ( ! wchs_thankyou_is_order_received_request() ) {
 			return;
 		}
-
-		$order = wc_get_order( $order_id );
+		$order = wchs_thankyou_resolve_order();
 		if ( ! ( $order instanceof \WC_Order ) ) {
 			return;
 		}
+		echo "\n<!-- wchs-thankyou-tracking v0.3.1 -->\n";
+		wchs_thankyou_emit_confirmation_once( $order );
+	},
+	5
+);
 
-		$key = wchs_thankyou_request_key();
-		if ( $key !== '' && ! hash_equals( (string) $order->get_order_key(), $key ) ) {
+add_action(
+	'wp_footer',
+	function () {
+		if ( ! wchs_thankyou_is_order_received_request() ) {
 			return;
 		}
-
-		$number = $order->get_order_number();
-		$email  = $order->get_billing_email();
-		?>
-		<div class="wchs-native-thankyou" style="max-width:36rem;margin:1.5rem auto 0;text-align:center;line-height:1.6;">
-			<p style="margin:0 0 0.75rem;font-size:1.05rem;">
-				<strong>Order #<?php echo esc_html( $number ); ?></strong>
-			</p>
-			<p style="margin:0 0 0.75rem;color:inherit;">
-				Thank you for your order — we have received it and are getting it ready.
-			</p>
-			<?php if ( $email ) : ?>
-				<p style="margin:0;color:inherit;opacity:0.85;">
-					A confirmation email will be sent to <strong><?php echo esc_html( $email ); ?></strong>.
-				</p>
-			<?php endif; ?>
-		</div>
-		<?php
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		echo wchs_thankyou_purchase_scripts_html( $order );
+		$order = wchs_thankyou_resolve_order();
+		if ( ! ( $order instanceof \WC_Order ) ) {
+			return;
+		}
+		wchs_thankyou_emit_scripts_once( $order );
 	},
-	8
+	99
 );
 
 add_filter(
