@@ -405,7 +405,7 @@ RewriteRule ^wp-content(/.*)?$      - [L]
 RewriteRule ^xmlrpc\.php$           - [L]
 
 # 5. Cart / checkout / my-account are WP-owned pages under our shim theme
-RewriteRule ^(cart|checkout|my-account)(/.*)?$ /index.php [L]
+RewriteRule ^(cart|checkout|checkouts|my-account|thankyou|thank-you|offer|upsell)(/.*)?$ /index.php [L]
 
 # 6. WP REST API: route /wp-json/* to WP index.php.
 #    WP parses REQUEST_URI internally for pretty-permalink REST routing; do NOT

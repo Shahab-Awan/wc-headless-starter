@@ -392,14 +392,36 @@ automatically after cache flush.
 | WCHS thank-you tracking (`headless-thankyou-tracking.php`) | Keep for GTM/CustomerLabs on `order-received`, or move tracking into FunnelKit. |
 | Slide cart | Still WCHS `SlideCart.svelte`. FunnelKit’s cart plugin is WP-only; replacing the SPA drawer is a separate project. |
 
-### Elementor template won’t load
+### Elementor “Preview could not be loaded”
 
-Common causes on this stack:
+Most common on this stack:
 
-- **Cart bridge** redirecting bare checkout during preview — fixed by compat preview bypass (deploy required).
-- **WCHS checkout CSS/JS** breaking the builder canvas — fixed by compat (deploy required).
-- **PHP memory** / security plugin blocking Elementor AJAX — raise `WP_MEMORY_LIMIT`, whitelist admin AJAX in Wordfence.
-- **Changes only in git** — production needs deploy + SiteGround cache flush.
+1. **`.htaccess` rule 5** — must include `checkouts`:
+   `RewriteRule ^(cart|checkout|checkouts|my-account)(/.*)?$ /index.php [L]`
+2. **`.htaccess` rule 7a** (often missed even when rule 5 is correct) — Elementor preview uses
+   `/?elementor-preview=POST_ID`. Add before rule 8:
+   ```apache
+   RewriteCond %{QUERY_STRING} (^|&)elementor-preview=
+   RewriteRule ^ /index.php [L]
+   RewriteCond %{QUERY_STRING} (^|&)(wfacp_customize|wffn_customize|wffn-preview|bwf-builder-preview)=
+   RewriteRule ^ /index.php [L]
+   ```
+   Without 7a, the homepage preview URL serves `index.html` (SPA) and Elementor fails.
+3. **Cart bridge** redirecting bare checkout — fixed when `headless-funnelkit-compat.php` v0.3+ is deployed (editor + `elementor-preview` bypass).
+4. **WCHS checkout CSS/JS** — turn off **Use WCHS checkout design** in WCHS → Checkout.
+5. **Security / cache** — whitelist `elementor-preview`, `/wp-json/`, `admin-ajax.php` in Wordfence/SG Security; purge Dynamic Cache after `.htaccess` change.
+
+**Quick test:** open the checkout URL in a logged-out browser tab with `?elementor-preview=POST_ID` (from Elementor → Preview Debug). You should see WordPress/HTML, not the Svelte shop shell.
+
+### FunnelKit thank-you page 404
+
+FunnelKit thank-you URLs look like `/thankyou/your-page-slug/?order_id=…&key=…`. They are **not** under `/checkout/`.
+
+1. **`.htaccess` rule 5** must include thank-you bases:
+   `thankyou|thank-you|offer|upsell` (see `bin/templates/htaccess.template`).
+2. If you changed the thank-you permalink in **FunnelKit → Settings → Permalinks**, add that slug to rule 5 as well (e.g. `order-confirmed`).
+3. Turn off **WCHS post-checkout upsell** when using FunnelKit funnel upsell/thank-you steps (or keep WCHS checkout off — upsell auto-skips when `use_wchs_checkout` is false).
+4. Purge SiteGround cache after `.htaccess` update.
 
 ---
 

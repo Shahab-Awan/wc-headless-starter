@@ -86,6 +86,11 @@ function wchs_seo_shell_is_wp_owned_root( string $root ): bool {
 		[
 			'cart',
 			'checkout',
+			'checkouts',
+			'thankyou',
+			'thank-you',
+			'offer',
+			'upsell',
 			'my-account',
 			'wp-admin',
 			'wp-json',

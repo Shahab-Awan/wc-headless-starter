@@ -177,7 +177,10 @@ function wchs_access_control_template(): void {
 	}
 
 	if ( 2 === $mode ) {
-		// Browse-only: block checkout for guests
+		// Browse-only: block checkout for guests (not while admins preview in Elementor).
+		if ( function_exists( 'wchs_allow_bare_checkout_handoff' ) && wchs_allow_bare_checkout_handoff() ) {
+			return;
+		}
 		if ( function_exists( 'is_checkout' ) && is_checkout() && ! is_wc_endpoint_url( 'order-received' ) ) {
 			wp_safe_redirect( home_url( '/my-account/' ) );
 			exit;

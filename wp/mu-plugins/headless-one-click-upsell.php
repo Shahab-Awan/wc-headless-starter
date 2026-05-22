@@ -417,6 +417,11 @@ function wchs_upsell_maybe_redirect( string $url, \WC_Order $order ): string {
 		return $url;
 	}
 
+	// FunnelKit store checkout owns thank-you / upsell steps in the funnel.
+	if ( function_exists( 'wchs_use_wchs_checkout_ui' ) && ! wchs_use_wchs_checkout_ui() ) {
+		return $url;
+	}
+
 	$payment_method = $order->get_payment_method();
 	$is_stripe   = 'stripe' === $payment_method;
 	$is_offline  = wchs_is_offline_gateway( $payment_method );

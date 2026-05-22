@@ -36,6 +36,10 @@ function wchs_is_native_page(): bool {
 	if ( is_admin() || wp_doing_ajax() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
 		return true;
 	}
+	// Elementor / FunnelKit editor iframe must stay on WordPress (never bounce to SPA).
+	if ( function_exists( 'wchs_is_checkout_builder_preview' ) && wchs_is_checkout_builder_preview() ) {
+		return true;
+	}
 	$req = $_SERVER['REQUEST_URI'] ?? '/';
 	$native_paths = [
 		'/checkout',
@@ -59,6 +63,12 @@ function wchs_is_native_page(): bool {
 			return true;
 		}
 	}
+
+	$path = wp_parse_url( $req, PHP_URL_PATH ) ?? '/';
+	if ( function_exists( 'wchs_is_funnelkit_native_path' ) && wchs_is_funnelkit_native_path( $path ) ) {
+		return true;
+	}
+
 	return false;
 }
 

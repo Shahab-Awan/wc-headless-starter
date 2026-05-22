@@ -2981,6 +2981,19 @@ class AdminPage {
 				<?php else : ?>
 					<p style="margin:0 0 12px;color:#767d88;font-size:13px">No FunnelKit store checkout detected yet. Activate Store Checkout in FunnelKit, or enter the path manually below.</p>
 				<?php endif; ?>
+				<?php
+				$needs_htaccess = ! $use_wchs_checkout
+					&& $handoff_preview !== '/checkout'
+					&& strpos( $handoff_preview, '/checkouts/' ) === 0;
+				if ( $needs_htaccess ) :
+					?>
+					<p style="margin:0 0 12px;padding:10px 12px;background:#fff8e5;border:1px solid #e6d28a;border-radius:4px;font-size:13px">
+						<strong>Elementor preview:</strong> your checkout URL uses <code>/checkouts/…</code>.
+						Live <code>.htaccess</code> must include <code>checkouts</code> in the WordPress routing rule
+						(see <code>bin/templates/htaccess.template</code> rule 5). Without it, Elementor shows
+						“Preview could not be loaded” because Apache serves the SPA instead of WordPress.
+					</p>
+				<?php endif; ?>
 				<label for="funnelkit_checkout_path">Checkout path override (optional)</label>
 				<input
 					type="text"

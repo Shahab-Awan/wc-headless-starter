@@ -24,8 +24,8 @@ RewriteRule ^wp-includes(/.*)?$     - [L]
 RewriteRule ^wp-content(/.*)?$      - [L]
 RewriteRule ^xmlrpc\.php$           - [L]
 
-# 5. Cart / checkout / my-account are WP-owned pages under our shim theme
-RewriteRule ^(cart|checkout|my-account)(/.*)?$ /index.php [L]
+# 5. Cart / checkout / FunnelKit checkouts / thank-you / upsell / my-account → WordPress
+RewriteRule ^(cart|checkout|checkouts|my-account|thankyou|thank-you|offer|upsell)(/.*)?$ /index.php [L]
 
 # 6. WP REST API
 RewriteRule ^wp-json(/.*)?$ /index.php [L]
@@ -96,6 +96,13 @@ RewriteRule ^[A-Za-z0-9_-]+/?$ /index.php [L]
 #    deliver webhooks.
 RewriteCond %{QUERY_STRING} (^|&)(wc-ajax|wc-api|rest_route)=
 RewriteRule ^$ /index.php [L]
+
+# 7a. Elementor / FunnelKit editor preview (?elementor-preview= on / or any path).
+#     Without this, /?elementor-preview=POST_ID hits rule 8 and serves index.html.
+RewriteCond %{QUERY_STRING} (^|&)elementor-preview=
+RewriteRule ^ /index.php [L]
+RewriteCond %{QUERY_STRING} (^|&)(wfacp_customize|wffn_customize|wffn-preview|bwf-builder-preview)=
+RewriteRule ^ /index.php [L]
 
 # 8. Everything else with no matching file → SPA fallback
 RewriteCond %{REQUEST_FILENAME} !-f

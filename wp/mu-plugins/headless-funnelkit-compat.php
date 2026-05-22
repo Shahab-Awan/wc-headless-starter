@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Headless FunnelKit Compat
  * Description: Admin toggle to use WCHS checkout or FunnelKit Store Checkout (Elementor). Aligns SPA cart handoff and skips WCHS checkout CSS when FunnelKit is selected.
- * Version:     0.2.0
+ * Version:     0.4.0
  * Author:      WCHS Contributors
  */
 
@@ -170,14 +170,33 @@ function wchs_funnelkit_is_checkout_request(): bool {
  * Elementor / FunnelKit editor preview must not be bounced by the cart bridge.
  */
 function wchs_is_checkout_builder_preview(): bool {
-	if ( is_admin() ) {
+	if ( is_admin() || wp_doing_ajax() || wp_doing_cron() ) {
 		return true;
 	}
 
-	foreach ( [ 'elementor-preview', 'preview', 'preview_id', 'ver', 'bwf-builder-preview', 'wffn-preview' ] as $key ) {
-		if ( ! empty( $_GET[ $key ] ) ) {
+	$preview_keys = [
+		'elementor-preview',
+		'elementor-preview-id',
+		'preview',
+		'preview_id',
+		'preview_nonce',
+		'ver',
+		'elementor_library',
+		'bwf-builder-preview',
+		'wffn-preview',
+		'wfacp_customize',
+		'wffn_customize',
+		'customize_theme',
+		'customize_changeset_uuid',
+	];
+	foreach ( $preview_keys as $key ) {
+		if ( isset( $_GET[ $key ] ) && '' !== (string) $_GET[ $key ] ) {
 			return true;
 		}
+	}
+
+	if ( function_exists( 'is_customize_preview' ) && is_customize_preview() ) {
+		return true;
 	}
 
 	if ( class_exists( '\Elementor\Plugin' ) ) {
@@ -186,12 +205,157 @@ function wchs_is_checkout_builder_preview(): bool {
 			if ( $plugin && isset( $plugin->preview ) && is_object( $plugin->preview ) && method_exists( $plugin->preview, 'is_preview_mode' ) && $plugin->preview->is_preview_mode() ) {
 				return true;
 			}
+			if ( $plugin && isset( $plugin->editor ) && is_object( $plugin->editor ) && method_exists( $plugin->editor, 'is_edit_mode' ) && $plugin->editor->is_edit_mode() ) {
+				return true;
+			}
 		} catch ( \Throwable $e ) {
 			// Preview detection is best-effort only.
 		}
 	}
 
 	return (bool) apply_filters( 'wchs_is_checkout_builder_preview', false );
+}
+
+/**
+ * Logged-in builders may open checkout without ?cart= (Elementor iframe often omits it).
+ */
+function wchs_allow_bare_checkout_handoff(): bool {
+	if ( wchs_is_checkout_builder_preview() ) {
+		return true;
+	}
+
+	if ( ! is_user_logged_in() ) {
+		return false;
+	}
+
+	if ( current_user_can( 'manage_woocommerce' ) || current_user_can( 'manage_options' ) ) {
+		return true;
+	}
+
+	$post_id = wchs_funnelkit_store_checkout_post_id();
+	if ( $post_id > 0 && current_user_can( 'edit_post', $post_id ) ) {
+		return true;
+	}
+
+	return current_user_can( 'edit_pages' );
+}
+
+/**
+ * First URL path segments for FunnelKit funnel pages (thank-you, upsell, custom permalink bases).
+ *
+ * @return string[]
+ */
+function wchs_funnelkit_permalink_roots(): array {
+	$roots = [
+		'checkouts',
+		'checkout',
+		'thankyou',
+		'thank-you',
+		'offer',
+		'upsell',
+	];
+
+	$settings = get_option( 'bwf_settings', [] );
+	if ( is_array( $settings ) ) {
+		foreach (
+			[
+				'checkout_page_base',
+				'checkout_base',
+				'checkout_slug',
+				'thank_you_page_base',
+				'thankyou_page_base',
+				'thank_you_slug',
+				'ty_slug',
+				'upsell_page_base',
+				'offer_slug',
+				'offer_page_base',
+			] as $key
+		) {
+			if ( empty( $settings[ $key ] ) ) {
+				continue;
+			}
+			$slug = sanitize_title( (string) $settings[ $key ] );
+			if ( $slug !== '' ) {
+				$roots[] = $slug;
+			}
+		}
+	}
+
+	$permalink = get_option( 'bwf_funnel_permalink', [] );
+	if ( is_array( $permalink ) ) {
+		foreach ( $permalink as $value ) {
+			if ( ! is_string( $value ) || '' === $value ) {
+				continue;
+			}
+			$slug = sanitize_title( $value );
+			if ( $slug !== '' ) {
+				$roots[] = $slug;
+			}
+		}
+	}
+
+	$handoff = wchs_checkout_handoff_path();
+	$segment = trim( (string) strtok( ltrim( $handoff, '/' ), '/' ), '/' );
+	if ( $segment !== '' ) {
+		$roots[] = $segment;
+	}
+
+	return array_values( array_unique( apply_filters( 'wchs_funnelkit_permalink_roots', $roots ) ) );
+}
+
+/**
+ * True when the request path is a FunnelKit-native surface (checkout thank-you, upsell, etc.).
+ */
+function wchs_is_funnelkit_native_path( string $path ): bool {
+	$path = trim( $path, '/' );
+	if ( $path === '' ) {
+		return false;
+	}
+
+	$root = strtok( $path, '/' );
+	if ( ! is_string( $root ) || $root === '' ) {
+		return false;
+	}
+
+	return in_array( $root, wchs_funnelkit_permalink_roots(), true );
+}
+
+/**
+ * FunnelKit thank-you requests carry order context in the query string.
+ */
+function wchs_is_funnelkit_thankyou_request(): bool {
+	$path = wp_parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH ) ?? '';
+	if ( wchs_is_funnelkit_native_path( $path ) ) {
+		$root = strtok( trim( $path, '/' ), '/' );
+		if ( in_array( $root, [ 'thankyou', 'thank-you' ], true ) ) {
+			return true;
+		}
+		foreach ( wchs_funnelkit_permalink_roots() as $base ) {
+			if ( in_array( $base, [ 'thankyou', 'thank-you' ], true ) ) {
+				continue;
+			}
+			if ( $root === $base && ! empty( $_GET['order_id'] ) && ! empty( $_GET['key'] ) ) {
+				return true;
+			}
+		}
+	}
+
+	return ! empty( $_GET['wfty_source'] )
+		|| ! empty( $_GET['wfty_id'] )
+		|| ( ! empty( $_GET['order_id'] ) && ! empty( $_GET['key'] ) && wchs_is_funnelkit_native_path( $path ) );
+}
+
+/**
+ * First path segment that must hit WordPress via .htaccess rule 5 (FunnelKit default: checkouts).
+ *
+ * @return string[] e.g. [ 'cart', 'checkout', 'checkouts', 'my-account' ]
+ */
+function wchs_htaccess_native_prefixes(): array {
+	$prefixes = array_merge(
+		[ 'cart', 'checkout', 'my-account' ],
+		wchs_funnelkit_permalink_roots()
+	);
+	return array_values( array_unique( apply_filters( 'wchs_htaccess_native_prefixes', $prefixes ) ) );
 }
 
 /**

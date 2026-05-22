@@ -270,7 +270,7 @@ add_action(
 		}
 
 		if ( empty( $_GET['cart'] ) ) {
-			if ( function_exists( 'wchs_is_checkout_builder_preview' ) && wchs_is_checkout_builder_preview() ) {
+			if ( function_exists( 'wchs_allow_bare_checkout_handoff' ) && wchs_allow_bare_checkout_handoff() ) {
 				return;
 			}
 			wchs_bridge_log( 'bare checkout hit without cart token; redirecting back to SPA cart' );

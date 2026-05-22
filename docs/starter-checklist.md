@@ -87,7 +87,7 @@ RewriteRule ^wp-content(/.*)?$     - [L]
 RewriteRule ^xmlrpc\.php$          - [L]
 
 # 5. Cart/checkout/my-account → WP (under headless-shim theme)
-RewriteRule ^(cart|checkout|my-account)(/.*)?$ /index.php [L]
+RewriteRule ^(cart|checkout|checkouts|my-account|thankyou|thank-you|offer|upsell)(/.*)?$ /index.php [L]
 
 # 6. WP REST: /wp-json/* → WP
 RewriteRule ^wp-json(/.*)?$ /index.php [L]
