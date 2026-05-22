@@ -1111,9 +1111,15 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 	$accent         = $site_settings['accent_color'] ?? null;
 	if ( ! is_string( $accent ) ) $accent = null;
 
+	$checkout_handoff_path = function_exists( 'wchs_checkout_handoff_path' )
+		? wchs_checkout_handoff_path()
+		: '/checkout';
+
 	return [
-		'wp_origin'       => $wp_origin,
-		'spa_origin'      => $spa_origin,
+		'wp_origin'              => $wp_origin,
+		'spa_origin'             => $spa_origin,
+		'checkout_handoff_path'  => $checkout_handoff_path,
+		'use_wchs_checkout'      => (bool) ( $site_settings['use_wchs_checkout'] ?? true ),
 		'origin_mode'            => $mode,
 		'allowed_origins'        => $allowed,
 		'return_origins'         => $returns,

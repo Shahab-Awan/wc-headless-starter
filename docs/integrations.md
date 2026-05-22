@@ -36,6 +36,7 @@ breakage or admin-side tuning needed.
 | Multi-currency switcher plugins | Medium | Checkout | Store API returns correct prices but no switcher UI in SPA. Single-currency stores are unaffected. |
 | Gravity Forms / WPForms | Low | WP pages via shortcode | Drop on a `/{slug}` page via a HTML module, OR use our `contact-form` module for SPA-side capture. |
 | Elementor / page builders | Low | WP pages only | Builder pages don't render inside the SPA. Use for WP-side microsites if needed. |
+| FunnelKit (Store Checkout + funnels) | Medium | WP checkout | See **FunnelKit** section below. `headless-funnelkit-compat.php` disables WCHS checkout chrome on the active store checkout page and points SPA handoff at the FunnelKit URL. |
 | Nextend / WP Social Login | Low | WP `/my-account/` | SPA's sign-in CTA redirects there — works end-to-end. |
 | EasyPost, ShipStation, Shippo | Low | Server-side | Shipping rate calc runs server-side at checkout. Independent of our EasyPost address-validation feature. |
 | Avalara, TaxJar | Low | Server-side | Tax calc via `woocommerce_calc_tax` filter. Store API returns calculated totals. |
@@ -356,6 +357,49 @@ Collected here so you don't have to re-learn them:
 | Double-tracking in analytics | `pixels-compat` mu-plugin + dedicated Klaviyo/Meta plugin both active | Pick one. |
 | Caching plugin breaks auth | Caching plugin caching `/wp-json/*` | Exclude `/wp-json/*` from cache (every caching plugin's settings). |
 | Omnisend brand ID typo silently disables integration | Strict regex validation in `headless-omnisend-compat.php` | Check the WCHS → Integrations field — must match `^[a-f0-9]{20,32}$`. |
+
+---
+
+## FunnelKit (Store Checkout)
+
+Use FunnelKit to replace the default WooCommerce checkout UI (Elementor, Divi,
+or Gutenberg templates). The SPA still owns the catalog and slide cart; checkout
+remains on WordPress.
+
+### Setup
+
+1. In FunnelKit → **Store Checkout**, create and **activate** your global checkout.
+2. Design the checkout step in Elementor (FunnelKit → Edit Template → Elementor).
+3. In **WCHS → Checkout**, turn off **Use WCHS checkout design**. Save. Optional: set **Checkout path override** if auto-detect misses your URL.
+4. Deploy `headless-funnelkit-compat.php` (mu-plugin, auto-loaded). It:
+   - Disables WCHS checkout enhancements (timer, sidebar, payment column moves) on the FunnelKit page so Elementor is not fighting our CSS/JS.
+   - Skips `wc-overrides.css` on that page so layout is builder-owned.
+   - Exposes `checkout_handoff_path` in `/wchs/v1/config` so SlideCart’s **Checkout** button links to the FunnelKit URL with `?cart=<JWT>`.
+   - Lets Elementor/FunnelKit **preview** load without the cart bridge redirecting you back to the SPA.
+
+### Cart handoff
+
+SlideCart still sends customers to `{wp_origin}{checkout_handoff_path}/?cart=<token>`.
+`headless-cart-bridge.php` imports the Store API session on that path only. If you
+remove the `/checkouts/` slug in FunnelKit permalinks, the handoff path updates
+automatically after cache flush.
+
+### Conflicts to resolve manually
+
+| Area | Action |
+|---|---|
+| WCHS one-click upsell (`headless-one-click-upsell.php`) | Disable or remove if FunnelKit funnel steps handle upsell/thank-you. |
+| WCHS thank-you tracking (`headless-thankyou-tracking.php`) | Keep for GTM/CustomerLabs on `order-received`, or move tracking into FunnelKit. |
+| Slide cart | Still WCHS `SlideCart.svelte`. FunnelKit’s cart plugin is WP-only; replacing the SPA drawer is a separate project. |
+
+### Elementor template won’t load
+
+Common causes on this stack:
+
+- **Cart bridge** redirecting bare checkout during preview — fixed by compat preview bypass (deploy required).
+- **WCHS checkout CSS/JS** breaking the builder canvas — fixed by compat (deploy required).
+- **PHP memory** / security plugin blocking Elementor AJAX — raise `WP_MEMORY_LIMIT`, whitelist admin AJAX in Wordfence.
+- **Changes only in git** — production needs deploy + SiteGround cache flush.
 
 ---
 

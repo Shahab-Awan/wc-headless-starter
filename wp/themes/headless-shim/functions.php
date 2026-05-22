@@ -46,6 +46,14 @@ function wchs_is_native_page(): bool {
 		// Upsell offer pages render on WP via our custom engine
 		// (headless-one-click-upsell.php uses /checkout/order-received/).
 	];
+	if ( function_exists( 'wchs_checkout_handoff_paths' ) ) {
+		foreach ( wchs_checkout_handoff_paths() as $handoff ) {
+			$handoff = (string) $handoff;
+			if ( $handoff !== '' && $handoff !== '/checkout' && ! in_array( $handoff, $native_paths, true ) ) {
+				$native_paths[] = $handoff;
+			}
+		}
+	}
 	foreach ( $native_paths as $p ) {
 		if ( strpos( $req, $p ) === 0 ) {
 			return true;

@@ -2,11 +2,13 @@
 /**
  * Plugin Name: Headless Cart Bridge
  * Description: Import a Store API cart (identified by ?cart=<JWT>) into the classic WC session on /checkout so the native checkout page renders the SPA cart.
- * Version:     0.4.0
+ * Version:     0.5.0
  * Author:      WCHS Contributors
 *
  * Security posture (v0.4.0):
- *   - Token is ONLY honored on /checkout. Any other URL with ?cart=<JWT>
+ *   - Token is ONLY honored on the checkout handoff path (default /checkout,
+ *     or the FunnelKit store checkout URL when headless-funnelkit-compat is active).
+ *     Any other URL with ?cart=<JWT>
  *     is ignored without side effect, no logging of the token itself.
  *   - Signature validated via WC's CartTokenUtils (per-site wp_salt secret).
  *   - Expiry enforced.
@@ -254,13 +256,23 @@ add_action(
 
 		$path = wp_parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH ) ?? '';
 		$path = rtrim( $path, '/' );
-		// Only the checkout root page uses the cart bridge. Order-pay /
+		$handoff_path = function_exists( 'wchs_checkout_handoff_path' )
+			? wchs_checkout_handoff_path()
+			: '/checkout';
+		// Only the checkout handoff root uses the cart bridge. Order-pay /
 		// order-received stay native and must not be bounced.
-		if ( '/checkout' !== $path ) {
+		if ( ! function_exists( 'wchs_is_checkout_handoff_path' ) ) {
+			if ( rtrim( $handoff_path, '/' ) !== $path ) {
+				return;
+			}
+		} elseif ( ! wchs_is_checkout_handoff_path( $path ) ) {
 			return;
 		}
 
 		if ( empty( $_GET['cart'] ) ) {
+			if ( function_exists( 'wchs_is_checkout_builder_preview' ) && wchs_is_checkout_builder_preview() ) {
+				return;
+			}
 			wchs_bridge_log( 'bare checkout hit without cart token; redirecting back to SPA cart' );
 			wchs_clear_classic_checkout_session();
 			wp_safe_redirect( wchs_checkout_cart_fallback_url() );

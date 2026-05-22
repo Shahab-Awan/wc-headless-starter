@@ -27,7 +27,14 @@ class Assets {
 	}
 
 	public function enqueue_front(): void {
-		$this->dequeue_wc_styles();
+		$skip_wc_overrides = function_exists( 'wchs_use_wchs_checkout_ui' )
+			&& ! wchs_use_wchs_checkout_ui()
+			&& function_exists( 'wchs_funnelkit_is_checkout_request' )
+			&& wchs_funnelkit_is_checkout_request();
+
+		if ( ! $skip_wc_overrides ) {
+			$this->dequeue_wc_styles();
+		}
 
 		// Inter from Bunny (Runway single-typeface commitment)
 		wp_enqueue_style(
@@ -45,13 +52,14 @@ class Assets {
 			WCHS_DS_VERSION
 		);
 
-		// Hand-authored WC widget overrides + mobile responsive rules
-		wp_enqueue_style(
-			'wchs-ds-wc-overrides',
-			WCHS_DS_URL . '/assets/wc-overrides.css',
-			[ 'wchs-ds-tokens' ],
-			WCHS_DS_VERSION
-		);
+		if ( ! $skip_wc_overrides ) {
+			wp_enqueue_style(
+				'wchs-ds-wc-overrides',
+				WCHS_DS_URL . '/assets/wc-overrides.css',
+				[ 'wchs-ds-tokens' ],
+				WCHS_DS_VERSION
+			);
+		}
 
 		// Shared header CSS — single source for both SPA and WP.
 		// The SPA imports the same file via symlink.

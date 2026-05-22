@@ -623,6 +623,10 @@ export type HeaderLink = {
 export type SiteConfig = {
 	wp_origin: string;
 	spa_origin: string;
+	/** Path on wp_origin for SPA cart JWT handoff (e.g. /checkout or /checkouts/alyve). */
+	checkout_handoff_path?: string;
+	/** When false, checkout uses FunnelKit path from checkout_handoff_path. */
+	use_wchs_checkout?: boolean;
 	brand_name: string;
 	static_seo_title: string;
 	static_seo_description: string;
@@ -747,6 +751,8 @@ export type ActiveScript = {
 
 const DEFAULTS: SiteConfig = {
 	wp_origin: 'http://localhost:8099',
+	checkout_handoff_path: '/checkout',
+	use_wchs_checkout: true,
 	spa_origin: 'http://localhost:5175',
 	brand_name: 'Online Store',
 	static_seo_title: '',
@@ -1301,7 +1307,8 @@ class ConfigStore {
 	}
 
 	checkoutUrl(cartToken: string | null): string {
-		const base = this.wpUrl('/checkout/');
+		const path = (this.data.checkout_handoff_path || '/checkout').replace(/\/+$/, '') || '/checkout';
+		const base = this.wpUrl(`${path}/`);
 		return cartToken ? `${base}?cart=${encodeURIComponent(cartToken)}` : base;
 	}
 

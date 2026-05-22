@@ -276,6 +276,9 @@ class CheckoutEnhancements {
 	}
 
 	private function is_enhanced_checkout(): bool {
+		if ( function_exists( 'wchs_use_wchs_checkout_enhancements' ) && ! wchs_use_wchs_checkout_enhancements() ) {
+			return false;
+		}
 		return function_exists( 'is_checkout' )
 			&& is_checkout()
 			&& ! is_wc_endpoint_url( 'order-received' );

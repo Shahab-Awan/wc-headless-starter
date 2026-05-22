@@ -314,6 +314,8 @@ class AdminPage {
 			'custom_allowed_origins'      => [],
 			'custom_return_origins'       => [],
 			'bump_variation_id'           => 0,
+			'use_wchs_checkout'           => true,
+			'funnelkit_checkout_path'     => '',
 			'upsell_enabled'              => false,
 			'bump_product_id'             => 0,
 			'google_maps_api_key'         => '',
@@ -1539,6 +1541,14 @@ class AdminPage {
 	private function save_checkout_settings(): void {
 		$s = self::get_site_settings();
 		$is_real_admin = function_exists( 'wchs_is_real_admin' ) ? wchs_is_real_admin() : current_user_can( 'install_plugins' );
+
+		$s['use_wchs_checkout'] = ! empty( $_POST['use_wchs_checkout'] );
+		$fk_path                = sanitize_text_field( wp_unslash( $_POST['funnelkit_checkout_path'] ?? '' ) );
+		$fk_path                = trim( $fk_path, " \t\n\r\0\x0B/" );
+		if ( $fk_path !== '' && ! preg_match( '#^[a-zA-Z0-9][a-zA-Z0-9/_-]*$#', $fk_path ) ) {
+			$fk_path = '';
+		}
+		$s['funnelkit_checkout_path'] = $fk_path;
 
 		$s['upsell_enabled']             = ! empty( $_POST['upsell_enabled'] );
 		$s['bump_product_id']            = absint( $_POST['bump_product_id'] ?? 0 );
@@ -2925,13 +2935,73 @@ class AdminPage {
 	}
 
 	private function render_checkout_tab( array $settings ): void {
-		$bump_pid = (int) ( $settings['bump_product_id'] ?? 0 );
-		$av_mode  = $settings['address_validation_mode'] ?? 'moderate';
+		$bump_pid          = (int) ( $settings['bump_product_id'] ?? 0 );
+		$av_mode           = $settings['address_validation_mode'] ?? 'moderate';
+		$use_wchs_checkout = ! empty( $settings['use_wchs_checkout'] );
+		$fk_path_override  = trim( (string) ( $settings['funnelkit_checkout_path'] ?? '' ), '/' );
+		$fk_detected_path  = '';
+		$fk_detected_url   = '';
+		if ( function_exists( 'wchs_funnelkit_store_checkout_post_id' ) ) {
+			$fk_post_id = wchs_funnelkit_store_checkout_post_id();
+			if ( $fk_post_id > 0 ) {
+				$fk_detected_url = (string) get_permalink( $fk_post_id );
+				if ( $fk_detected_url !== '' ) {
+					$parsed = wp_parse_url( $fk_detected_url, PHP_URL_PATH );
+					$fk_detected_path = is_string( $parsed ) ? trim( $parsed, '/' ) : '';
+				}
+			}
+		}
+		$handoff_preview = function_exists( 'wchs_checkout_handoff_path' )
+			? wchs_checkout_handoff_path()
+			: ( $use_wchs_checkout ? '/checkout' : ( $fk_path_override !== '' ? '/' . $fk_path_override : ( $fk_detected_path !== '' ? '/' . $fk_detected_path : '/checkout' ) ) );
 		?>
 		<form method="POST" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<?php wp_nonce_field( 'wchs_save_settings', 'wchs_nonce' ); ?>
 			<input type="hidden" name="action" value="wchs_save_settings" />
 			<input type="hidden" name="wchs_tab" value="checkout" />
+
+			<h2>Checkout page <?php echo self::hint_icon( 'WCHS checkout adds the branded header, timer, trust sidebar, and layout on /checkout. Turn off to use FunnelKit Store Checkout (Elementor, Divi, etc.). The slide cart still sends customers to the path shown below with ?cart= for cart import.' ); ?></h2>
+			<div class="wchs-field">
+				<label class="wchs-toggle">
+					<input type="checkbox" name="use_wchs_checkout" value="1" <?php checked( $use_wchs_checkout ); ?> id="wchs-use-wchs-checkout" />
+					<span class="wchs-toggle__track"><span class="wchs-toggle__thumb"></span></span>
+					<span>Use WCHS checkout design (timer, trust sidebar, payment layout)</span>
+				</label>
+			</div>
+			<div class="wchs-field wchs-funnelkit-checkout-fields" id="wchs-funnelkit-checkout-fields" style="<?php echo $use_wchs_checkout ? 'display:none' : ''; ?>">
+				<p style="margin:0 0 8px;color:#555;font-size:13px">
+					<strong>SPA checkout link after save:</strong>
+					<code><?php echo esc_html( $handoff_preview ); ?>?cart=…</code>
+				</p>
+				<?php if ( $fk_detected_url !== '' ) : ?>
+					<p style="margin:0 0 12px;color:#555;font-size:13px">
+						FunnelKit store checkout detected:
+						<a href="<?php echo esc_url( $fk_detected_url ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $fk_detected_url ); ?></a>
+					</p>
+				<?php else : ?>
+					<p style="margin:0 0 12px;color:#767d88;font-size:13px">No FunnelKit store checkout detected yet. Activate Store Checkout in FunnelKit, or enter the path manually below.</p>
+				<?php endif; ?>
+				<label for="funnelkit_checkout_path">Checkout path override (optional)</label>
+				<input
+					type="text"
+					name="funnelkit_checkout_path"
+					id="funnelkit_checkout_path"
+					class="regular-text"
+					placeholder="e.g. checkouts/alyve-checkout"
+					value="<?php echo esc_attr( $fk_path_override ); ?>"
+				/>
+				<p class="description">Path only, no domain. Leave blank to use the active FunnelKit store checkout URL.</p>
+			</div>
+			<script>
+				(function () {
+					var toggle = document.getElementById('wchs-use-wchs-checkout');
+					var panel = document.getElementById('wchs-funnelkit-checkout-fields');
+					if (!toggle || !panel) return;
+					toggle.addEventListener('change', function () {
+						panel.style.display = toggle.checked ? 'none' : '';
+					});
+				})();
+			</script>
 
 			<h2>Order Bump <?php echo self::hint_icon('A checkbox offer shown before the Place Order button. When checked, the product is added to the cart and included in fee/tax calculations.'); ?></h2>
 			<div class="wchs-field">
