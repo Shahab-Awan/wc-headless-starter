@@ -43,6 +43,7 @@ function wchs_is_native_page(): bool {
 	$req = $_SERVER['REQUEST_URI'] ?? '/';
 	$native_paths = [
 		'/checkout',
+		'/order-confirmed',
 		'/my-account',
 		'/wp-login.php',
 		'/wp-admin',

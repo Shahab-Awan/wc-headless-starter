@@ -251,6 +251,7 @@ function wchs_funnelkit_permalink_roots(): array {
 		'checkout',
 		'thankyou',
 		'thank-you',
+		'order-confirmed',
 		'offer',
 		'upsell',
 	];

@@ -25,7 +25,7 @@ RewriteRule ^wp-content(/.*)?$      - [L]
 RewriteRule ^xmlrpc\.php$           - [L]
 
 # 5. Cart / checkout / FunnelKit checkouts / thank-you / upsell / my-account → WordPress
-RewriteRule ^(cart|checkout|checkouts|my-account|thankyou|thank-you|offer|upsell)(/.*)?$ /index.php [L]
+RewriteRule ^(cart|checkout|checkouts|my-account|thankyou|thank-you|order-confirmed|offer|upsell)(/.*)?$ /index.php [L]
 
 # 6. WP REST API
 RewriteRule ^wp-json(/.*)?$ /index.php [L]
