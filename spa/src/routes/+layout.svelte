@@ -47,6 +47,8 @@
 		Boolean(config.data.features?.dark_mode && config.data.header_show_toggle)
 	);
 
+	const useFunnelKitCart = $derived(Boolean(config.data.funnelkit_cart?.enabled));
+
 	const logoOnlyHeader = $derived(
 		page.url.pathname.replace(/\/$/, '') === '/why-alyve'
 	);
@@ -65,7 +67,7 @@
 		if (themeToggleVisible && config.data.header_toggle_mobile_pin) {
 			out.push({ kind: 'toggle' });
 		}
-		if (config.data.header_cart_mobile_pin) out.push({ kind: 'cart' });
+		if (config.data.header_cart_mobile_pin && !useFunnelKitCart) out.push({ kind: 'cart' });
 		return out.slice(0, MAX_PINNED);
 	});
 
@@ -78,7 +80,7 @@
 		if (themeToggleVisible && config.data.header_toggle_mobile_pin) {
 			all.push({ kind: 'toggle' });
 		}
-		if (config.data.header_cart_mobile_pin) all.push({ kind: 'cart' });
+		if (config.data.header_cart_mobile_pin && !useFunnelKitCart) all.push({ kind: 'cart' });
 		return all.slice(MAX_PINNED);
 	});
 
@@ -91,7 +93,7 @@
 		if (themeToggleVisible && !config.data.header_toggle_mobile_pin) {
 			out.push({ kind: 'toggle' });
 		}
-		if (!config.data.header_cart_mobile_pin) out.push({ kind: 'cart' });
+		if (!config.data.header_cart_mobile_pin && !useFunnelKitCart) out.push({ kind: 'cart' });
 		return [...out, ...overflowPinned];
 	});
 
@@ -539,18 +541,21 @@
 							<ThemeToggle />
 						</span>
 					{/if}
-					<button
-						type="button"
-						class="site-header__cart"
-						class:fkcart-mini-open={config.data.funnelkit_cart?.enabled}
-						class:is-accent={config.data.header_cart_accent}
-						class:is-bumping={cartBumping}
-						onclick={() => cart.toggle()}
-						aria-label="Open cart"
-					>
-						<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-						<span class="site-header__cart-count tabular-nums">{cart.itemCount}</span>
-					</button>
+					{#if useFunnelKitCart}
+						<span class="site-header__fk-slot" aria-hidden="true"></span>
+					{:else}
+						<button
+							type="button"
+							class="site-header__cart"
+							class:is-accent={config.data.header_cart_accent}
+							class:is-bumping={cartBumping}
+							onclick={() => cart.toggle()}
+							aria-label="Open cart"
+						>
+							<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+							<span class="site-header__cart-count tabular-nums">{cart.itemCount}</span>
+						</button>
+					{/if}
 				</div>
 			</div>
 
@@ -581,7 +586,6 @@
 							<button
 								type="button"
 								class="site-header__cart"
-								class:fkcart-mini-open={config.data.funnelkit_cart?.enabled}
 								class:is-accent={config.data.header_cart_accent}
 								class:is-bumping={cartBumping}
 								onclick={() => cart.toggle()}
@@ -592,6 +596,9 @@
 							</button>
 						{/if}
 					{/each}
+					{#if useFunnelKitCart}
+						<span class="site-header__fk-slot" aria-hidden="true"></span>
+					{/if}
 				</div>
 				<button
 					type="button"
@@ -613,6 +620,9 @@
 				</button>
 			{/if}
 		</nav>
+		{/if}
+		{#if useFunnelKitCart}
+			<FunnelKitCartShell />
 		{/if}
 	</header>
 	</div>
@@ -645,7 +655,7 @@
 						<ThemeToggle />
 						<span>Theme</span>
 					</div>
-				{:else if entry.kind === 'cart'}
+				{:else if entry.kind === 'cart' && !useFunnelKitCart}
 					<button
 						type="button"
 						class="site-header-drawer__item"
@@ -667,9 +677,7 @@
 	</main>
 
 	<Footer />
-	{#if config.data.funnelkit_cart?.enabled}
-		<FunnelKitCartShell />
-	{:else}
+	{#if !useFunnelKitCart}
 		<SlideCart />
 	{/if}
 	<SiteGate />

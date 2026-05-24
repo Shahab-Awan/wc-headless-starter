@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Headless FunnelKit Cart
  * Description: Optional FunnelKit Cart slide drawer on the SPA via classic-cart sync and a WP-hosted shell iframe.
- * Version:     0.1.0
+ * Version:     0.2.0
  * Author:      WCHS Contributors
  */
 
@@ -52,7 +52,7 @@ function wchs_build_funnelkit_cart_config(): array {
 		'shell_url'     => $enabled ? $shell : '',
 		'sync_url'      => $enabled ? rest_url( 'wchs/v1/cart/sync-classic' ) : '',
 		'open_class'    => 'fkcart-mini-open',
-		'cart_selector' => '.site-header__cart',
+		'cart_selector' => '#fkcart-floating-toggler',
 		'plugin_active' => wchs_funnelkit_cart_plugin_active(),
 	];
 }
@@ -62,6 +62,22 @@ function wchs_build_funnelkit_cart_config(): array {
  */
 function wchs_funnelkit_cart_shell_url(): string {
 	return home_url( '/cart/?wchs_fk_cart_shell=1' );
+}
+
+/**
+ * Print FunnelKit floating icon + drawer when wp_footer hooks did not (e.g. cart_display "none").
+ */
+function wchs_funnelkit_cart_shell_render_fk_markup(): void {
+	if ( ! class_exists( 'FKCart\Includes\Front' ) ) {
+		return;
+	}
+	$front = FKCart\Includes\Front::get_instance();
+	if ( method_exists( $front, 'cart_icon' ) ) {
+		$front->cart_icon();
+	}
+	if ( method_exists( $front, 'cart_content' ) ) {
+		$front->cart_content();
+	}
 }
 
 /**
@@ -89,11 +105,28 @@ add_action(
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <?php wp_head(); ?>
 <style>
-	html, body { margin: 0; padding: 0; background: transparent; }
+	html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+	#fkcart-floating-toggler {
+		position: absolute !important;
+		top: 0 !important;
+		right: 0 !important;
+		bottom: auto !important;
+		left: auto !important;
+		margin: 0 !important;
+		transform: none !important;
+		z-index: 2 !important;
+	}
 </style>
 </head>
 <body>
-<?php wp_footer(); ?>
+<?php
+		wp_footer();
+		if ( class_exists( 'FKCart\Includes\Data' ) && ! FKCart\Includes\Data::is_cart_enabled() ) {
+			wchs_funnelkit_cart_shell_render_fk_markup();
+		} elseif ( ! class_exists( 'FKCart\Includes\Data' ) ) {
+			wchs_funnelkit_cart_shell_render_fk_markup();
+		}
+		?>
 <script>
 (function () {
 	var origin = <?php echo wp_json_encode( untrailingslashit( home_url() ) ); ?>;

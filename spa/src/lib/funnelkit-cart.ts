@@ -39,22 +39,56 @@ function waitForShellReady(timeoutMs = 8000): Promise<void> {
 	});
 }
 
+function positionShellInHeader(frame: HTMLIFrameElement): void {
+	let slot: Element | null = null;
+	for (const el of document.querySelectorAll('.site-header__fk-slot')) {
+		const rect = el.getBoundingClientRect();
+		if (rect.width > 0 && rect.height > 0) {
+			slot = el;
+			break;
+		}
+	}
+	if (!slot) return;
+	const rect = slot.getBoundingClientRect();
+	if (rect.width < 1 || rect.height < 1) return;
+	frame.style.top = `${rect.top}px`;
+	frame.style.left = `${rect.left}px`;
+	frame.style.width = `${rect.width}px`;
+	frame.style.height = `${rect.height}px`;
+}
+
 export function ensureFunnelKitCartShell(): HTMLIFrameElement | null {
 	if (!browser || !funnelkitCartEnabled()) return null;
 	const shellUrl = config.data.funnelkit_cart?.shell_url;
 	if (!shellUrl) return null;
 
-	if (shellFrame?.isConnected) return shellFrame;
+	if (shellFrame?.isConnected) {
+		if (!shellFrame.classList.contains('wchs-fk-cart-shell--active')) {
+			positionShellInHeader(shellFrame);
+		}
+		return shellFrame;
+	}
 
 	window.addEventListener('message', onShellMessage);
+	window.addEventListener('resize', () => {
+		if (shellFrame && !shellFrame.classList.contains('wchs-fk-cart-shell--active')) {
+			positionShellInHeader(shellFrame);
+		}
+	});
 
 	shellFrame = document.createElement('iframe');
 	shellFrame.src = shellUrl;
 	shellFrame.title = 'Cart';
-	shellFrame.setAttribute('aria-hidden', 'true');
+	shellFrame.setAttribute('aria-label', 'Open cart');
 	shellFrame.dataset.wchsFkCartShell = '1';
 	shellFrame.className = 'wchs-fk-cart-shell';
 	document.body.appendChild(shellFrame);
+
+	const place = () => positionShellInHeader(shellFrame!);
+	place();
+	shellFrame.addEventListener('load', place);
+	requestAnimationFrame(place);
+
 	return shellFrame;
 }
 
@@ -110,5 +144,7 @@ export async function openFunnelKitCart(itemCount = 0): Promise<void> {
 }
 
 export function closeFunnelKitCartShell(): void {
-	shellFrame?.classList.remove('wchs-fk-cart-shell--active');
+	if (!shellFrame) return;
+	shellFrame.classList.remove('wchs-fk-cart-shell--active');
+	positionShellInHeader(shellFrame);
 }

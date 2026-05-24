@@ -3020,7 +3020,7 @@ class AdminPage {
 				})();
 			</script>
 
-			<h2>Slide cart <?php echo self::hint_icon( 'Replace the WCHS slide cart drawer with FunnelKit Cart on the SPA. The header cart button syncs Store API items into the classic session, then opens FunnelKit in a same-origin shell. Requires the FunnelKit Cart plugin.' ); ?></h2>
+			<h2>Slide cart <?php echo self::hint_icon( 'Replace the WCHS slide cart with FunnelKit Cart on the SPA. The native FunnelKit floating icon is anchored in the header (next to Account); WCHS cart buttons are hidden. Store API items sync into the classic session before the drawer opens. Requires FunnelKit Cart (cart-for-woocommerce).' ); ?></h2>
 			<div class="wchs-field">
 				<label class="wchs-toggle">
 					<input type="checkbox" name="use_funnelkit_cart" value="1" <?php checked( $use_funnelkit_cart ); ?> />
@@ -3035,8 +3035,8 @@ class AdminPage {
 				</p>
 			<?php elseif ( $use_funnelkit_cart ) : ?>
 				<p style="margin:0 0 12px;color:#555;font-size:13px">
-					In FunnelKit Cart → <strong>Cart menu</strong>, set the trigger to
-					<strong>Use CSS selector</strong> and enter <code>.site-header__cart</code> (optional — the SPA also opens the drawer after sync).
+					FunnelKit → Cart → set <strong>Cart icon visibility</strong> to your preferred floating style (it is repositioned into the header on the SPA).
+					You can leave <strong>Cart menu</strong> off — the WCHS header slot hosts the FunnelKit icon.
 					Checkout inside FunnelKit Cart uses the handoff path above (<code><?php echo esc_html( $handoff_preview ); ?></code>).
 				</p>
 			<?php endif; ?>

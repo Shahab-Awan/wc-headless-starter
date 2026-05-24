@@ -767,7 +767,7 @@ const DEFAULTS: SiteConfig = {
 		shell_url: '',
 		sync_url: '',
 		open_class: 'fkcart-mini-open',
-		cart_selector: '.site-header__cart'
+		cart_selector: '#fkcart-floating-toggler'
 	},
 	spa_origin: 'http://localhost:5175',
 	brand_name: 'Online Store',
