@@ -116,6 +116,8 @@ class CartStore {
 	loading = $state(false);
 	error = $state<string | null>(null);
 	open = $state(false);
+	/** FunnelKit bootstrap failed — use WCHS SlideCart for this session. */
+	fkSlideCartFallback = $state(false);
 	restored = $state(false); // true if shadow replay fired on last fetch
 
 	/**
@@ -288,12 +290,13 @@ class CartStore {
 		await this.mutate(() =>
 			request<StoreApiCart>('/cart/add-item', { method: 'POST', body: { id, quantity, variation } })
 		);
-		if (config.data.funnelkit_cart?.enabled) {
+		let fkOpened = false;
+		if (config.data.funnelkit_cart?.enabled && !this.fkSlideCartFallback) {
 			const { openFunnelKitCart } = await import('$lib/funnelkit-cart');
-			await openFunnelKitCart(this.itemCount);
-		} else {
-			this.open = true;
+			fkOpened = await openFunnelKitCart(this.itemCount);
+			if (!fkOpened) this.fkSlideCartFallback = true;
 		}
+		if (!fkOpened) this.open = true;
 		dispatch('added_to_cart', { id, quantity });
 		// GA4 + Omnisend + Klaviyo + Meta + TikTok + Pinterest ecommerce
 		// tracking — find the item in the cart to get name/price. Every
@@ -356,12 +359,15 @@ class CartStore {
 	}
 
 	async toggle(force?: boolean) {
-		if (config.data.funnelkit_cart?.enabled) {
+		if (config.data.funnelkit_cart?.enabled && !this.fkSlideCartFallback) {
 			const { openFunnelKitCart } = await import('$lib/funnelkit-cart');
 			if (force === false) return;
-			await openFunnelKitCart(this.itemCount);
-			dispatch('fkcart_cart_open', {});
-			return;
+			const opened = await openFunnelKitCart(this.itemCount);
+			if (opened) {
+				dispatch('fkcart_cart_open', {});
+				return;
+			}
+			this.fkSlideCartFallback = true;
 		}
 		this.open = force ?? !this.open;
 		dispatch(this.open ? 'fkcart_cart_open' : 'fkcart_cart_closed', {});

@@ -630,6 +630,9 @@ export type SiteConfig = {
 	/** FunnelKit Cart drawer on SPA (replaces SlideCart when enabled). */
 	funnelkit_cart?: {
 		enabled: boolean;
+		use_setting?: boolean;
+		plugin_active?: boolean;
+		bootstrap_ok?: boolean;
 		menu_html: string;
 		bootstrap_url?: string;
 		sync_url: string;
@@ -638,7 +641,6 @@ export type SiteConfig = {
 		open_class: string;
 		cart_selector: string;
 		trigger_selector?: string;
-		plugin_active?: boolean;
 		auto_open_on_add?: boolean;
 	};
 	brand_name: string;

@@ -681,7 +681,7 @@
 	</main>
 
 	<Footer />
-	{#if !config.data.funnelkit_cart?.enabled}
+	{#if !config.data.funnelkit_cart?.enabled || cart.fkSlideCartFallback}
 		<SlideCart />
 	{/if}
 	<SiteGate />

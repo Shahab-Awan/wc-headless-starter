@@ -21,11 +21,17 @@ let bootstrapped = false;
 let bootstrapPromise: Promise<boolean> | null = null;
 let syncInFlight: Promise<boolean> | null = null;
 let floaterCssInjected = false;
+let lastBootstrapError = '';
 
 const MOUNT_ID = 'wchs-fk-cart-mount';
 
 export function funnelkitCartEnabled(): boolean {
 	return Boolean(config.data.funnelkit_cart?.enabled);
+}
+
+/** Last bootstrap failure reason (for debugging in console). */
+export function funnelkitCartLastError(): string {
+	return lastBootstrapError;
 }
 
 function injectHideFloaterCss(): void {
@@ -40,9 +46,7 @@ function injectHideFloaterCss(): void {
 
 function hasFkDrawerDom(): boolean {
 	return Boolean(
-		document.querySelector(
-			'#fkcart-slider, #fkcart-modal, .fkcart-modal, .fkcart-slider, [id^="fkcart-"]'
-		)
+		document.querySelector('#fkcart-slider, #fkcart-modal, .fkcart-modal, .fkcart-slider')
 	);
 }
 
@@ -58,9 +62,7 @@ function sortScripts(scripts: FkScript[]): FkScript[] {
 			done.add(handle);
 			return;
 		}
-		for (const dep of row.deps ?? []) {
-			visit(dep);
-		}
+		for (const dep of row.deps ?? []) visit(dep);
 		done.add(handle);
 		if (row.src) sorted.push(row);
 	};
@@ -86,10 +88,7 @@ function loadScript(src: string, id: string): Promise<void> {
 
 function loadStyle(href: string, id: string): void {
 	if (document.querySelector(`link[data-wchs-fk="${id}"]`)) return;
-	// FK cart styles only — skip handles that are not fkcart-specific.
-	if (!/fkcart|fk-cart|fkit-cart/i.test(id) && !/fkcart|fk-cart|fkit-cart/i.test(href)) {
-		return;
-	}
+	if (!/fkcart|fk-cart|fkit-cart/i.test(id) && !/fkcart|fk-cart|fkit-cart/i.test(href)) return;
 	const el = document.createElement('link');
 	el.rel = 'stylesheet';
 	el.href = href;
@@ -128,22 +127,49 @@ function injectMarkup(markup: string): void {
 	mount.innerHTML = clean;
 }
 
+async function parseBootstrapResponse(res: Response): Promise<BootstrapPayload | null> {
+	const text = await res.text();
+	const trimmed = text.trim();
+	if (trimmed.startsWith('<') || trimmed.startsWith('<!')) {
+		lastBootstrapError = 'Bootstrap URL returned HTML (SPA) instead of JSON — add cart to .htaccess rule 5';
+		return null;
+	}
+	try {
+		const data = JSON.parse(trimmed) as BootstrapPayload;
+		if (!data || typeof data.markup !== 'string') {
+			lastBootstrapError = 'Bootstrap JSON missing markup';
+			return null;
+		}
+		if (sanitizeBootstrapMarkup(data.markup).length < 20) {
+			lastBootstrapError = 'Bootstrap markup empty — FunnelKit drawer not in wp_footer';
+			return null;
+		}
+		return data;
+	} catch {
+		lastBootstrapError = 'Bootstrap response is not valid JSON';
+		return null;
+	}
+}
+
 async function fetchBootstrap(): Promise<BootstrapPayload | null> {
 	const fk = config.data.funnelkit_cart;
 	const urls = [
+		config.wpUrl('/wp-json/wchs/v1/funnelkit/bootstrap'),
 		fk?.bootstrap_url,
-		config.wpUrl('/cart/?wchs_fk_cart_bootstrap=1'),
-		config.wpUrl('/wp-json/wchs/v1/funnelkit/bootstrap')
+		config.wpUrl('/cart/?wchs_fk_cart_bootstrap=1')
 	].filter((u): u is string => Boolean(u));
 
 	for (const url of urls) {
 		try {
-			const res = await fetch(url, { credentials: 'include' });
-			if (!res.ok) continue;
-			const data = (await res.json()) as BootstrapPayload;
-			if (data && typeof data.markup === 'string') return data;
-		} catch {
-			// Try next URL.
+			const res = await fetch(url, { credentials: 'include', cache: 'no-store' });
+			if (!res.ok) {
+				lastBootstrapError = `Bootstrap HTTP ${res.status} for ${url}`;
+				continue;
+			}
+			const data = await parseBootstrapResponse(res);
+			if (data) return data;
+		} catch (e) {
+			lastBootstrapError = e instanceof Error ? e.message : 'Bootstrap fetch failed';
 		}
 	}
 	return null;
@@ -158,17 +184,20 @@ async function loadScriptsAndStyles(payload: BootstrapPayload): Promise<boolean>
 	try {
 		await loadScript(jquery, 'jquery');
 	} catch {
+		lastBootstrapError = 'jQuery failed to load';
 		return false;
 	}
 
 	injectInlineScripts(payload.inline ?? []);
 
+	let fkLoaded = false;
 	for (const s of scripts) {
 		if (s.handle === 'jquery' || !s.src) continue;
 		try {
 			await loadScript(s.src, s.handle);
+			if (/fkcart|fk-cart/i.test(s.handle) || /fkcart|fk-cart/i.test(s.src)) fkLoaded = true;
 		} catch {
-			// Optional chunks — continue.
+			// Optional chunks.
 		}
 	}
 
@@ -176,18 +205,20 @@ async function loadScriptsAndStyles(payload: BootstrapPayload): Promise<boolean>
 		if (st.src) loadStyle(st.src, st.handle);
 	}
 
+	if (!fkLoaded && scripts.length > 1) {
+		lastBootstrapError = 'FunnelKit cart JS did not load';
+	}
+
 	return true;
 }
 
-/**
- * Fetch FK drawer HTML + load scripts (required before open works on SPA).
- */
 export async function bootstrapFunnelKitCart(): Promise<boolean> {
 	if (!browser || !funnelkitCartEnabled()) return false;
 	if (bootstrapped && hasFkDrawerDom()) return true;
 	if (bootstrapPromise) return bootstrapPromise;
 
 	bootstrapPromise = (async () => {
+		lastBootstrapError = '';
 		injectHideFloaterCss();
 
 		const payload = await fetchBootstrap();
@@ -198,6 +229,9 @@ export async function bootstrapFunnelKitCart(): Promise<boolean> {
 		if (!scriptsOk) return false;
 
 		bootstrapped = hasFkDrawerDom();
+		if (!bootstrapped) {
+			lastBootstrapError = lastBootstrapError || 'FunnelKit drawer DOM not found after bootstrap';
+		}
 		return bootstrapped;
 	})().finally(() => {
 		bootstrapPromise = null;
@@ -272,19 +306,26 @@ function triggerFkCartOpen(): void {
 	document.body.dispatchEvent(new CustomEvent('fkcart_cart_open', { bubbles: true }));
 }
 
-export async function openFunnelKitCart(itemCount = 0): Promise<void> {
-	if (!funnelkitCartEnabled()) return;
+/** @returns true when the FunnelKit drawer opened; false = use WCHS SlideCart fallback */
+export async function openFunnelKitCart(itemCount = 0): Promise<boolean> {
+	if (!funnelkitCartEnabled()) return false;
 
 	const ready = await bootstrapFunnelKitCart();
-	if (!ready) return;
+	if (!ready) {
+		if (import.meta.env.DEV && lastBootstrapError) {
+			console.warn('[wchs] FunnelKit cart:', lastBootstrapError);
+		}
+		return false;
+	}
 
 	if (itemCount > 0) {
 		await syncClassicCart().catch(() => false);
 	}
 
-	// Allow FK init to bind after scripts + markup injection.
-	await new Promise((r) => setTimeout(r, 120));
+	await new Promise((r) => setTimeout(r, 150));
 	triggerFkCartOpen();
+
+	return hasFkDrawerDom() || Boolean(document.querySelector('.fkcart-modal.fkcart-show, .fkcart-show'));
 }
 
 export async function initFunnelKitCart(): Promise<void> {

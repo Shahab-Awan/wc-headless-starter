@@ -289,7 +289,18 @@ function wchs_funnelkit_cart_capture_footer_markup(): string {
 	ob_start();
 	wp_footer();
 	$html = (string) ob_get_clean();
-	return wchs_funnelkit_cart_strip_global_assets( $html );
+	$html = wchs_funnelkit_cart_strip_global_assets( $html );
+
+	if ( strlen( trim( wp_strip_all_tags( $html ) ) ) < 20 ) {
+		foreach ( [ 'fkcart_slider_on_page', 'fkcart', 'fk_cart', 'fkcart_slider' ] as $tag ) {
+			if ( shortcode_exists( $tag ) ) {
+				$html .= (string) do_shortcode( '[' . $tag . ']' );
+			}
+		}
+		$html = wchs_funnelkit_cart_strip_global_assets( $html );
+	}
+
+	return $html;
 }
 
 /**
@@ -366,8 +377,14 @@ function wchs_build_funnelkit_cart_config(): array {
 	$assets        = $enabled ? wchs_funnelkit_cart_capture_assets() : [ 'scripts' => [], 'styles' => [] ];
 	$menu_html     = $enabled ? wchs_funnelkit_cart_menu_html() : '';
 
+	$bootstrap_sample = $enabled ? wchs_funnelkit_cart_bootstrap_payload() : [ 'markup' => '' ];
+	$markup_len       = strlen( (string) ( $bootstrap_sample['markup'] ?? '' ) );
+
 	return [
 		'enabled'         => $enabled,
+		'use_setting'     => wchs_use_funnelkit_cart(),
+		'plugin_active'   => $plugin_active,
+		'bootstrap_ok'    => $enabled && $markup_len > 50,
 		'menu_html'       => $menu_html,
 		'bootstrap_url'   => $enabled ? home_url( '/cart/?wchs_fk_cart_bootstrap=1' ) : '',
 		'sync_url'        => $enabled ? rest_url( 'wchs/v1/cart/sync-classic' ) : '',
@@ -376,7 +393,6 @@ function wchs_build_funnelkit_cart_config(): array {
 		'open_class'      => 'fkcart-mini-open',
 		'cart_selector'   => '.site-header__fkcart-menu',
 		'trigger_selector' => '.site-header__fkcart-menu, .site-header__fkcart-menu .fkcart-mini-open',
-		'plugin_active'   => $plugin_active,
 		'auto_open_on_add' => true,
 	];
 }
