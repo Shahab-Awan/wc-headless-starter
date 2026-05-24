@@ -360,6 +360,7 @@ function wchs_rest_rate_limit( string $bucket ): bool {
 		'session_delete' => 10,
 		'coa_library'    => 60,
 		'cart_sync_classic' => 30,
+		'funnelkit_bootstrap' => 30,
 	];
 	$max = $limits[ $bucket ] ?? 10;
 
@@ -1126,6 +1127,7 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 			: [
 				'enabled'          => false,
 				'menu_html'        => '',
+				'bootstrap_url'    => '',
 				'sync_url'         => '',
 				'scripts'          => [],
 				'styles'           => [],

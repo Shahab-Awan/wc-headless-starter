@@ -631,8 +631,9 @@ export type SiteConfig = {
 	funnelkit_cart?: {
 		enabled: boolean;
 		menu_html: string;
+		bootstrap_url?: string;
 		sync_url: string;
-		scripts: Array<{ handle: string; src: string }>;
+		scripts: Array<{ handle: string; src: string; deps?: string[] }>;
 		styles: Array<{ handle: string; src: string }>;
 		open_class: string;
 		cart_selector: string;
@@ -769,6 +770,7 @@ const DEFAULTS: SiteConfig = {
 	funnelkit_cart: {
 		enabled: false,
 		menu_html: '',
+		bootstrap_url: '',
 		sync_url: '',
 		scripts: [],
 		styles: [],

@@ -332,6 +332,10 @@
 
 			consumeOpenCartIntent();
 
+			if (config.data.funnelkit_cart?.enabled) {
+				import('$lib/funnelkit-cart').then((m) => m.initFunnelKitCart());
+			}
+
 			// URL-based coupon auto-apply: landing on `/?coupon=CODE` or
 			// any URL with a `?coupon=` param applies it to the cart once,
 			// then strips the param so a refresh or share doesn't re-apply

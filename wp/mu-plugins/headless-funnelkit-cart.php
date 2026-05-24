@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Headless FunnelKit Cart
  * Description: FunnelKit Cart on the SPA via [fk_cart_menu], classic-cart sync, and direct script load (no iframe).
- * Version:     0.2.0
+ * Version:     0.3.0
  * Author:      WCHS Contributors
  */
 
@@ -173,6 +173,7 @@ function wchs_funnelkit_cart_capture_assets(): array {
 			$scripts[] = [
 				'handle' => $handle,
 				'src'    => wchs_funnelkit_cart_normalize_asset_url( (string) $reg->src ),
+				'deps'   => array_values( array_filter( (array) ( $reg->deps ?? [] ), 'is_string' ) ),
 			];
 		}
 	}
@@ -227,6 +228,117 @@ function wchs_funnelkit_cart_capture_assets(): array {
 }
 
 /**
+ * Inline script blobs (wp_localize_script) required by FunnelKit on the SPA.
+ *
+ * @return array<int, array{handle: string, data: string}>
+ */
+function wchs_funnelkit_cart_capture_inline_scripts(): array {
+	global $wp_scripts;
+	$out = [];
+	if ( ! $wp_scripts instanceof \WP_Scripts ) {
+		return $out;
+	}
+	foreach ( (array) $wp_scripts->queue as $handle ) {
+		if ( ! is_string( $handle ) || ! preg_match( '/fkcart|fk-cart|fkit-cart|jquery/i', $handle ) ) {
+			continue;
+		}
+		$reg = $wp_scripts->registered[ $handle ] ?? null;
+		if ( ! $reg ) {
+			continue;
+		}
+		if ( ! empty( $reg->extra['data'] ) && is_string( $reg->extra['data'] ) ) {
+			$out[] = [
+				'handle' => $handle,
+				'data'   => $reg->extra['data'],
+			];
+		}
+		foreach ( (array) ( $reg->extra['before'] ?? [] ) as $i => $code ) {
+			if ( is_string( $code ) && $code !== '' ) {
+				$out[] = [
+					'handle' => $handle . '-before-' . $i,
+					'data'   => $code,
+				];
+			}
+		}
+		foreach ( (array) ( $reg->extra['after'] ?? [] ) as $i => $code ) {
+			if ( is_string( $code ) && $code !== '' ) {
+				$out[] = [
+					'handle' => $handle . '-after-' . $i,
+					'data'   => $code,
+				];
+			}
+		}
+	}
+	return $out;
+}
+
+/**
+ * Slide-cart drawer markup from wp_footer (scripts stripped — SPA loads them separately).
+ */
+function wchs_funnelkit_cart_capture_footer_markup(): string {
+	ob_start();
+	wp_footer();
+	$html = (string) ob_get_clean();
+	return (string) preg_replace( '#<script\b[^>]*>.*?</script>#is', '', $html );
+}
+
+/**
+ * Prime WooCommerce + FunnelKit enqueues the way a storefront page would.
+ */
+function wchs_funnelkit_cart_prepare_front_context(): void {
+	if ( ! defined( 'WOOCOMMERCE_CART' ) ) {
+		define( 'WOOCOMMERCE_CART', true );
+	}
+	wchs_funnelkit_cart_capture_assets();
+}
+
+/**
+ * @return array{markup: string, scripts: array, styles: array, inline: array}
+ */
+function wchs_funnelkit_cart_bootstrap_payload(): array {
+	wchs_funnelkit_cart_prepare_front_context();
+
+	ob_start();
+	wp_head();
+	$head_html = (string) ob_get_clean();
+	$head_html = (string) preg_replace( '#<script\b[^>]*>.*?</script>#is', '', $head_html );
+
+	$footer_html = wchs_funnelkit_cart_capture_footer_markup();
+	$assets      = wchs_funnelkit_cart_capture_assets();
+
+	return [
+		'markup'  => $head_html . $footer_html,
+		'scripts' => $assets['scripts'],
+		'styles'  => $assets['styles'],
+		'inline'  => wchs_funnelkit_cart_capture_inline_scripts(),
+	];
+}
+
+/**
+ * JSON bootstrap for SPA — full FK drawer DOM + localized script data.
+ */
+add_action(
+	'template_redirect',
+	function () {
+		if ( empty( $_GET['wchs_fk_cart_bootstrap'] ) ) {
+			return;
+		}
+		if ( ! wchs_use_funnelkit_cart() || ! wchs_funnelkit_cart_plugin_active() ) {
+			status_header( 404 );
+			exit;
+		}
+
+		status_header( 200 );
+		nocache_headers();
+		header( 'Content-Type: application/json; charset=utf-8' );
+
+		echo wp_json_encode( wchs_funnelkit_cart_bootstrap_payload() );
+		exit;
+	},
+	999
+);
+
+/**
  * Render [fk_cart_menu] for the SPA header.
  */
 function wchs_funnelkit_cart_menu_html(): string {
@@ -252,6 +364,7 @@ function wchs_build_funnelkit_cart_config(): array {
 	return [
 		'enabled'         => $enabled,
 		'menu_html'       => $menu_html,
+		'bootstrap_url'   => $enabled ? home_url( '/cart/?wchs_fk_cart_bootstrap=1' ) : '',
 		'sync_url'        => $enabled ? rest_url( 'wchs/v1/cart/sync-classic' ) : '',
 		'scripts'         => $assets['scripts'],
 		'styles'          => $assets['styles'],
@@ -304,8 +417,31 @@ add_action(
 				'permission_callback' => '__return_true',
 			]
 		);
+
+		register_rest_route(
+			'wchs/v1',
+			'/funnelkit/bootstrap',
+			[
+				'methods'             => 'GET',
+				'callback'            => 'wchs_rest_funnelkit_bootstrap',
+				'permission_callback' => '__return_true',
+			]
+		);
 	}
 );
+
+/**
+ * @return \WP_REST_Response|\WP_Error
+ */
+function wchs_rest_funnelkit_bootstrap() {
+	if ( ! wchs_use_funnelkit_cart() || ! wchs_funnelkit_cart_plugin_active() ) {
+		return new \WP_Error( 'wchs_fk_cart_disabled', 'FunnelKit cart integration is disabled.', [ 'status' => 403 ] );
+	}
+	if ( ! function_exists( 'wchs_rest_rate_limit' ) || ! wchs_rest_rate_limit( 'funnelkit_bootstrap' ) ) {
+		return new \WP_Error( 'wchs_rate_limited', 'Too many requests.', [ 'status' => 429 ] );
+	}
+	return new \WP_REST_Response( wchs_funnelkit_cart_bootstrap_payload(), 200 );
+}
 
 /**
  * @param \WP_REST_Request $request

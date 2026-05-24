@@ -36,7 +36,7 @@
 			if (!target || !host.contains(target)) return;
 			e.preventDefault();
 			e.stopPropagation();
-			void cart.toggle();
+			void cart.toggle(true);
 		};
 
 		host.addEventListener('click', onClick);
