@@ -3035,15 +3035,9 @@ class AdminPage {
 				</p>
 			<?php elseif ( $use_funnelkit_cart ) : ?>
 				<p style="margin:0 0 12px;color:#555;font-size:13px">
-					In FunnelKit Cart → <strong>Visibility &amp; Position</strong>, set
-					<strong>Cart icon visibility</strong> to <strong>None</strong> (no floating button).
-					In <strong>Cart menu</strong>, turn <strong>Enable Cart Menu</strong> on (required for <code>[fk_cart_menu]</code> in the header).
-					Optional: <strong>Use CSS selector</strong> → <code>.site-header__fkcart-menu</code>.
+					In FunnelKit Cart → <strong>Cart menu</strong>, set the trigger to
+					<strong>Use CSS selector</strong> and enter <code>.site-header__cart</code> (optional — the SPA also opens the drawer after sync).
 					Checkout inside FunnelKit Cart uses the handoff path above (<code><?php echo esc_html( $handoff_preview ); ?></code>).
-				</p>
-				<p style="margin:0 0 12px;color:#555;font-size:13px">
-					After deploy, open <code><?php echo esc_html( home_url( '/wp-json/wchs/v1/funnelkit/bootstrap' ) ); ?></code>
-					and confirm <code>markup</code> is not empty. If empty, update FunnelKit Cart plugin and save FunnelKit cart settings once in wp-admin.
 				</p>
 			<?php endif; ?>
 
