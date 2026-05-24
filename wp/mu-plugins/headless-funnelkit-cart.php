@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Headless FunnelKit Cart
  * Description: FunnelKit Cart on the SPA via [fk_cart_menu], classic-cart sync, and direct script load (no iframe).
- * Version:     0.4.0
+ * Version:     0.4.1
  * Author:      WCHS Contributors
  */
 
@@ -286,18 +286,35 @@ function wchs_funnelkit_cart_capture_inline_scripts(): array {
  *
  * @return array<int, array{handle: string, data: string}>
  */
-function wchs_funnelkit_cart_fallback_inline_scripts(): array {
+function wchs_funnelkit_cart_localize_payload(): array {
+	if ( class_exists( 'FKCart\Includes\Front' ) ) {
+		$front = FKCart\Includes\Front::get_instance();
+		if ( is_object( $front ) && method_exists( $front, 'localize_data' ) ) {
+			$data = $front->localize_data();
+			if ( is_array( $data ) && $data !== [] ) {
+				return $data;
+			}
+		}
+	}
+
 	$checkout = function_exists( 'wchs_checkout_handoff_path' )
 		? home_url( untrailingslashit( wchs_checkout_handoff_path() ) . '/' )
 		: ( function_exists( 'wc_get_checkout_url' ) ? wc_get_checkout_url() : '' );
 
-	$payload = [
+	return [
 		'ajax_url'     => admin_url( 'admin-ajax.php' ),
 		'wc_ajax_url'  => class_exists( 'WC_AJAX' ) ? \WC_AJAX::get_endpoint( '%%endpoint%%' ) : '',
 		'checkout_url' => $checkout,
 	];
+}
 
-	$json = wp_json_encode( $payload );
+/**
+ * Fallback wp_localize_script blobs when REST/bootstrap skips enqueue extras.
+ *
+ * @return array<int, array{handle: string, data: string}>
+ */
+function wchs_funnelkit_cart_fallback_inline_scripts(): array {
+	$json = wp_json_encode( wchs_funnelkit_cart_localize_payload() );
 	if ( ! is_string( $json ) ) {
 		return [];
 	}
@@ -322,7 +339,38 @@ function wchs_funnelkit_invoke_front_method( string $method ): string {
 		return '';
 	}
 	ob_start();
-	$front->$method();
+	$result = $front->$method();
+	$html   = (string) ob_get_clean();
+	if ( is_string( $result ) && $result !== '' ) {
+		$html = $result . $html;
+	}
+	return wchs_funnelkit_cart_strip_global_assets( $html );
+}
+
+/**
+ * Drawer shell — same markup as Front::cart_content() without Data::is_cart_enabled() gates
+ * (cart_display "none" and non-WC routes return empty from cart_content on REST/bootstrap).
+ */
+function wchs_funnelkit_cart_drawer_shell_html(): string {
+	if ( ! function_exists( 'fkcart_get_template_part' ) ) {
+		return '';
+	}
+
+	$upsell_style  = 'style1';
+	$icon_position = 'right';
+	if ( class_exists( 'FKCart\Includes\Data' ) ) {
+		$upsell_style  = (string) ( FKCart\Includes\Data::get_value( 'upsell_style' ) ?: 'style1' );
+		$icon_position = (string) ( FKCart\Includes\Data::get_value( 'cart_icon_position' ) ?: 'right' );
+	}
+
+	ob_start();
+	?>
+	<div id="fkcart-modal" class="fkcart-modal" data-upsell-style="<?php echo esc_attr( $upsell_style ); ?>">
+		<div class="fkcart-modal-container" data-direction="<?php echo esc_attr( is_rtl() ? 'rtl' : 'ltr' ); ?>" data-slider-pos="<?php echo esc_attr( $icon_position ); ?>">
+			<?php fkcart_get_template_part( 'cart/placeholder' ); ?>
+		</div>
+	</div>
+	<?php
 	return wchs_funnelkit_cart_strip_global_assets( (string) ob_get_clean() );
 }
 
@@ -334,6 +382,12 @@ function wchs_funnelkit_cart_render_drawer_markup(): string {
 	if ( strlen( trim( wp_strip_all_tags( $html ) ) ) >= 20 ) {
 		return $html;
 	}
+
+	$html = wchs_funnelkit_cart_drawer_shell_html();
+	if ( strlen( trim( wp_strip_all_tags( $html ) ) ) >= 20 ) {
+		return $html;
+	}
+
 	return wchs_funnelkit_cart_capture_footer_markup();
 }
 
@@ -428,6 +482,11 @@ add_action(
  * Render [fk_cart_menu] for the SPA header.
  */
 function wchs_funnelkit_cart_menu_html(): string {
+	$html = wchs_funnelkit_invoke_front_method( 'get_mini_cart_toggler' );
+	if ( $html !== '' ) {
+		return $html;
+	}
+
 	foreach ( [ 'fk_cart_menu', 'fkcart_menu', 'fkcart_cart_menu' ] as $tag ) {
 		if ( shortcode_exists( $tag ) ) {
 			$html = (string) do_shortcode( '[' . $tag . ']' );
