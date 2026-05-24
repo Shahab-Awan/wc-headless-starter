@@ -10,7 +10,7 @@
 	import { config } from '$lib/config.svelte';
 	import { afterNavigate } from '$app/navigation';
 	import SlideCart from '$lib/components/SlideCart.svelte';
-	import FunnelKitCartShell from '$lib/components/FunnelKitCartShell.svelte';
+	import FunnelKitCartMenu from '$lib/components/FunnelKitCartMenu.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import BackToTop from '$lib/components/BackToTop.svelte';
 	import AdminBar from '$lib/components/AdminBar.svelte';
@@ -31,6 +31,7 @@
 	import AnnouncementBar from '$lib/components/AnnouncementBar.svelte';
 	import HeaderSearch from '$lib/components/HeaderSearch.svelte';
 	import '$lib/styles/header.css';
+	import '$lib/styles/funnelkit-cart-overrides.css';
 
 	let { children } = $props();
 	let fontsReady = $state(false);
@@ -539,18 +540,21 @@
 							<ThemeToggle />
 						</span>
 					{/if}
-					<button
-						type="button"
-						class="site-header__cart"
-						class:fkcart-mini-open={config.data.funnelkit_cart?.enabled}
-						class:is-accent={config.data.header_cart_accent}
-						class:is-bumping={cartBumping}
-						onclick={() => cart.toggle()}
-						aria-label="Open cart"
-					>
-						<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-						<span class="site-header__cart-count tabular-nums">{cart.itemCount}</span>
-					</button>
+					{#if config.data.funnelkit_cart?.enabled}
+						<FunnelKitCartMenu accent={config.data.header_cart_accent} bumping={cartBumping} />
+					{:else}
+						<button
+							type="button"
+							class="site-header__cart"
+							class:is-accent={config.data.header_cart_accent}
+							class:is-bumping={cartBumping}
+							onclick={() => cart.toggle()}
+							aria-label="Open cart"
+						>
+							<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+							<span class="site-header__cart-count tabular-nums">{cart.itemCount}</span>
+						</button>
+					{/if}
 				</div>
 			</div>
 
@@ -578,18 +582,21 @@
 								<ThemeToggle />
 							</span>
 						{:else if entry.kind === 'cart'}
-							<button
-								type="button"
-								class="site-header__cart"
-								class:fkcart-mini-open={config.data.funnelkit_cart?.enabled}
-								class:is-accent={config.data.header_cart_accent}
-								class:is-bumping={cartBumping}
-								onclick={() => cart.toggle()}
-								aria-label="Open cart"
-							>
-								<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-								<span class="site-header__cart-count tabular-nums">{cart.itemCount}</span>
-							</button>
+							{#if config.data.funnelkit_cart?.enabled}
+								<FunnelKitCartMenu accent={config.data.header_cart_accent} bumping={cartBumping} />
+							{:else}
+								<button
+									type="button"
+									class="site-header__cart"
+									class:is-accent={config.data.header_cart_accent}
+									class:is-bumping={cartBumping}
+									onclick={() => cart.toggle()}
+									aria-label="Open cart"
+								>
+									<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+									<span class="site-header__cart-count tabular-nums">{cart.itemCount}</span>
+								</button>
+							{/if}
 						{/if}
 					{/each}
 				</div>
@@ -646,15 +653,23 @@
 						<span>Theme</span>
 					</div>
 				{:else if entry.kind === 'cart'}
-					<button
-						type="button"
-						class="site-header-drawer__item"
-						class:is-accent={config.data.header_cart_accent}
-						onclick={() => { drawerOpen = false; cart.toggle(); }}
-					>
-						<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-						<span>Cart ({cart.itemCount})</span>
-					</button>
+					{#if config.data.funnelkit_cart?.enabled}
+						<FunnelKitCartMenu
+							variant="drawer"
+							accent={config.data.header_cart_accent}
+							ondrawerclick={() => (drawerOpen = false)}
+						/>
+					{:else}
+						<button
+							type="button"
+							class="site-header-drawer__item"
+							class:is-accent={config.data.header_cart_accent}
+							onclick={() => { drawerOpen = false; cart.toggle(); }}
+						>
+							<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+							<span>Cart ({cart.itemCount})</span>
+						</button>
+					{/if}
 				{/if}
 			{/each}
 		</div>
@@ -667,9 +682,7 @@
 	</main>
 
 	<Footer />
-	{#if config.data.funnelkit_cart?.enabled}
-		<FunnelKitCartShell />
-	{:else}
+	{#if !config.data.funnelkit_cart?.enabled}
 		<SlideCart />
 	{/if}
 	<SiteGate />

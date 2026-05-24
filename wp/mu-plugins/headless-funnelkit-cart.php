@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Headless FunnelKit Cart
- * Description: Optional FunnelKit Cart slide drawer on the SPA via classic-cart sync and a WP-hosted shell iframe.
- * Version:     0.1.0
+ * Description: FunnelKit Cart on the SPA via [fk_cart_menu], classic-cart sync, and direct script load (no iframe).
+ * Version:     0.2.0
  * Author:      WCHS Contributors
  */
 
@@ -39,131 +39,246 @@ function wchs_funnelkit_cart_plugin_active(): bool {
 }
 
 /**
+ * @return string Plugin root URL or empty.
+ */
+function wchs_funnelkit_cart_plugin_url(): string {
+	if ( defined( 'FKCART_FILE' ) ) {
+		return plugins_url( '/', FKCART_FILE );
+	}
+	if ( defined( 'FKCART_PLUGIN_FILE' ) ) {
+		return plugins_url( '/', FKCART_PLUGIN_FILE );
+	}
+	return '';
+}
+
+/**
+ * @param string $src Script or style src from WP enqueue.
+ */
+function wchs_funnelkit_cart_normalize_asset_url( string $src ): string {
+	$src = trim( $src );
+	if ( $src === '' ) {
+		return '';
+	}
+	if ( str_starts_with( $src, '//' ) ) {
+		return 'https:' . $src;
+	}
+	if ( preg_match( '#^https?://#i', $src ) ) {
+		return $src;
+	}
+	return home_url( $src );
+}
+
+/**
+ * Discover FK cart JS/CSS when enqueue hooks did not register handles (REST context).
+ *
+ * @return array{scripts: array<int, array{handle: string, src: string}>, styles: array<int, array{handle: string, src: string}>}
+ */
+function wchs_funnelkit_cart_asset_fallback(): array {
+	$base = wchs_funnelkit_cart_plugin_url();
+	if ( $base === '' ) {
+		return [ 'scripts' => [], 'styles' => [] ];
+	}
+
+	$scripts = [
+		[ 'handle' => 'jquery', 'src' => wchs_funnelkit_cart_normalize_asset_url( includes_url( 'jquery/jquery.min.js' ) ) ],
+	];
+	$styles  = [];
+
+	$file = '';
+	if ( defined( 'FKCART_FILE' ) ) {
+		$file = FKCART_FILE;
+	} elseif ( defined( 'FKCART_PLUGIN_FILE' ) ) {
+		$file = FKCART_PLUGIN_FILE;
+	}
+	if ( $file !== '' ) {
+		$dir = plugin_dir_path( $file );
+		foreach ( glob( $dir . 'assets/**/*.js' ) ?: [] as $path ) {
+			if ( str_contains( $path, 'admin' ) ) {
+				continue;
+			}
+			$rel = str_replace( '\\', '/', substr( $path, strlen( $dir ) ) );
+			$scripts[] = [
+				'handle' => 'fkcart-' . sanitize_title( basename( $path, '.js' ) ),
+				'src'    => wchs_funnelkit_cart_normalize_asset_url( $base . $rel ),
+			];
+		}
+		foreach ( glob( $dir . 'assets/**/*.css' ) ?: [] as $path ) {
+			if ( str_contains( $path, 'admin' ) ) {
+				continue;
+			}
+			$rel = str_replace( '\\', '/', substr( $path, strlen( $dir ) ) );
+			$styles[] = [
+				'handle' => 'fkcart-' . sanitize_title( basename( $path, '.css' ) ),
+				'src'    => wchs_funnelkit_cart_normalize_asset_url( $base . $rel ),
+			];
+		}
+	}
+
+	return [ 'scripts' => $scripts, 'styles' => $styles ];
+}
+
+/**
+ * Capture FK cart scripts/styles registered for the storefront.
+ *
+ * @return array{scripts: array<int, array{handle: string, src: string}>, styles: array<int, array{handle: string, src: string}>}
+ */
+function wchs_funnelkit_cart_capture_assets(): array {
+	$scripts = [];
+	$styles  = [];
+
+	if ( ! function_exists( 'wp_scripts' ) ) {
+		return wchs_funnelkit_cart_asset_fallback();
+	}
+
+	if ( ! defined( 'WOOCOMMERCE_CART' ) ) {
+		define( 'WOOCOMMERCE_CART', true );
+	}
+
+	wp_scripts();
+	wp_styles();
+	wp_enqueue_script( 'jquery' );
+
+	if ( function_exists( 'fkcart' ) ) {
+		$inst = fkcart();
+		if ( is_object( $inst ) ) {
+			foreach ( [ 'frontend', 'public', 'front' ] as $prop ) {
+				if ( ! isset( $inst->$prop ) || ! is_object( $inst->$prop ) ) {
+					continue;
+				}
+				foreach ( [ 'enqueue_scripts', 'enqueue_assets', 'load_scripts' ] as $method ) {
+					if ( method_exists( $inst->$prop, $method ) ) {
+						$inst->$prop->$method();
+					}
+				}
+			}
+		}
+	}
+
+	do_action( 'wp_enqueue_scripts' );
+
+	global $wp_scripts, $wp_styles;
+
+	if ( $wp_scripts instanceof \WP_Scripts ) {
+		foreach ( (array) $wp_scripts->queue as $handle ) {
+			if ( ! is_string( $handle ) ) {
+				continue;
+			}
+			if ( ! preg_match( '/fkcart|fk-cart|fkit-cart/i', $handle ) && $handle !== 'jquery' ) {
+				continue;
+			}
+			$reg = $wp_scripts->registered[ $handle ] ?? null;
+			if ( ! $reg || empty( $reg->src ) ) {
+				continue;
+			}
+			$scripts[] = [
+				'handle' => $handle,
+				'src'    => wchs_funnelkit_cart_normalize_asset_url( (string) $reg->src ),
+			];
+		}
+	}
+
+	if ( $wp_styles instanceof \WP_Styles ) {
+		foreach ( (array) $wp_styles->queue as $handle ) {
+			if ( ! is_string( $handle ) || ! preg_match( '/fkcart|fk-cart|fkit-cart/i', $handle ) ) {
+				continue;
+			}
+			$reg = $wp_styles->registered[ $handle ] ?? null;
+			if ( ! $reg || empty( $reg->src ) ) {
+				continue;
+			}
+			$styles[] = [
+				'handle' => $handle,
+				'src'    => wchs_funnelkit_cart_normalize_asset_url( (string) $reg->src ),
+			];
+		}
+	}
+
+	$has_fk_script = false;
+	foreach ( $scripts as $row ) {
+		if ( preg_match( '/fkcart|fk-cart/i', (string) ( $row['handle'] ?? '' ) ) ) {
+			$has_fk_script = true;
+			break;
+		}
+	}
+	if ( ! $has_fk_script ) {
+		$fallback = wchs_funnelkit_cart_asset_fallback();
+		$scripts  = array_merge( $scripts, $fallback['scripts'] );
+		$styles   = array_merge( $styles, $fallback['styles'] );
+	}
+
+	$dedupe = static function ( array $rows ): array {
+		$seen = [];
+		$out  = [];
+		foreach ( $rows as $row ) {
+			$key = (string) ( $row['src'] ?? '' );
+			if ( $key === '' || isset( $seen[ $key ] ) ) {
+				continue;
+			}
+			$seen[ $key ] = true;
+			$out[]        = $row;
+		}
+		return $out;
+	};
+
+	return [
+		'scripts' => $dedupe( $scripts ),
+		'styles'  => $dedupe( $styles ),
+	];
+}
+
+/**
+ * Render [fk_cart_menu] for the SPA header.
+ */
+function wchs_funnelkit_cart_menu_html(): string {
+	foreach ( [ 'fk_cart_menu', 'fkcart_menu', 'fkcart_cart_menu' ] as $tag ) {
+		if ( shortcode_exists( $tag ) ) {
+			return (string) do_shortcode( '[' . $tag . ']' );
+		}
+	}
+	return '';
+}
+
+/**
  * REST + SPA config payload for funnelkit_cart.
  *
  * @return array<string, mixed>
  */
 function wchs_build_funnelkit_cart_config(): array {
-	$enabled = wchs_use_funnelkit_cart() && wchs_funnelkit_cart_plugin_active();
-	$shell   = wchs_funnelkit_cart_shell_url();
+	$plugin_active = wchs_funnelkit_cart_plugin_active();
+	$enabled       = wchs_use_funnelkit_cart() && $plugin_active;
+	$assets        = $enabled ? wchs_funnelkit_cart_capture_assets() : [ 'scripts' => [], 'styles' => [] ];
+	$menu_html     = $enabled ? wchs_funnelkit_cart_menu_html() : '';
 
 	return [
-		'enabled'       => $enabled,
-		'shell_url'     => $enabled ? $shell : '',
-		'sync_url'      => $enabled ? rest_url( 'wchs/v1/cart/sync-classic' ) : '',
-		'open_class'    => 'fkcart-mini-open',
-		'cart_selector' => '.site-header__cart',
-		'plugin_active' => wchs_funnelkit_cart_plugin_active(),
+		'enabled'         => $enabled,
+		'menu_html'       => $menu_html,
+		'sync_url'        => $enabled ? rest_url( 'wchs/v1/cart/sync-classic' ) : '',
+		'scripts'         => $assets['scripts'],
+		'styles'          => $assets['styles'],
+		'open_class'      => 'fkcart-mini-open',
+		'cart_selector'   => '.site-header__fkcart-menu',
+		'trigger_selector' => '.site-header__fkcart-menu, .site-header__fkcart-menu .fkcart-mini-open',
+		'plugin_active'   => $plugin_active,
+		'auto_open_on_add' => true,
 	];
 }
 
 /**
- * WordPress route that always loads FunnelKit Cart assets (see .htaccess cart prefix).
- */
-function wchs_funnelkit_cart_shell_url(): string {
-	return home_url( '/cart/?wchs_fk_cart_shell=1' );
-}
-
-/**
- * Minimal WP page that only runs wp_head/wp_footer so FunnelKit Cart can render in an iframe.
+ * Hide FunnelKit floating launcher on SPA (header menu owns the trigger).
  */
 add_action(
-	'template_redirect',
+	'wp_head',
 	function () {
-		if ( empty( $_GET['wchs_fk_cart_shell'] ) ) {
-			return;
-		}
-		if ( ! wchs_use_funnelkit_cart() || ! wchs_funnelkit_cart_plugin_active() ) {
-			status_header( 404 );
-			exit;
-		}
-
-		status_header( 200 );
-		nocache_headers();
-		header( 'X-Robots-Tag: noindex, nofollow', true );
-
-		?><!DOCTYPE html>
-<html <?php language_attributes(); ?>>
-<head>
-<meta charset="<?php bloginfo( 'charset' ); ?>" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<?php wp_head(); ?>
-<style>
-	html, body { margin: 0; padding: 0; background: transparent; }
-	/* WCHS opens the drawer from the SPA header — hide FunnelKit's floating launcher. */
-	#fkcart-mini-toggler,
-	.fkcart-mini-toggler,
-	.fkcart-floating-cart,
-	.fkit-floating-cart,
-	[data-fkcart-trigger="floating"] {
-		display: none !important;
-		visibility: hidden !important;
-		pointer-events: none !important;
-	}
-</style>
-</head>
-<body>
-<?php wp_footer(); ?>
-<script>
-(function () {
-	var origin = <?php echo wp_json_encode( untrailingslashit( home_url() ) ); ?>;
-	window.addEventListener('message', function (e) {
-		if (!e.data || e.data.type !== 'wchs-fk-cart-open') return;
-		if (e.origin !== origin) return;
-		var opened = false;
-		if (window.jQuery) {
-			try {
-				window.jQuery(document.body).trigger('fkcart_open_slider');
-				opened = true;
-			} catch (err) {}
-		}
-		if (!opened) {
-			var el = document.querySelector('.fkcart-mini-open, [data-fkcart-trigger], .fkcart-cart-open');
-			if (el && typeof el.click === 'function') el.click();
-		}
-	});
-	window.parent.postMessage({ type: 'wchs-fk-cart-ready' }, origin);
-
-	function notifyClosed() {
-		window.parent.postMessage({ type: 'wchs-fk-cart-closed' }, origin);
-	}
-
-	if (window.jQuery) {
-		window.jQuery(document.body).on('fkcart_cart_closed fkcart_close_slider', notifyClosed);
-	}
-	document.addEventListener('click', function (e) {
-		var t = e.target;
-		if (!t || !t.closest) return;
-		if (t.closest('.fkcart-close, .fkcart-modal-close, [data-fkcart-close]')) {
-			notifyClosed();
-		}
-	});
-})();
-</script>
-</body>
-</html>
-		<?php
-		exit;
-	},
-	0
-);
-
-/**
- * Hide floating launcher after FunnelKit prints footer markup (shell page only).
- */
-add_action(
-	'wp_footer',
-	function () {
-		if ( empty( $_GET['wchs_fk_cart_shell'] ) || ! wchs_use_funnelkit_cart() ) {
+		if ( ! wchs_use_funnelkit_cart() ) {
 			return;
 		}
 		echo "<style id=\"wchs-fk-hide-floater\">#fkcart-mini-toggler,.fkcart-mini-toggler,.fkcart-floating-cart,.fkit-floating-cart,[data-fkcart-trigger=\"floating\"]{display:none!important;visibility:hidden!important}</style>\n";
 	},
-	9999
+	999
 );
 
 /**
- * FunnelKit checkout button inside the iframe should use the WCHS handoff path.
+ * FunnelKit checkout button should use the WCHS handoff path.
  */
 add_filter(
 	'woocommerce_get_checkout_url',
@@ -209,7 +324,7 @@ function wchs_rest_cart_sync_classic( \WP_REST_Request $request ) {
 		return new \WP_Error( 'wchs_wc_unavailable', 'WooCommerce is not available.', [ 'status' => 503 ] );
 	}
 
-	$token = '';
+	$token  = '';
 	$header = $request->get_header( 'cart-token' );
 	if ( is_string( $header ) && $header !== '' ) {
 		$token = sanitize_text_field( $header );

@@ -1,15 +1,15 @@
 /**
- * FunnelKit Cart on the SPA — sync Store API → classic session, open drawer in shell iframe.
+ * FunnelKit Cart on the SPA — load WP assets, render [fk_cart_menu], sync + open drawer.
  */
 
 import { browser } from '$app/environment';
 import { config } from '$lib/config.svelte';
 import { currentCartToken } from '$lib/wc/store-api';
 
-let shellFrame: HTMLIFrameElement | null = null;
-let shellReady = false;
-let shellReadyWaiters: Array<() => void> = [];
+let assetsLoaded = false;
+let assetsLoading: Promise<boolean> | null = null;
 let syncInFlight: Promise<boolean> | null = null;
+let floaterCssInjected = false;
 
 export function funnelkitCartEnabled(): boolean {
 	return Boolean(config.data.funnelkit_cart?.enabled);
@@ -19,46 +19,87 @@ function wpOrigin(): string {
 	return config.data.wp_origin.replace(/\/$/, '');
 }
 
-function onShellMessage(event: MessageEvent) {
-	if (event.origin !== wpOrigin()) return;
-	if (event.data?.type === 'wchs-fk-cart-ready') {
-		shellReady = true;
-		const waiters = shellReadyWaiters.splice(0);
-		for (const fn of waiters) fn();
-	}
-	if (event.data?.type === 'wchs-fk-cart-closed') {
-		closeFunnelKitCartShell();
-	}
+function injectHideFloaterCss(): void {
+	if (!browser || floaterCssInjected) return;
+	floaterCssInjected = true;
+	const el = document.createElement('style');
+	el.id = 'wchs-fk-hide-floater';
+	el.textContent =
+		'#fkcart-mini-toggler,.fkcart-mini-toggler,.fkcart-floating-cart,.fkit-floating-cart,[data-fkcart-trigger="floating"]{display:none!important;visibility:hidden!important}';
+	document.head.appendChild(el);
 }
 
-function waitForShellReady(timeoutMs = 8000): Promise<void> {
-	if (shellReady) return Promise.resolve();
+function loadScript(src: string, id: string): Promise<void> {
 	return new Promise((resolve, reject) => {
-		const t = setTimeout(() => reject(new Error('FunnelKit cart shell timed out')), timeoutMs);
-		shellReadyWaiters.push(() => {
-			clearTimeout(t);
+		if (document.querySelector(`script[data-wchs-fk="${id}"]`)) {
 			resolve();
-		});
+			return;
+		}
+		const el = document.createElement('script');
+		el.src = src;
+		el.dataset.wchsFk = id;
+		el.onload = () => resolve();
+		el.onerror = () => reject(new Error(`Failed to load ${src}`));
+		document.body.appendChild(el);
 	});
 }
 
-export function ensureFunnelKitCartShell(): HTMLIFrameElement | null {
-	if (!browser || !funnelkitCartEnabled()) return null;
-	const shellUrl = config.data.funnelkit_cart?.shell_url;
-	if (!shellUrl) return null;
+function loadStyle(href: string, id: string): void {
+	if (document.querySelector(`link[data-wchs-fk="${id}"]`)) return;
+	const el = document.createElement('link');
+	el.rel = 'stylesheet';
+	el.href = href;
+	el.dataset.wchsFk = id;
+	document.head.appendChild(el);
+}
 
-	if (shellFrame?.isConnected) return shellFrame;
+/**
+ * Load jQuery + FunnelKit cart scripts/styles from wp_origin (absolute URLs in config).
+ */
+export async function loadFunnelKitAssets(): Promise<boolean> {
+	if (!browser || !funnelkitCartEnabled()) return false;
+	if (assetsLoaded) return true;
+	if (assetsLoading) return assetsLoading;
 
-	window.addEventListener('message', onShellMessage);
+	const fk = config.data.funnelkit_cart;
+	if (!fk) return false;
 
-	shellFrame = document.createElement('iframe');
-	shellFrame.src = shellUrl;
-	shellFrame.title = 'Cart';
-	shellFrame.setAttribute('aria-hidden', 'true');
-	shellFrame.dataset.wchsFkCartShell = '1';
-	shellFrame.className = 'wchs-fk-cart-shell';
-	document.body.appendChild(shellFrame);
-	return shellFrame;
+	assetsLoading = (async () => {
+		injectHideFloaterCss();
+
+		const scripts = fk.scripts ?? [];
+		const styles = fk.styles ?? [];
+
+		const jquery =
+			scripts.find((s) => s.handle === 'jquery')?.src ??
+			config.wpUrl('/wp-includes/js/jquery/jquery.min.js');
+
+		try {
+			await loadScript(jquery, 'jquery');
+		} catch {
+			return false;
+		}
+
+		for (const s of scripts) {
+			if (s.handle === 'jquery' || !s.src) continue;
+			try {
+				await loadScript(s.src, s.handle);
+			} catch {
+				// Continue — some builds split optional chunks.
+			}
+		}
+
+		for (const st of styles) {
+			if (st.src) loadStyle(st.src, st.handle);
+		}
+
+		assetsLoaded = true;
+		return true;
+	})().finally(() => {
+		assetsLoading = null;
+	});
+
+	return assetsLoading;
 }
 
 export async function syncClassicCart(): Promise<boolean> {
@@ -91,27 +132,41 @@ export async function syncClassicCart(): Promise<boolean> {
 	return syncInFlight;
 }
 
+function triggerFkCartOpen(): void {
+	const w = window as Window & { jQuery?: { (sel: unknown): { trigger: (ev: string) => void } } };
+	if (w.jQuery) {
+		try {
+			w.jQuery(document.body).trigger('fkcart_open_slider');
+		} catch {
+			// FK version-specific event names.
+		}
+	}
+
+	const selector =
+		config.data.funnelkit_cart?.trigger_selector ??
+		'.site-header__fkcart-menu .fkcart-mini-open, .site-header__fkcart-menu a, .site-header__fkcart-menu button';
+	const el = document.querySelector(selector);
+	if (el instanceof HTMLElement) {
+		el.click();
+	}
+
+	document.body.dispatchEvent(new CustomEvent('fkcart_cart_open', { bubbles: true }));
+}
+
 export async function openFunnelKitCart(itemCount = 0): Promise<void> {
 	if (!funnelkitCartEnabled()) return;
+
+	const ready = await loadFunnelKitAssets();
+	if (!ready) return;
 
 	if (itemCount > 0) {
 		await syncClassicCart().catch(() => false);
 	}
 
-	const frame = ensureFunnelKitCartShell();
-	if (!frame?.contentWindow) return;
-
-	frame.classList.add('wchs-fk-cart-shell--active');
-
-	try {
-		await waitForShellReady();
-	} catch {
-		return;
-	}
-
-	frame.contentWindow.postMessage({ type: 'wchs-fk-cart-open' }, wpOrigin());
+	triggerFkCartOpen();
 }
 
-export function closeFunnelKitCartShell(): void {
-	shellFrame?.classList.remove('wchs-fk-cart-shell--active');
+export async function initFunnelKitCart(): Promise<void> {
+	if (!funnelkitCartEnabled()) return;
+	await loadFunnelKitAssets();
 }

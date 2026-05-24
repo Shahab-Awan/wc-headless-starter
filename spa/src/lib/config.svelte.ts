@@ -630,11 +630,15 @@ export type SiteConfig = {
 	/** FunnelKit Cart drawer on SPA (replaces SlideCart when enabled). */
 	funnelkit_cart?: {
 		enabled: boolean;
-		shell_url: string;
+		menu_html: string;
 		sync_url: string;
+		scripts: Array<{ handle: string; src: string }>;
+		styles: Array<{ handle: string; src: string }>;
 		open_class: string;
 		cart_selector: string;
+		trigger_selector?: string;
 		plugin_active?: boolean;
+		auto_open_on_add?: boolean;
 	};
 	brand_name: string;
 	static_seo_title: string;
@@ -764,10 +768,14 @@ const DEFAULTS: SiteConfig = {
 	use_wchs_checkout: true,
 	funnelkit_cart: {
 		enabled: false,
-		shell_url: '',
+		menu_html: '',
 		sync_url: '',
+		scripts: [],
+		styles: [],
 		open_class: 'fkcart-mini-open',
-		cart_selector: '.site-header__cart'
+		cart_selector: '.site-header__fkcart-menu',
+		trigger_selector: '.site-header__fkcart-menu',
+		auto_open_on_add: true
 	},
 	spa_origin: 'http://localhost:5175',
 	brand_name: 'Online Store',

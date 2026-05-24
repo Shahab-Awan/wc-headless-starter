@@ -288,7 +288,12 @@ class CartStore {
 		await this.mutate(() =>
 			request<StoreApiCart>('/cart/add-item', { method: 'POST', body: { id, quantity, variation } })
 		);
-		this.open = true;
+		if (config.data.funnelkit_cart?.enabled) {
+			const { openFunnelKitCart } = await import('$lib/funnelkit-cart');
+			await openFunnelKitCart(this.itemCount);
+		} else {
+			this.open = true;
+		}
 		dispatch('added_to_cart', { id, quantity });
 		// GA4 + Omnisend + Klaviyo + Meta + TikTok + Pinterest ecommerce
 		// tracking — find the item in the cart to get name/price. Every
