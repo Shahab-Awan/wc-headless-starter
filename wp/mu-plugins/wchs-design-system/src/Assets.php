@@ -61,6 +61,15 @@ class Assets {
 			);
 		}
 
+		if ( $this->is_checkout_surface() ) {
+			wp_enqueue_style(
+				'wchs-ds-hide-card-icons',
+				WCHS_DS_URL . '/assets/checkout-hide-card-icons.css',
+				[ 'wchs-ds-tokens' ],
+				WCHS_DS_VERSION
+			);
+		}
+
 		// Shared header CSS — single source for both SPA and WP.
 		// The SPA imports the same file via symlink.
 		wp_enqueue_style(
@@ -129,6 +138,15 @@ class Assets {
 	 * dropdown logic), the blocks CSS (unused but cheap), and any
 	 * third-party plugin styles that aren't WC core.
 	 */
+	private function is_checkout_surface(): bool {
+		if ( function_exists( 'wchs_funnelkit_is_checkout_request' ) && wchs_funnelkit_is_checkout_request() ) {
+			return true;
+		}
+		return function_exists( 'is_checkout' )
+			&& is_checkout()
+			&& ! is_wc_endpoint_url( 'order-received' );
+	}
+
 	private function dequeue_wc_styles(): void {
 		$handles = [
 			'woocommerce-general',

@@ -10,6 +10,7 @@
 	import { config } from '$lib/config.svelte';
 	import { afterNavigate } from '$app/navigation';
 	import SlideCart from '$lib/components/SlideCart.svelte';
+	import FunnelKitCartShell from '$lib/components/FunnelKitCartShell.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import BackToTop from '$lib/components/BackToTop.svelte';
 	import AdminBar from '$lib/components/AdminBar.svelte';
@@ -541,6 +542,7 @@
 					<button
 						type="button"
 						class="site-header__cart"
+						class:fkcart-mini-open={config.data.funnelkit_cart?.enabled}
 						class:is-accent={config.data.header_cart_accent}
 						class:is-bumping={cartBumping}
 						onclick={() => cart.toggle()}
@@ -579,6 +581,7 @@
 							<button
 								type="button"
 								class="site-header__cart"
+								class:fkcart-mini-open={config.data.funnelkit_cart?.enabled}
 								class:is-accent={config.data.header_cart_accent}
 								class:is-bumping={cartBumping}
 								onclick={() => cart.toggle()}
@@ -664,7 +667,11 @@
 	</main>
 
 	<Footer />
-	<SlideCart />
+	{#if config.data.funnelkit_cart?.enabled}
+		<FunnelKitCartShell />
+	{:else}
+		<SlideCart />
+	{/if}
 	<SiteGate />
 	<BackToTop />
 {/if}

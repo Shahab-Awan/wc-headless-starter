@@ -390,7 +390,7 @@ automatically after cache flush.
 |---|---|
 | WCHS one-click upsell (`headless-one-click-upsell.php`) | Disable or remove if FunnelKit funnel steps handle upsell/thank-you. |
 | WCHS thank-you tracking (`headless-thankyou-tracking.php`) | Keep for GTM/CustomerLabs on `order-received`, or move tracking into FunnelKit. |
-| Slide cart | Still WCHS `SlideCart.svelte`. FunnelKit’s cart plugin is WP-only; replacing the SPA drawer is a separate project. |
+| Slide cart | Default: WCHS `SlideCart.svelte`. Optional: **WCHS → Checkout → Use FunnelKit Cart** (`headless-funnelkit-cart.php`) syncs Store API → classic session and opens FunnelKit Cart in a `/cart/?wchs_fk_cart_shell=1` iframe shell. |
 
 ### Elementor “Preview could not be loaded”
 

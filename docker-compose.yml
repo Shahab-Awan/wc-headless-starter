@@ -51,6 +51,9 @@ services:
         define( 'WP_DEBUG_LOG', true );
         define( 'WP_DEBUG_DISPLAY', false );
         define( 'SCRIPT_DEBUG', true );
+        define( 'WCHS_SPA_URL', 'http://localhost:5175' );
+        define( 'WCHS_ALLOWED_ORIGINS', 'http://localhost:5175,http://127.0.0.1:5175' );
+        define( 'WCHS_RETURN_ORIGINS', 'http://localhost:5175,http://127.0.0.1:5175' );
     ports:
       - "127.0.0.1:8099:80"
     volumes:

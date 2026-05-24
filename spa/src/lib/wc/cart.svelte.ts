@@ -350,7 +350,14 @@ class CartStore {
 		dispatch('fkcart_coupon_applied', { code });
 	}
 
-	toggle(force?: boolean) {
+	async toggle(force?: boolean) {
+		if (config.data.funnelkit_cart?.enabled) {
+			const { openFunnelKitCart } = await import('$lib/funnelkit-cart');
+			if (force === false) return;
+			await openFunnelKitCart(this.itemCount);
+			dispatch('fkcart_cart_open', {});
+			return;
+		}
 		this.open = force ?? !this.open;
 		dispatch(this.open ? 'fkcart_cart_open' : 'fkcart_cart_closed', {});
 	}

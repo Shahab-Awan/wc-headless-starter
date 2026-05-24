@@ -74,6 +74,7 @@ Site-wide CSS variables surfaced to the SPA as `--wchs-*`. Null values are no-op
 |---|---|---|---|---|
 | Use WCHS checkout design | `use_wchs_checkout` | bool | true | Off = FunnelKit/Elementor owns checkout UI; SPA handoff uses `checkout_handoff_path` from REST. |
 | FunnelKit checkout path | `funnelkit_checkout_path` | string | `''` | Optional path override (e.g. `checkouts/my-checkout`). Used when `use_wchs_checkout` is false. Blank = auto-detect active FunnelKit Store Checkout. |
+| Use FunnelKit Cart | `use_funnelkit_cart` | bool | false | Replaces SPA `SlideCart` with FunnelKit Cart (requires cart-for-woocommerce). REST `funnelkit_cart` config drives sync + shell iframe. |
 | Upsell enabled | `upsell_enabled` | bool | false | Post-purchase one-click upsell flow (requires Stripe saved PM). |
 | Bump product ID | `bump_product_id` | int | 0 | Order bump product shown at checkout. |
 | Bump variation ID | `bump_variation_id` | int | 0 | If bump is a variable product. |

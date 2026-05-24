@@ -205,6 +205,42 @@ function wchs_read_store_api_session( string $customer_id ): ?array {
  * Import allowlisted session data into the active classic session and
  * force WC to recalculate totals.
  */
+/**
+ * Import a Store API cart JWT into the active classic session.
+ *
+ * @return true|\WP_Error
+ */
+function wchs_import_store_cart_from_token( string $token ) {
+	$payload = wchs_decode_cart_token( $token );
+	if ( ! $payload ) {
+		return new \WP_Error( 'wchs_invalid_cart_token', 'Invalid or expired cart token.', [ 'status' => 400 ] );
+	}
+
+	$customer_id = (string) $payload['user_id'];
+
+	if ( is_user_logged_in() ) {
+		$current_user_id = get_current_user_id();
+		$token_user_id     = $customer_id;
+		if ( ! ctype_digit( $token_user_id ) || (int) $token_user_id !== $current_user_id ) {
+			return new \WP_Error( 'wchs_cart_token_user_mismatch', 'Cart token does not match the logged-in customer.', [ 'status' => 403 ] );
+		}
+	}
+
+	$session_data = wchs_read_store_api_session( $customer_id );
+	if ( ! $session_data ) {
+		return new \WP_Error( 'wchs_cart_session_missing', 'No cart session found for this token.', [ 'status' => 404 ] );
+	}
+
+	$session_cart = $session_data['cart'] ?? null;
+	if ( ! is_array( $session_cart ) || count( $session_cart ) === 0 ) {
+		return new \WP_Error( 'wchs_cart_empty', 'Cart is empty.', [ 'status' => 400 ] );
+	}
+
+	wchs_import_cart_into_classic_session( $session_data );
+
+	return true;
+}
+
 function wchs_import_cart_into_classic_session( array $safe_data ): void {
 	if ( ! function_exists( 'WC' ) || ! WC()->session ) {
 		return;
@@ -280,56 +316,22 @@ add_action(
 		}
 
 		$token = sanitize_text_field( wp_unslash( $_GET['cart'] ) );
-		$payload = wchs_decode_cart_token( $token );
-		if ( ! $payload ) {
-			wchs_bridge_log( 'invalid cart token on checkout root; redirecting back to SPA cart' );
+		if ( ! function_exists( 'wchs_import_store_cart_from_token' ) ) {
+			wchs_bridge_log( 'cart import helper missing' );
 			wchs_clear_classic_checkout_session();
 			wp_safe_redirect( wchs_checkout_cart_fallback_url() );
 			exit;
 		}
 
-		$customer_id = $payload['user_id'];
-		// Logged-in customers legitimately hit /checkout/?cart=<JWT> from the
-		// SPA, and their numeric Store API token belongs to the same WP user.
-		// Allow that same-user handoff even if Woo still has a classic or
-		// persistent cart. What we must refuse is any guest / other-user token
-		// being imported into a logged-in session.
-		if ( is_user_logged_in() ) {
-			$current_user_id = get_current_user_id();
-			$token_user_id   = (string) $customer_id;
-
-			if ( ! ctype_digit( $token_user_id ) || (int) $token_user_id !== $current_user_id ) {
-				wchs_bridge_log(
-					sprintf(
-						'logged-in user %d refusing checkout token for customer %s',
-						$current_user_id,
-						substr( $token_user_id, 0, 12 )
-					)
-				);
-				wchs_clear_classic_checkout_session();
-				wp_safe_redirect( wchs_checkout_cart_fallback_url() );
-				exit;
-			}
-		}
-
-		$session_data = wchs_read_store_api_session( $customer_id );
-		if ( ! $session_data ) {
-			wchs_bridge_log( 'no allowlisted session data for ' . substr( $customer_id, 0, 8 ) . '...' );
+		$imported = wchs_import_store_cart_from_token( $token );
+		if ( is_wp_error( $imported ) ) {
+			wchs_bridge_log( 'checkout cart import failed: ' . $imported->get_error_code() );
 			wchs_clear_classic_checkout_session();
 			wp_safe_redirect( wchs_checkout_cart_fallback_url() );
 			exit;
 		}
 
-		$session_cart = $session_data['cart'] ?? null;
-		if ( ! is_array( $session_cart ) || count( $session_cart ) === 0 ) {
-			wchs_bridge_log( 'checkout token resolved to an empty cart; redirecting back to SPA cart' );
-			wchs_clear_classic_checkout_session();
-			wp_safe_redirect( wchs_checkout_cart_fallback_url() );
-			exit;
-		}
-
-		wchs_import_cart_into_classic_session( $session_data );
-		wchs_bridge_log( 'imported cart for customer ' . substr( $customer_id, 0, 8 ) . '...' );
+		wchs_bridge_log( 'imported cart from checkout token' );
 	},
 	5
 );

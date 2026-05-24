@@ -316,6 +316,7 @@ class AdminPage {
 			'bump_variation_id'           => 0,
 			'use_wchs_checkout'           => true,
 			'funnelkit_checkout_path'     => '',
+			'use_funnelkit_cart'          => false,
 			'upsell_enabled'              => false,
 			'bump_product_id'             => 0,
 			'google_maps_api_key'         => '',
@@ -1549,6 +1550,7 @@ class AdminPage {
 			$fk_path = '';
 		}
 		$s['funnelkit_checkout_path'] = $fk_path;
+		$s['use_funnelkit_cart']      = ! empty( $_POST['use_funnelkit_cart'] );
 
 		$s['upsell_enabled']             = ! empty( $_POST['upsell_enabled'] );
 		$s['bump_product_id']            = absint( $_POST['bump_product_id'] ?? 0 );
@@ -2937,7 +2939,9 @@ class AdminPage {
 	private function render_checkout_tab( array $settings ): void {
 		$bump_pid          = (int) ( $settings['bump_product_id'] ?? 0 );
 		$av_mode           = $settings['address_validation_mode'] ?? 'moderate';
-		$use_wchs_checkout = ! empty( $settings['use_wchs_checkout'] );
+		$use_wchs_checkout    = ! empty( $settings['use_wchs_checkout'] );
+		$use_funnelkit_cart   = ! empty( $settings['use_funnelkit_cart'] );
+		$fk_cart_plugin_active = function_exists( 'wchs_funnelkit_cart_plugin_active' ) && wchs_funnelkit_cart_plugin_active();
 		$fk_path_override  = trim( (string) ( $settings['funnelkit_checkout_path'] ?? '' ), '/' );
 		$fk_detected_path  = '';
 		$fk_detected_url   = '';
@@ -2960,7 +2964,7 @@ class AdminPage {
 			<input type="hidden" name="action" value="wchs_save_settings" />
 			<input type="hidden" name="wchs_tab" value="checkout" />
 
-			<h2>Checkout page <?php echo self::hint_icon( 'WCHS checkout adds the branded header, timer, trust sidebar, and layout on /checkout. Turn off to use FunnelKit Store Checkout (Elementor, Divi, etc.). The slide cart still sends customers to the path shown below with ?cart= for cart import.' ); ?></h2>
+			<h2>Checkout page <?php echo self::hint_icon( 'WCHS checkout adds the branded header, timer, trust sidebar, and layout on /checkout. Turn off to use FunnelKit Store Checkout (Elementor, Divi, etc.). Checkout from the slide cart (WCHS or FunnelKit) uses the handoff path below with ?cart= when coming from the SPA Store API.' ); ?></h2>
 			<div class="wchs-field">
 				<label class="wchs-toggle">
 					<input type="checkbox" name="use_wchs_checkout" value="1" <?php checked( $use_wchs_checkout ); ?> id="wchs-use-wchs-checkout" />
@@ -3015,6 +3019,27 @@ class AdminPage {
 					});
 				})();
 			</script>
+
+			<h2>Slide cart <?php echo self::hint_icon( 'Replace the WCHS slide cart drawer with FunnelKit Cart on the SPA. The header cart button syncs Store API items into the classic session, then opens FunnelKit in a same-origin shell. Requires the FunnelKit Cart plugin.' ); ?></h2>
+			<div class="wchs-field">
+				<label class="wchs-toggle">
+					<input type="checkbox" name="use_funnelkit_cart" value="1" <?php checked( $use_funnelkit_cart ); ?> />
+					<span class="wchs-toggle__track"><span class="wchs-toggle__thumb"></span></span>
+					<span>Use FunnelKit Cart instead of WCHS slide cart</span>
+				</label>
+			</div>
+			<?php if ( $use_funnelkit_cart && ! $fk_cart_plugin_active ) : ?>
+				<p style="margin:0 0 12px;padding:10px 12px;background:#fff3f3;border:1px solid #e6a8a8;border-radius:4px;font-size:13px">
+					<strong>FunnelKit Cart not detected.</strong> Install and activate
+					<em>FunnelKit Cart</em> (cart-for-woocommerce). The storefront will keep the WCHS slide cart until the plugin is active.
+				</p>
+			<?php elseif ( $use_funnelkit_cart ) : ?>
+				<p style="margin:0 0 12px;color:#555;font-size:13px">
+					In FunnelKit Cart → <strong>Cart menu</strong>, set the trigger to
+					<strong>Use CSS selector</strong> and enter <code>.site-header__cart</code> (optional — the SPA also opens the drawer after sync).
+					Checkout inside FunnelKit Cart uses the handoff path above (<code><?php echo esc_html( $handoff_preview ); ?></code>).
+				</p>
+			<?php endif; ?>
 
 			<h2>Order Bump <?php echo self::hint_icon('A checkbox offer shown before the Place Order button. When checked, the product is added to the cart and included in fee/tax calculations.'); ?></h2>
 			<div class="wchs-field">

@@ -359,6 +359,7 @@ function wchs_rest_rate_limit( string $bucket ): bool {
 		'session'        => 120,
 		'session_delete' => 10,
 		'coa_library'    => 60,
+		'cart_sync_classic' => 30,
 	];
 	$max = $limits[ $bucket ] ?? 10;
 
@@ -1120,6 +1121,16 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 		'spa_origin'             => $spa_origin,
 		'checkout_handoff_path'  => $checkout_handoff_path,
 		'use_wchs_checkout'      => (bool) ( $site_settings['use_wchs_checkout'] ?? true ),
+		'funnelkit_cart'         => function_exists( 'wchs_build_funnelkit_cart_config' )
+			? wchs_build_funnelkit_cart_config()
+			: [
+				'enabled'       => false,
+				'shell_url'     => '',
+				'sync_url'      => '',
+				'open_class'    => 'fkcart-mini-open',
+				'cart_selector' => '.site-header__cart',
+				'plugin_active' => false,
+			],
 		'origin_mode'            => $mode,
 		'allowed_origins'        => $allowed,
 		'return_origins'         => $returns,

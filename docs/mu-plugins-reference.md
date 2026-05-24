@@ -18,6 +18,8 @@ does NOT own, and gotchas worth knowing before you modify it.
 | [`headless-access-control.php`](#headless-access-control) | 4-mode site gating (maintenance / locked / browse-only / open) |
 | [`headless-address-validation.php`](#headless-address-validation) | EasyPost address verification at checkout |
 | [`headless-cart-bridge.php`](#headless-cart-bridge) | JWT → classic WC session handoff for native checkout |
+| [`headless-funnelkit-cart.php`](#headless-funnelkit-cart) | Optional FunnelKit Cart on SPA (sync + shell iframe) |
+| [`headless-funnelkit-compat.php`](#headless-funnelkit-compat) | FunnelKit Store Checkout handoff path + checkout chrome skip |
 | [`headless-cart-lock.php`](#headless-cart-lock) | MySQL GET_LOCK mutex on Store API cart mutations |
 | [`headless-checkout-order-sanitizer.php`](#headless-checkout-order-sanitizer) | Rebuild checkout orders from the live cart if stale legacy line items hitch a ride |
 | [`headless-cors.php`](#headless-cors) | Strict CORS for Store API + defensive security headers |
@@ -135,6 +137,32 @@ does NOT own, and gotchas worth knowing before you modify it.
 - Tokens are only honored on `/checkout` — any other URL silently ignores `?cart=`.
 - `maybe_unserialize()` on session values — key allowlist validates BEFORE deserializing (defense-in-depth).
 - No token in logs (log-injection prevention). WP_DEBUG=true is the only path to see tokens in error logs.
+
+---
+
+## headless-funnelkit-cart
+
+**Owns:**
+- Admin setting `use_funnelkit_cart` (Checkout tab)
+- `POST /wchs/v1/cart/sync-classic` — import Store API JWT into classic session (same allowlist as cart-bridge)
+- `/cart/?wchs_fk_cart_shell=1` minimal page for FunnelKit Cart assets in a full-viewport iframe
+- REST `funnelkit_cart` block in `/wchs/v1/config`
+- `woocommerce_get_checkout_url` → `wchs_checkout_handoff_path()` when FunnelKit cart mode is on
+
+**Depends on:** `headless-cart-bridge.php`, FunnelKit Cart plugin, `headless-funnelkit-compat.php` (handoff path)
+
+**Doesn't own:** Store API cart mutations (SPA), FunnelKit Cart styling/rules inside the plugin
+
+---
+
+## headless-funnelkit-compat
+
+**Owns:**
+- `use_wchs_checkout` / `funnelkit_checkout_path` resolution
+- `wchs_checkout_handoff_path()`, FunnelKit native permalink roots, Elementor preview bypass for cart bridge
+- Skips WCHS checkout enhancements on FunnelKit checkout pages
+
+**Depends on:** WCHS admin settings, optional FunnelKit Store Checkout plugin
 
 ---
 

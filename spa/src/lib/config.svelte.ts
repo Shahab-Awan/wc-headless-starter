@@ -627,6 +627,15 @@ export type SiteConfig = {
 	checkout_handoff_path?: string;
 	/** When false, checkout uses FunnelKit path from checkout_handoff_path. */
 	use_wchs_checkout?: boolean;
+	/** FunnelKit Cart drawer on SPA (replaces SlideCart when enabled). */
+	funnelkit_cart?: {
+		enabled: boolean;
+		shell_url: string;
+		sync_url: string;
+		open_class: string;
+		cart_selector: string;
+		plugin_active?: boolean;
+	};
 	brand_name: string;
 	static_seo_title: string;
 	static_seo_description: string;
@@ -753,6 +762,13 @@ const DEFAULTS: SiteConfig = {
 	wp_origin: 'http://localhost:8099',
 	checkout_handoff_path: '/checkout',
 	use_wchs_checkout: true,
+	funnelkit_cart: {
+		enabled: false,
+		shell_url: '',
+		sync_url: '',
+		open_class: 'fkcart-mini-open',
+		cart_selector: '.site-header__cart'
+	},
 	spa_origin: 'http://localhost:5175',
 	brand_name: 'Online Store',
 	static_seo_title: '',
