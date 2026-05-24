@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { config } from '$lib/config.svelte';
 	import { cart } from '$lib/wc/cart.svelte';
-	import { initFunnelKitCart } from '$lib/funnelkit-cart';
 
 	type Props = {
 		accent?: boolean;
@@ -21,11 +20,6 @@
 	}: Props = $props();
 
 	let hostEl = $state<HTMLElement | null>(null);
-
-	$effect(() => {
-		if (!config.data.funnelkit_cart?.enabled) return;
-		void initFunnelKitCart();
-	});
 
 	$effect(() => {
 		const host = hostEl;

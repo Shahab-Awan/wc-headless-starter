@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Headless FunnelKit Cart
  * Description: FunnelKit Cart on the SPA via [fk_cart_menu], classic-cart sync, and direct script load (no iframe).
- * Version:     0.3.0
+ * Version:     0.3.1
  * Author:      WCHS Contributors
  */
 
@@ -273,13 +273,23 @@ function wchs_funnelkit_cart_capture_inline_scripts(): array {
 }
 
 /**
- * Slide-cart drawer markup from wp_footer (scripts stripped — SPA loads them separately).
+ * Remove tags that would change SPA-wide fonts/layout when injected into the storefront.
+ */
+function wchs_funnelkit_cart_strip_global_assets( string $html ): string {
+	$html = (string) preg_replace( '#<script\b[^>]*>.*?</script>#is', '', $html );
+	$html = (string) preg_replace( '#<link\b[^>]*>#is', '', $html );
+	$html = (string) preg_replace( '#<style\b[^>]*>.*?</style>#is', '', $html );
+	return trim( $html );
+}
+
+/**
+ * Slide-cart drawer markup from wp_footer only (never wp_head — that pulls theme fonts/CSS).
  */
 function wchs_funnelkit_cart_capture_footer_markup(): string {
 	ob_start();
 	wp_footer();
 	$html = (string) ob_get_clean();
-	return (string) preg_replace( '#<script\b[^>]*>.*?</script>#is', '', $html );
+	return wchs_funnelkit_cart_strip_global_assets( $html );
 }
 
 /**
@@ -298,16 +308,11 @@ function wchs_funnelkit_cart_prepare_front_context(): void {
 function wchs_funnelkit_cart_bootstrap_payload(): array {
 	wchs_funnelkit_cart_prepare_front_context();
 
-	ob_start();
-	wp_head();
-	$head_html = (string) ob_get_clean();
-	$head_html = (string) preg_replace( '#<script\b[^>]*>.*?</script>#is', '', $head_html );
-
 	$footer_html = wchs_funnelkit_cart_capture_footer_markup();
 	$assets      = wchs_funnelkit_cart_capture_assets();
 
 	return [
-		'markup'  => $head_html . $footer_html,
+		'markup'  => $footer_html,
 		'scripts' => $assets['scripts'],
 		'styles'  => $assets['styles'],
 		'inline'  => wchs_funnelkit_cart_capture_inline_scripts(),

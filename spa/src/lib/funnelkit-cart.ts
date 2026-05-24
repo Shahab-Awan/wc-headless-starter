@@ -86,6 +86,10 @@ function loadScript(src: string, id: string): Promise<void> {
 
 function loadStyle(href: string, id: string): void {
 	if (document.querySelector(`link[data-wchs-fk="${id}"]`)) return;
+	// FK cart styles only — skip handles that are not fkcart-specific.
+	if (!/fkcart|fk-cart|fkit-cart/i.test(id) && !/fkcart|fk-cart|fkit-cart/i.test(href)) {
+		return;
+	}
 	const el = document.createElement('link');
 	el.rel = 'stylesheet';
 	el.href = href;
@@ -104,15 +108,24 @@ function injectInlineScripts(inline: FkInline[]): void {
 	}
 }
 
+function sanitizeBootstrapMarkup(html: string): string {
+	return html
+		.replace(/<link\b[^>]*>/gi, '')
+		.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+		.trim();
+}
+
 function injectMarkup(markup: string): void {
-	if (!markup.trim()) return;
+	const clean = sanitizeBootstrapMarkup(markup);
+	if (!clean) return;
 	let mount = document.getElementById(MOUNT_ID);
 	if (!mount) {
 		mount = document.createElement('div');
 		mount.id = MOUNT_ID;
+		mount.setAttribute('aria-hidden', 'true');
 		document.body.appendChild(mount);
 	}
-	mount.innerHTML = markup;
+	mount.innerHTML = clean;
 }
 
 async function fetchBootstrap(): Promise<BootstrapPayload | null> {
@@ -270,7 +283,7 @@ export async function openFunnelKitCart(itemCount = 0): Promise<void> {
 	}
 
 	// Allow FK init to bind after scripts + markup injection.
-	await new Promise((r) => setTimeout(r, 50));
+	await new Promise((r) => setTimeout(r, 120));
 	triggerFkCartOpen();
 }
 

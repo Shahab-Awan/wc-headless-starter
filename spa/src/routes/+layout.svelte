@@ -31,7 +31,6 @@
 	import AnnouncementBar from '$lib/components/AnnouncementBar.svelte';
 	import HeaderSearch from '$lib/components/HeaderSearch.svelte';
 	import '$lib/styles/header.css';
-	import '$lib/styles/funnelkit-cart-overrides.css';
 
 	let { children } = $props();
 	let fontsReady = $state(false);
@@ -331,10 +330,6 @@
 			}
 
 			consumeOpenCartIntent();
-
-			if (config.data.funnelkit_cart?.enabled) {
-				import('$lib/funnelkit-cart').then((m) => m.initFunnelKitCart());
-			}
 
 			// URL-based coupon auto-apply: landing on `/?coupon=CODE` or
 			// any URL with a `?coupon=` param applies it to the cart once,
