@@ -11,18 +11,28 @@
 </script>
 
 <style>
+	/* Collapsed until the header cart opens the drawer — hides FunnelKit's floating launcher. */
 	:global(.wchs-fk-cart-shell) {
 		position: fixed;
-		inset: 0;
-		width: 100%;
-		height: 100%;
+		right: 0;
+		bottom: 0;
+		width: 0;
+		height: 0;
 		border: 0;
 		z-index: 9998;
 		pointer-events: none;
 		background: transparent;
+		opacity: 0;
+		visibility: hidden;
+		overflow: hidden;
 	}
 
 	:global(.wchs-fk-cart-shell--active) {
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		opacity: 1;
+		visibility: visible;
 		pointer-events: auto;
 	}
 </style>

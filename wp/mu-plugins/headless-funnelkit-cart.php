@@ -90,6 +90,16 @@ add_action(
 <?php wp_head(); ?>
 <style>
 	html, body { margin: 0; padding: 0; background: transparent; }
+	/* WCHS opens the drawer from the SPA header — hide FunnelKit's floating launcher. */
+	#fkcart-mini-toggler,
+	.fkcart-mini-toggler,
+	.fkcart-floating-cart,
+	.fkit-floating-cart,
+	[data-fkcart-trigger="floating"] {
+		display: none !important;
+		visibility: hidden !important;
+		pointer-events: none !important;
+	}
 </style>
 </head>
 <body>
@@ -113,6 +123,21 @@ add_action(
 		}
 	});
 	window.parent.postMessage({ type: 'wchs-fk-cart-ready' }, origin);
+
+	function notifyClosed() {
+		window.parent.postMessage({ type: 'wchs-fk-cart-closed' }, origin);
+	}
+
+	if (window.jQuery) {
+		window.jQuery(document.body).on('fkcart_cart_closed fkcart_close_slider', notifyClosed);
+	}
+	document.addEventListener('click', function (e) {
+		var t = e.target;
+		if (!t || !t.closest) return;
+		if (t.closest('.fkcart-close, .fkcart-modal-close, [data-fkcart-close]')) {
+			notifyClosed();
+		}
+	});
 })();
 </script>
 </body>
@@ -121,6 +146,20 @@ add_action(
 		exit;
 	},
 	0
+);
+
+/**
+ * Hide floating launcher after FunnelKit prints footer markup (shell page only).
+ */
+add_action(
+	'wp_footer',
+	function () {
+		if ( empty( $_GET['wchs_fk_cart_shell'] ) || ! wchs_use_funnelkit_cart() ) {
+			return;
+		}
+		echo "<style id=\"wchs-fk-hide-floater\">#fkcart-mini-toggler,.fkcart-mini-toggler,.fkcart-floating-cart,.fkit-floating-cart,[data-fkcart-trigger=\"floating\"]{display:none!important;visibility:hidden!important}</style>\n";
+	},
+	9999
 );
 
 /**

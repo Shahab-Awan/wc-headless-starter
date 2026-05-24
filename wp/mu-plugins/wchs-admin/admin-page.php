@@ -3035,8 +3035,9 @@ class AdminPage {
 				</p>
 			<?php elseif ( $use_funnelkit_cart ) : ?>
 				<p style="margin:0 0 12px;color:#555;font-size:13px">
-					In FunnelKit Cart → <strong>Cart menu</strong>, set the trigger to
-					<strong>Use CSS selector</strong> and enter <code>.site-header__cart</code> (optional — the SPA also opens the drawer after sync).
+					In FunnelKit Cart → <strong>Visibility &amp; Position</strong>, set
+					<strong>Cart icon visibility</strong> to <strong>None</strong> (removes the floating bottom-right button).
+					The SPA header cart (<code>.site-header__cart</code>) opens the drawer after sync.
 					Checkout inside FunnelKit Cart uses the handoff path above (<code><?php echo esc_html( $handoff_preview ); ?></code>).
 				</p>
 			<?php endif; ?>

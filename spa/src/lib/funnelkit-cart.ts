@@ -26,6 +26,9 @@ function onShellMessage(event: MessageEvent) {
 		const waiters = shellReadyWaiters.splice(0);
 		for (const fn of waiters) fn();
 	}
+	if (event.data?.type === 'wchs-fk-cart-closed') {
+		closeFunnelKitCartShell();
+	}
 }
 
 function waitForShellReady(timeoutMs = 8000): Promise<void> {
