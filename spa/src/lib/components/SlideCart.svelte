@@ -577,11 +577,11 @@
 	}
 	.fkcart-modal.has-upsell {
 		flex-direction: row;
-		width: min(692px, 100vw);
+		width: min(720px, 100vw);
 	}
 	.fkcart-upsell--desktop {
-		flex: 0 0 272px;
-		width: 272px;
+		flex: 0 0 300px;
+		width: 300px;
 		min-width: 0;
 		display: flex;
 		flex-direction: column;

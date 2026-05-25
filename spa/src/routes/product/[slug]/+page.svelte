@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { fade, fly } from 'svelte/transition';
 	import EmblaCarousel, { type EmblaCarouselType } from 'embla-carousel';
@@ -177,79 +176,105 @@
 		}
 	});
 
-	onMount(async () => {
-		try {
-			product = await getProduct(page.params.slug ?? '');
-			if (product && product.has_options && product.variations.length) {
-				variations = await getVariations(product.variations.map((v) => v.id));
-				const defaults = findPurchasableDefaultSelection(product, variations);
-				if (defaults) selection = defaults;
-			}
-			const ids = product?.extensions?.wchs_cro?.cross_sell_ids ?? [];
-			if (ids.length > 0) {
-				crossSells = await getProductsByIds(ids);
-			}
+	$effect(() => {
+		const slug = page.params.slug ?? '';
+		if (!slug) return;
 
-			// Push this product into the Recently-Viewed LRU list.
-			// Deduplicates on id (any prior entry is removed first so the
-			// re-push lands at the head). Capped at 10 entries. Wrapped in
-			// try/catch because localStorage can throw (private mode, quota
-			// exhaustion) and we never want that to break the PDP render.
-			if (product && typeof localStorage !== 'undefined') {
-				try {
-					const KEY = 'wchs_recently_viewed';
-					const raw = localStorage.getItem(KEY);
-					let list: { id: number; ts: number }[] = [];
-					if (raw) {
-						try {
-							const parsed = JSON.parse(raw);
-							if (Array.isArray(parsed)) {
-								list = parsed.filter((e: unknown) => e && typeof e === 'object' && Number.isFinite((e as { id: unknown }).id));
-							}
-						} catch { /* corrupt — treat as empty */ }
-					}
-					const pid = product.id;
-					list = list.filter(e => e.id !== pid);
-					list.unshift({ id: pid, ts: Date.now() });
-					if (list.length > 10) list = list.slice(0, 10);
-					localStorage.setItem(KEY, JSON.stringify(list));
-				} catch { /* storage blocked or full — non-critical */ }
+		let cancelled = false;
+		loading = true;
+		error = null;
+		quantity = 1;
+		selection = {};
+		variations = [];
+		crossSells = [];
+		reviews = [];
+		reviewDistribution = [0, 0, 0, 0, 0];
+		reviewAverage = 0;
+		reviewCount = 0;
+
+		void (async () => {
+			try {
+				const loaded = await getProduct(slug);
+				if (cancelled) return;
+				product = loaded;
+
+				if (product && product.has_options && product.variations.length) {
+					variations = await getVariations(product.variations.map((v) => v.id));
+					if (cancelled) return;
+					const defaults = findPurchasableDefaultSelection(product, variations);
+					if (defaults) selection = defaults;
+				}
+
+				const ids = product?.extensions?.wchs_cro?.cross_sell_ids ?? [];
+				if (ids.length > 0) {
+					crossSells = await getProductsByIds(ids);
+					if (cancelled) return;
+				}
+
+				if (product && typeof localStorage !== 'undefined') {
+					try {
+						const KEY = 'wchs_recently_viewed';
+						const raw = localStorage.getItem(KEY);
+						let list: { id: number; ts: number }[] = [];
+						if (raw) {
+							try {
+								const parsed = JSON.parse(raw);
+								if (Array.isArray(parsed)) {
+									list = parsed.filter((e: unknown) => e && typeof e === 'object' && Number.isFinite((e as { id: unknown }).id));
+								}
+							} catch { /* corrupt — treat as empty */ }
+						}
+						const pid = product.id;
+						list = list.filter((e) => e.id !== pid);
+						list.unshift({ id: pid, ts: Date.now() });
+						if (list.length > 10) list = list.slice(0, 10);
+						localStorage.setItem(KEY, JSON.stringify(list));
+					} catch { /* storage blocked or full — non-critical */ }
+				}
+
+				if (product && product.review_count > 0 && config.data.pdp?.show_reviews !== false) {
+					try {
+						const res = await fetch(`/wp-json/wchs/v1/reviews/${product.id}?per_page=20`);
+						if (cancelled) return;
+						if (res.ok) {
+							const data = await res.json();
+							reviews = data.reviews ?? [];
+							reviewDistribution = data.distribution ?? [0, 0, 0, 0, 0];
+							reviewAverage = Number(data.average ?? 0);
+							reviewCount = Number(data.count ?? 0);
+						}
+					} catch { /* reviews are non-critical */ }
+				}
+
+				if (product && !cancelled) {
+					import('$lib/analytics').then((a) => {
+						const p = {
+							id: product!.id,
+							name: product!.name,
+							prices: product!.prices,
+							permalink: product!.permalink,
+							images: product!.images,
+						};
+						a.trackViewItem(product!);
+						a.trackOmnisendViewedProduct(p);
+						a.trackKlaviyoViewedProduct(p);
+						a.trackMetaViewContent(p);
+						a.trackTikTokViewContent(p);
+					});
+				}
+			} catch (e) {
+				if (!cancelled) {
+					error = e instanceof Error ? e.message : String(e);
+					product = null;
+				}
+			} finally {
+				if (!cancelled) loading = false;
 			}
-			// Fetch reviews (if enabled in PDP config)
-			if (product && product.review_count > 0 && config.data.pdp?.show_reviews !== false) {
-				try {
-					const res = await fetch(`/wp-json/wchs/v1/reviews/${product.id}?per_page=20`);
-					if (res.ok) {
-						const data = await res.json();
-						reviews = data.reviews ?? [];
-						reviewDistribution = data.distribution ?? [0, 0, 0, 0, 0];
-						reviewAverage = Number(data.average ?? 0);
-						reviewCount = Number(data.count ?? 0);
-					}
-				} catch { /* reviews are non-critical */ }
-			}
-		// GA4 view_item + Omnisend + Klaviyo + Meta + TikTok pixels
-			if (product) {
-				import('$lib/analytics').then((a) => {
-					const p = {
-						id: product!.id,
-						name: product!.name,
-						prices: product!.prices,
-						permalink: product!.permalink,
-						images: product!.images,
-					};
-					a.trackViewItem(product!);
-					a.trackOmnisendViewedProduct(p);
-					a.trackKlaviyoViewedProduct(p);
-					a.trackMetaViewContent(p);
-					a.trackTikTokViewContent(p);
-				});
-			}
-		} catch (e) {
-			error = e instanceof Error ? e.message : String(e);
-		} finally {
-			loading = false;
-		}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	// Derived: selected variation id (or null if selection incomplete)
@@ -264,9 +289,9 @@
 
 	// Re-fire GA4 view_item when the user picks a different variation so
 	// Meta Pixel / Omnisend / GA4 see accurate per-variation views. The
-	// initial product view fired in onMount covers the parent; this adds
+	// initial product view fired in the slug $effect covers the parent; this adds
 	// re-fires on each variation selection. Guarded to skip the first
-	// eval (to avoid double-firing with the onMount event) and skip
+	// eval (to avoid double-firing with the initial load) and skip
 	// re-fires for the same variation id.
 	// Product JSON-LD schema derived from product + selected variation +
 	// review aggregate. Fed to <SEO />. Reflects the variation price when

@@ -410,8 +410,9 @@
 			return;
 		}
 		e.preventDefault();
+		e.stopPropagation();
 		cart.toggle(false);
-		void goto(productHref(slug));
+		void goto(productHref(slug), { invalidateAll: true });
 	}
 </script>
 
@@ -433,13 +434,13 @@
 					{@const regular = cro?.regular_price ?? Number(product.prices.regular_price)}
 					{@const current = Number(product.prices.price)}
 					{@const onSale = regular > current}
-					<article class="cart-xsell__card cart-xsell__card--row" role="listitem">
+					<article class="cart-xsell__card cart-xsell__card--stack" role="listitem">
 						<a
-							class="cart-xsell__card-link cart-xsell__card-link--row"
+							class="cart-xsell__card-link cart-xsell__card-link--stack"
 							href={productHref(product.slug)}
 							onclick={(e) => openProduct(e, product.slug)}
 						>
-							<span class="cart-xsell__thumb">
+							<span class="cart-xsell__media-stack">
 								{#if product.images[0]}
 									<img
 										src={product.images[0].thumbnail || product.images[0].src}
@@ -448,7 +449,7 @@
 									/>
 								{/if}
 							</span>
-							<span class="cart-xsell__row-body">
+							<span class="cart-xsell__body-stack">
 								<span class="cart-xsell__title">{product.name}</span>
 								<span class="cart-xsell__price tabular-nums">
 									<span class="cart-xsell__price-now">{formatMoneyInt(current)}</span>
@@ -589,78 +590,94 @@
 		color: var(--fg);
 		line-height: 1.25;
 	}
-	.cart-xsell__list {
+	.cart-xsell--sidebar .cart-xsell__list {
 		flex: 1 1 auto;
 		min-height: 0;
 		overflow-y: auto;
-		padding: 0 12px 16px;
+		padding: 0 10px 14px;
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
-	}
-	.cart-xsell__card--row {
-		flex: 0 0 auto;
-		padding: 0;
-		width: 100%;
-	}
-	.cart-xsell__card-link--row {
-		display: flex;
-		flex-direction: row;
-		align-items: center;
 		gap: 12px;
+	}
+	.cart-xsell--sidebar .cart-xsell__card {
+		flex: 1 1 0;
+		min-height: 0;
 		width: 100%;
-		padding: 12px;
+	}
+	.cart-xsell--sidebar .cart-xsell__card--stack {
+		padding: 0;
+		display: flex;
+	}
+	.cart-xsell__card-link--stack {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: flex-start;
+		width: 100%;
+		height: 100%;
+		min-height: 132px;
+		padding: 14px 12px;
+		box-sizing: border-box;
+		text-align: center;
 		text-decoration: none;
 		color: inherit;
 		border-radius: inherit;
 		cursor: pointer;
+		gap: 10px;
 	}
-	.cart-xsell__card-link--row:hover .cart-xsell__title {
+	.cart-xsell__card-link--stack:hover .cart-xsell__title {
 		color: color-mix(in srgb, var(--accent) 72%, var(--fg));
 	}
-	.cart-xsell__thumb {
-		flex: 0 0 84px;
-		width: 84px;
-		height: 84px;
-		display: block;
+	.cart-xsell__media-stack {
+		flex: 0 0 auto;
+		width: 112px;
+		height: 112px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		background: color-mix(in srgb, var(--accent) 6%, var(--bg-muted));
 		border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
 		border-radius: var(--radius-sm);
 		overflow: hidden;
 	}
-	.cart-xsell__thumb img {
+	.cart-xsell__media-stack img {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
 	}
-	.cart-xsell__row-body {
+	.cart-xsell__body-stack {
+		width: 100%;
 		flex: 1 1 auto;
-		min-width: 0;
 		display: flex;
 		flex-direction: column;
+		align-items: center;
+		justify-content: flex-start;
 		gap: 6px;
+		min-width: 0;
 	}
 	.cart-xsell--sidebar .cart-xsell__title {
 		display: block;
+		width: 100%;
 		min-height: 0;
 		font-size: 12px;
-		line-height: 1.3;
+		line-height: 1.35;
 		line-clamp: 3;
 		-webkit-line-clamp: 3;
 		color: var(--accent);
+		text-align: center;
 	}
 	.cart-xsell--sidebar .cart-xsell__price {
-		gap: 4px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 2px;
+		width: 100%;
 	}
 	.cart-xsell--sidebar .cart-xsell__price-now {
-		font-size: 13px;
+		font-size: 14px;
 	}
 	.cart-xsell--sidebar .cart-xsell__price-was {
 		font-size: 11px;
-	}
-	.cart-xsell__add-btn--row {
-		position: static;
-		flex: 0 0 36px;
 	}
 	.cart-xsell__head {
 		padding: 0 24px;
