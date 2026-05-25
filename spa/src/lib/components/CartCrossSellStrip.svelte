@@ -27,7 +27,17 @@
 	} from '$lib/config.svelte';
 	import { formatPrice } from '$lib/utils/format';
 
-	let { ids }: { ids: number[] } = $props();
+	let {
+		ids,
+		layout = 'strip',
+		title = 'Frequently Bought Together',
+	}: {
+		ids: number[];
+		layout?: 'strip' | 'sidebar';
+		title?: string;
+	} = $props();
+
+	const isSidebar = $derived(layout === 'sidebar');
 
 	const mode = $derived(config.data.pdp?.cross_sell_mode ?? 'simple');
 	const recommendIds = $derived(
@@ -323,7 +333,7 @@
 	}
 
 	$effect(() => {
-		if (!viewportEl || !trackEl || products.length === 0) return;
+		if (isSidebar || !viewportEl || !trackEl || products.length === 0) return;
 		embla = EmblaCarousel(viewportEl, {
 			align: 'start',
 			containScroll: 'trimSnaps',
@@ -383,10 +393,76 @@
 </script>
 
 {#if products.length > 0}
-	<section class="cart-xsell" aria-label="You might also like">
+	<section
+		class="cart-xsell"
+		class:cart-xsell--sidebar={isSidebar}
+		aria-label={isSidebar ? title : 'You might also like'}
+	>
 		<header class="cart-xsell__head">
-			<h3>You might also like</h3>
+			<h3>{isSidebar ? title : 'You might also like'}</h3>
 		</header>
+		{#if isSidebar}
+			<div class="cart-xsell__list" role="list">
+				{#each products.slice(0, CART_CROSS_SELL_TARGET_COUNT) as product (product.id)}
+					{@const cro = product.extensions?.wchs_cro}
+					{@const regular = cro?.regular_price ?? Number(product.prices.regular_price)}
+					{@const current = Number(product.prices.price)}
+					{@const onSale = regular > current}
+					{@const s = getState(product)}
+					{@const steps = getSteps(product)}
+					{@const curStep = steps[s.stepIdx]}
+					{@const isQtyStep = curStep?.type === 'quantity'}
+					{@const ready = (!product.has_options || allSelected(product, s.attrs)) && isQtyStep}
+					<article class="cart-xsell__card cart-xsell__card--row" class:just-added={s.justAdded} role="listitem">
+						<a class="cart-xsell__thumb" href="/product/{product.slug}">
+							{#if product.images[0]}
+								<img
+									src={product.images[0].thumbnail || product.images[0].src}
+									alt={product.images[0].alt || product.name}
+									loading="lazy"
+								/>
+							{/if}
+						</a>
+						<div class="cart-xsell__row-body">
+							<a class="cart-xsell__title" href="/product/{product.slug}">{product.name}</a>
+							<p class="cart-xsell__price tabular-nums">
+								{#if onSale}
+									<span class="cart-xsell__price-was">{formatMoneyInt(regular)}</span>
+								{/if}
+								<span class="cart-xsell__price-now">{formatMoneyInt(current)}</span>
+							</p>
+						</div>
+						<button
+							type="button"
+							class="cart-xsell__add-btn cart-xsell__add-btn--row"
+							class:is-adding={addingId === product.id}
+							class:just-added={s.justAdded}
+							onclick={(e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								if (mode === 'complex') {
+									miniAdd(e, product);
+									return;
+								}
+								if (product.has_options) {
+									openModal(product);
+								} else {
+									miniAdd(e, product);
+								}
+							}}
+							disabled={addingId === product.id || (mode === 'complex' && !ready)}
+							aria-label="Add {product.name} to cart"
+						>
+							{#if s.justAdded}
+								<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+							{:else}
+								<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+							{/if}
+						</button>
+					</article>
+				{/each}
+			</div>
+		{:else}
 		<div class="cart-xsell__viewport" bind:this={viewportEl}>
 			<div class="cart-xsell__track" bind:this={trackEl} role="list">
 			{#each products.slice(0, CART_CROSS_SELL_TARGET_COUNT) as product (product.id)}
@@ -513,6 +589,7 @@
 		<div class="cart-xsell__progress" aria-hidden="true">
 			<span class="cart-xsell__progress-fill" bind:this={progressEl}></span>
 		</div>
+		{/if}
 	</section>
 {/if}
 
@@ -577,6 +654,83 @@
 		padding: 16px 0 20px;
 		background: var(--bg);
 	}
+	.cart-xsell--sidebar {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		min-height: 0;
+		border-top: 0;
+		padding: 0;
+		background: transparent;
+	}
+	.cart-xsell--sidebar .cart-xsell__head {
+		padding: 22px 20px 14px;
+		text-align: center;
+		flex-shrink: 0;
+	}
+	.cart-xsell--sidebar .cart-xsell__head h3 {
+		margin: 0;
+		font-size: 14px;
+		font-weight: 600;
+		text-transform: none;
+		letter-spacing: -0.2px;
+		color: var(--fg);
+	}
+	.cart-xsell__list {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow-y: auto;
+		padding: 0 16px 20px;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+	.cart-xsell__card--row {
+		flex: 0 0 auto;
+		flex-direction: row;
+		align-items: center;
+		gap: 10px;
+		padding: 10px;
+		width: 100%;
+	}
+	.cart-xsell__thumb {
+		flex: 0 0 72px;
+		width: 72px;
+		height: 72px;
+		display: block;
+		background: color-mix(in srgb, var(--accent) 6%, var(--bg-muted));
+		border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+		border-radius: var(--radius-sm);
+		overflow: hidden;
+	}
+	.cart-xsell__thumb img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	.cart-xsell__row-body {
+		flex: 1 1 auto;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.cart-xsell--sidebar .cart-xsell__title {
+		min-height: 0;
+		font-size: 12px;
+		line-height: 1.25;
+		-webkit-line-clamp: 2;
+		color: var(--accent);
+		text-decoration: none;
+	}
+	.cart-xsell--sidebar .cart-xsell__title:hover {
+		color: color-mix(in srgb, var(--accent) 72%, var(--fg));
+		text-decoration: none;
+	}
+	.cart-xsell__add-btn--row {
+		position: static;
+		flex: 0 0 36px;
+	}
 	.cart-xsell__head {
 		padding: 0 24px;
 	}
@@ -622,15 +776,18 @@
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
-		background: var(--bg-elevated);
-		border: 1px solid var(--border);
+		background: color-mix(in srgb, var(--accent) 5%, var(--bg-elevated));
+		border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
 		border-radius: var(--radius-sm);
 		overflow: hidden;
 		scroll-snap-align: start;
-		transition: border-color var(--dur-fast) var(--ease);
+		transition:
+			border-color var(--dur-fast) var(--ease),
+			background var(--dur-fast) var(--ease);
 	}
 	.cart-xsell__card:hover {
-		border-color: var(--fg-muted);
+		border-color: var(--accent);
+		background: color-mix(in srgb, var(--accent) 9%, var(--bg-elevated));
 	}
 	.cart-xsell__card.just-added {
 		border-color: var(--success, #059669);
@@ -677,7 +834,8 @@
 		font-weight: 500;
 		line-height: 14px;
 		letter-spacing: -0.16px;
-		color: var(--fg);
+		color: var(--accent);
+		text-decoration: none;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
@@ -796,16 +954,16 @@
 		align-items: center;
 		justify-content: center;
 		padding: 0;
-		background: transparent;
+		background: var(--accent);
 		border: 1px solid var(--accent);
-		color: var(--accent);
+		color: var(--accent-fg);
 		cursor: pointer;
 		touch-action: manipulation;
 		transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
 	}
 	.cart-xsell__add-btn:hover:not(:disabled) {
-		background: var(--accent);
-		color: var(--accent-fg);
+		background: transparent;
+		color: var(--accent);
 		border-color: var(--accent);
 	}
 	.cart-xsell__add-btn:disabled {

@@ -36,10 +36,15 @@ export type WchsCroNextTier = {
 export type WchsCroCartItem = {
 	regular_unit_price: number;
 	effective_unit_price: number;
+	line_total_minor?: number;
+	compare_line_minor?: number;
 	savings_per_unit: number;
 	savings_line_total: number;
 	savings_pct: number;
 	next_tier: WchsCroNextTier | null;
+	bundle_label?: string;
+	tier_qty_thresholds?: number[];
+	active_bundle_min_qty?: number;
 	cross_sell_ids: number[];
 };
 

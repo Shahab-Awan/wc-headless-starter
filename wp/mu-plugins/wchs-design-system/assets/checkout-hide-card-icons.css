@@ -14,7 +14,17 @@
 .wfacp_main_form .wc-stripe-card-icons,
 .wfacp_main_form .wc-stripe-payment-method-icons,
 .wffn-checkout-form #payment ul.payment_methods label img,
-.wffn-checkout-form .wc-stripe-card-icons {
+.wffn-checkout-form .wc-stripe-card-icons,
+#payment .payment_method_quiklie .quiklie-card-icons,
+#payment .payment_box.payment_method_quiklie .quiklie-card-icons,
+#payment .quiklie-card-icons,
+#payment .quiklie-card-icon,
+.wfacp_main_form .payment_method_quiklie .quiklie-card-icons,
+.wfacp_main_form .quiklie-card-icons,
+.wfacp_main_form .quiklie-card-icon,
+.wffn-checkout-form .payment_method_quiklie .quiklie-card-icons,
+.wffn-checkout-form .quiklie-card-icons,
+.wffn-checkout-form .quiklie-card-icon {
 	display: none !important;
 }
 

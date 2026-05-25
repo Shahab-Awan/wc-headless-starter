@@ -5,12 +5,11 @@
 	 * Behavior spec: docs/cart-spec.md
 	 * Design: Runway-inspired dark-dominant, tight type, zero shadows.
 	 *
-	 * Free-tier FK parity: slide, items, qty stepper, remove, coupon,
+	 * Free-tier FK parity: slide, items, qty stepper, remove,
 	 * subtotal, checkout CTA. Upsells/rewards are Pro features — separate
 	 * sibling components if/when we add them.
 	 */
 	import { cart } from '$lib/wc/cart.svelte';
-	import { config } from '$lib/config.svelte';
 	import { pretext } from '$lib/pretext/engine';
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
@@ -22,8 +21,8 @@
 		shippingProtectionFeeMajor,
 		shippingProtectionTierIndex
 	} from '$lib/shipping-protection';
+	import { resolveCartLineQty } from '$lib/cart/bundle-qty';
 
-	let couponCode = $state('');
 	let fontsReady = $state(false);
 	let checkouting = $state(false);
 	let shipProtectProduct = $state<StoreProduct | null>(null);
@@ -78,18 +77,30 @@
 		}
 	}
 
+	function resolvedQty(item: (typeof displayCartItems)[number], proposed: number): number {
+		const thresholds = item.extensions?.wchs_cro?.tier_qty_thresholds ?? [];
+		if (!thresholds.length) return Math.max(1, proposed);
+		return resolveCartLineQty(thresholds, item.quantity, proposed);
+	}
+
 	async function decrement(key: string, current: number) {
-		if (current <= 1) {
+		const item = displayCartItems.find((i) => i.key === key);
+		if (!item) return;
+		const next = resolvedQty(item, current - 1);
+		if (next <= 0 || (current <= 1 && next <= 1)) {
 			await cart.removeItem(key);
 		} else {
 			flashKey(key);
-			await cart.updateItem(key, current - 1);
+			await cart.updateItem(key, next);
 		}
 	}
 
 	async function increment(key: string, current: number) {
+		const item = displayCartItems.find((i) => i.key === key);
+		if (!item) return;
+		const next = resolvedQty(item, current + 1);
 		flashKey(key);
-		await cart.updateItem(key, current + 1);
+		await cart.updateItem(key, next);
 	}
 
 	function flashKey(key: string) {
@@ -97,14 +108,6 @@
 		setTimeout(() => {
 			flashedKeys = Object.fromEntries(Object.entries(flashedKeys).filter(([k]) => k !== key));
 		}, 500);
-	}
-
-	async function applyCoupon(e: Event) {
-		e.preventDefault();
-		const code = couponCode.trim();
-		if (!code) return;
-		await cart.applyCoupon(code);
-		couponCode = '';
 	}
 
 	function onKeydown(e: KeyboardEvent) {
@@ -122,11 +125,6 @@
 			currency_symbol: cart.currencySymbol,
 			currency_code: cart.currencyCode,
 		});
-	}
-
-	function formatPct(p: number): string {
-		// Trim trailing .0 for integer percents
-		return Number.isInteger(p) ? `${p}%` : `${p.toFixed(1)}%`;
 	}
 
 	const shipProtectLine = $derived.by(() => {
@@ -147,6 +145,9 @@
 	const visibleItemCount = $derived(
 		displayCartItems.reduce((n, i) => n + i.quantity, 0)
 	);
+
+	const crossSellIds = $derived(cart.cart?.extensions?.wchs_cro?.cross_sell_ids ?? []);
+	const showUpsell = $derived(crossSellIds.length > 0 && cart.itemCount > 0);
 
 	const shipProtectSubtotalMajor = $derived.by(() => {
 		const mu = cart.currencyMinorUnit || 2;
@@ -265,12 +266,20 @@
 <aside
 	class="fkcart-modal"
 	class:fkcart-show={cart.open}
+	class:has-upsell={showUpsell}
 	aria-label="Shopping cart"
 	aria-hidden={!cart.open}
 >
+	{#if showUpsell}
+		<div class="fkcart-upsell">
+			<CartCrossSellStrip ids={crossSellIds} layout="sidebar" />
+		</div>
+	{/if}
+
+	<div class="fkcart-main">
 	<header class="fkcart-header">
 		<h2 class="fkcart-header__title">
-			Cart
+			Review Your Cart
 			<span class="fkcart-header__count tabular-nums">({visibleItemCount || cart.itemCount})</span>
 		</h2>
 		<button type="button" class="fkcart-close" onclick={close} aria-label="Close cart">
@@ -296,6 +305,12 @@
 					{@const h = titleHeight(item.name)}
 					{@const isFlashing = !!flashedKeys[item.key]}
 					{@const cro = item.extensions?.wchs_cro}
+					{@const compareMinor =
+						cro?.compare_line_minor ??
+						(cro?.regular_unit_price ?? Number(item.prices.regular_price)) * item.quantity}
+					{@const lineMinor = cro?.line_total_minor ?? Number(item.totals.line_total)}
+					{@const showCompare = compareMinor > lineMinor}
+					{@const bundleLabel = (cro?.bundle_label?.split('·')[0] ?? '').trim()}
 					<li class="fkcart-item" class:is-flashing={isFlashing}>
 						<div class="fkcart-item__media">
 							{#if item.images[0]}
@@ -305,32 +320,43 @@
 									loading="lazy"
 								/>
 							{/if}
-							<button
-								type="button"
-								class="fkcart-item__remove"
-								onclick={() => cart.removeItem(item.key)}
-								aria-label="Remove {item.name}"
-							>
-								<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
-									<path d="M6 6l12 12M18 6L6 18" />
-								</svg>
-							</button>
 						</div>
 
 						<div class="fkcart-item__body">
-							<a
-								class="fkcart-item__title"
-								href={item.permalink}
-								style={h !== null ? `min-height: ${h}px` : ''}
-							>{item.name}</a>
+							<div class="fkcart-item__top">
+								<div class="fkcart-item__info">
+									<a
+										class="fkcart-item__title"
+										href={item.permalink}
+										style={h !== null ? `min-height: ${h}px` : ''}
+									>{item.name}</a>
 
-							{#if item.variation.length}
-								<ul class="fkcart-item__variation">
-									{#each item.variation as v}
-										<li>{v.attribute}: <span>{v.value}</span></li>
-									{/each}
-								</ul>
-							{/if}
+									{#if bundleLabel}
+										<p class="fkcart-item__bundle">{bundleLabel}</p>
+									{/if}
+
+									{#if item.variation.length}
+										<ul class="fkcart-item__variation">
+											{#each item.variation as v}
+												<li>{v.attribute}: <span>{v.value}</span></li>
+											{/each}
+										</ul>
+									{/if}
+
+									{#if cro && cro.effective_unit_price > 0}
+										<p class="fkcart-item__unit tabular-nums">
+											{formatMoneyInt(cro.effective_unit_price)} each
+										</p>
+									{/if}
+								</div>
+
+								<div class="fkcart-item__price-col tabular-nums">
+									{#if showCompare}
+										<span class="fkcart-item__price-was">{formatMoneyInt(compareMinor)}</span>
+									{/if}
+									<span class="fkcart-item__price">{formatMoneyInt(lineMinor)}</span>
+								</div>
+							</div>
 
 							<div class="fkcart-item__foot">
 								{#if !item.sold_individually && item.quantity_limits.editable}
@@ -358,88 +384,27 @@
 										</button>
 									</div>
 								{/if}
-								<div class="fkcart-item__price-stack">
-									{#if cro && cro.savings_per_unit > 0}
-										<span class="fkcart-item__price-was tabular-nums"
-											>{formatMoneyInt(cro.regular_unit_price * item.quantity)}</span
-										>
-									{/if}
-									<span class="fkcart-item__price tabular-nums">
-										{formatMoney(item.totals.line_total, cart.currencyMinorUnit, cart.currencySymbol)}
-									</span>
-								</div>
-							</div>
-
-							{#if cro && cro.savings_per_unit > 0}
-								<p class="fkcart-item__saved">
-									You saved {formatMoneyInt(cro.savings_line_total)}
-									<span class="fkcart-item__saved-pct"
-										>({formatPct(cro.savings_pct)} off)</span
-									>
-								</p>
-							{/if}
-
-							{#if cro?.next_tier}
-								{@const nt = cro.next_tier}
 								<button
 									type="button"
-									class="fkcart-item__next-tier"
-									onclick={() => cart.updateItem(item.key, nt.next_min_qty)}
+									class="fkcart-item__remove"
+									onclick={() => cart.removeItem(item.key)}
+									aria-label="Remove {item.name}"
 								>
-									<span class="fkcart-item__next-tier-arrow">+</span>
-									<span class="fkcart-item__next-tier-text">
-										Add {nt.qty_needed}&nbsp;more to save {formatPct(nt.next_savings_pct)}
-										<small>{formatMoneyInt(nt.next_unit_price)} each at qty {nt.next_min_qty}</small>
-									</span>
+									<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+										<path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12z" />
+									</svg>
 								</button>
-							{/if}
+							</div>
 						</div>
 					</li>
 				{/each}
 			</ul>
-
-			{@const cartCroInline = cart.cart.extensions?.wchs_cro}
-			{#if cartCroInline?.cross_sell_ids && cartCroInline.cross_sell_ids.length > 0}
-				<CartCrossSellStrip ids={cartCroInline.cross_sell_ids} />
-			{/if}
 		{/if}
 
 	{#if cart.cart && cart.itemCount > 0}
 		{@const cartCro = cart.cart.extensions?.wchs_cro}
 		{@const hasSavings = !!cartCro && cartCro.total_savings > 0}
-		{@const couponDiscount = Number(cart.cart.totals.total_discount ?? '0')}
-		{@const hasCoupon = couponDiscount > 0}
-		{@const freeShipThreshold = Number(config.data.shipping_free_threshold ?? 0)}
-		{@const subtotalMajor = Number(cart.subtotal ?? 0) / Math.pow(10, cart.currencyMinorUnit || 2)}
-		{@const freeShipEligible = freeShipThreshold > 0 && subtotalMajor > 0}
-		{@const freeShipRemaining = Math.max(0, freeShipThreshold - subtotalMajor)}
-		{@const freeShipUnlocked = freeShipEligible && subtotalMajor >= freeShipThreshold}
-		{@const freeShipPct = freeShipEligible ? Math.min(100, (subtotalMajor / freeShipThreshold) * 100) : 0}
 		<footer class="fkcart-footer">
-			{#if freeShipEligible}
-				<div class="fkcart-freeship" class:is-unlocked={freeShipUnlocked} data-testid="freeship-bar">
-					<p class="fkcart-freeship__copy" data-testid="freeship-copy">
-						{#if freeShipUnlocked}
-							🎉 You've unlocked FREE shipping
-						{:else}
-							Add {formatPrice(freeShipRemaining * Math.pow(10, cart.currencyMinorUnit || 2), { currency_minor_unit: cart.currencyMinorUnit, currency_symbol: cart.currencySymbol, currency_code: cart.currencyCode })} more for FREE shipping
-						{/if}
-					</p>
-					<div class="fkcart-freeship__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(freeShipPct)}>
-						<div class="fkcart-freeship__fill" style="width: {freeShipPct}%" data-testid="freeship-fill-pct={Math.round(freeShipPct)}"></div>
-					</div>
-				</div>
-			{/if}
-			<form class="fkcart-coupon" onsubmit={applyCoupon}>
-				<input
-					type="text"
-					bind:value={couponCode}
-					placeholder="Coupon code"
-					aria-label="Coupon code"
-				/>
-				<button type="submit">Apply</button>
-			</form>
-
 			<dl class="fkcart-summary tabular-nums">
 				<div class="fkcart-summary__row">
 					<dt>Subtotal</dt>
@@ -449,14 +414,6 @@
 						</dd>
 					{/key}
 				</div>
-				{#if hasCoupon}
-					<div class="fkcart-summary__row fkcart-summary__row--savings">
-						<dt>Coupon discount</dt>
-						<dd class="fkcart-summary__value fkcart-summary__value--savings">
-							−{formatMoneyInt(couponDiscount)}
-						</dd>
-					</div>
-				{/if}
 				{#if hasSavings && cartCro}
 					<div class="fkcart-summary__row fkcart-summary__row--savings">
 						<dt>You saved</dt>
@@ -506,8 +463,26 @@
 					Continue without shipping protection
 				</button>
 			{/if}
+
+			<div class="fkcart-trust" aria-label="Secure checkout">
+				<span class="fkcart-trust__secure">
+					<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+						<rect x="4.5" y="11" width="15" height="9.5" rx="1.5"/>
+						<path d="M7.5 11V8a4.5 4.5 0 0 1 9 0v3"/>
+					</svg>
+					Secure Checkout
+				</span>
+				<span class="fkcart-trust__payments" aria-hidden="true">
+					<span class="fkcart-pay fkcart-pay--visa">VISA</span>
+					<span class="fkcart-pay fkcart-pay--mc" aria-label="Mastercard"></span>
+					<span class="fkcart-pay fkcart-pay--amex">AMEX</span>
+					<span class="fkcart-pay fkcart-pay--disc">DISC</span>
+					<span class="fkcart-pay fkcart-pay--btc" aria-label="Bitcoin">₿</span>
+				</span>
+			</div>
 		</footer>
 	{/if}
+	</div>
 	</div>
 </aside>
 
@@ -554,8 +529,45 @@
 		font-size: 14px;
 		letter-spacing: -0.16px;
 	}
+	.fkcart-modal.has-upsell {
+		flex-direction: row;
+		width: min(780px, 100vw);
+	}
+	.fkcart-upsell {
+		flex: 0 0 320px;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		border-right: 1px solid var(--border);
+		background: var(--bg-elevated, var(--bg));
+		overflow: hidden;
+	}
+	.fkcart-main {
+		flex: 1 1 420px;
+		min-width: 0;
+		max-width: 420px;
+		display: flex;
+		flex-direction: column;
+	}
+	@media (max-width: 720px) {
+		.fkcart-modal.has-upsell {
+			flex-direction: column;
+			width: 100vw;
+		}
+		.fkcart-upsell {
+			flex: 0 0 auto;
+			max-height: 38vh;
+			border-right: 0;
+			border-bottom: 1px solid var(--border);
+		}
+		.fkcart-main {
+			flex: 1 1 auto;
+			max-width: none;
+		}
+	}
 	@media (max-width: 520px) {
 		.fkcart-modal { width: 100vw; border-left: 0; }
+		.fkcart-modal.has-upsell { width: 100vw; }
 	}
 	.fkcart-modal.fkcart-show {
 		transform: translateX(0);
@@ -669,82 +681,73 @@
 	.fkcart-item {
 		position: relative;
 		display: grid;
-		grid-template-columns: 72px 1fr;
-		gap: 16px;
-		/* Internal padding so the item spans the full drawer width.
-		   This lets the flash animation cover edge-to-edge. */
-		padding: 16px 24px;
+		grid-template-columns: 88px 1fr;
+		gap: 14px;
+		padding: 18px 24px;
 		border-bottom: 1px solid var(--border);
 	}
 	.fkcart-item:last-child { border-bottom: 0; }
-	/*
-	 * Flash animation — inset box-shadow + border-color in the same
-	 * animation so the 1px border participates in the flash too.
-	 */
 	.fkcart-item.is-flashing {
 		animation: wchs-flash var(--dur-slow) var(--ease) both;
 	}
 	.fkcart-item__media {
-		position: relative;
-		width: 72px;
-		height: 72px;
-		background: var(--bg-muted);
-		border-radius: var(--radius-sm);
-		overflow: visible;
+		width: 88px;
+		height: 88px;
+		background: color-mix(in srgb, var(--accent) 6%, var(--bg-muted));
+		border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+		border-radius: var(--radius-md, 10px);
+		overflow: hidden;
 	}
 	.fkcart-item__media img {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
-		border-radius: var(--radius-sm);
 	}
-	.fkcart-item__remove {
-		position: absolute;
-		top: -6px;
-		right: -6px;
-		width: 20px;
-		height: 20px;
-		padding: 0;
-		border: 0;
-		background: var(--fg);
-		color: var(--bg);
-		border-radius: 999px;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		cursor: pointer;
-		opacity: 0;
-		transform: scale(0.85);
-		transition:
-			opacity var(--dur-fast) var(--ease),
-			transform var(--dur-fast) var(--ease);
-	}
-	.fkcart-item:hover .fkcart-item__remove {
-		opacity: 1;
-		transform: scale(1);
-	}
-	.fkcart-item__remove:hover {
-		transform: scale(1.08);
-	}
-
 	.fkcart-item__body {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
-		min-width: 0;  /* allow title truncation */
+		gap: 12px;
+		min-width: 0;
+	}
+	.fkcart-item__top {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 12px;
+	}
+	.fkcart-item__info {
+		flex: 1 1 auto;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
 	}
 	.fkcart-item__title {
-		color: var(--fg);
+		color: var(--accent);
 		text-decoration: none;
-		font-size: 14px;
-		font-weight: 500;
-		line-height: 18px;
-		letter-spacing: -0.2px;
+		font-size: 15px;
+		font-weight: 600;
+		line-height: 1.25;
+		letter-spacing: -0.25px;
 		display: block;
-		overflow: hidden;
+		transition: color var(--dur-fast) var(--ease);
 	}
 	.fkcart-item__title:hover {
+		color: color-mix(in srgb, var(--accent) 72%, var(--fg));
+	}
+	.fkcart-item__bundle {
+		margin: 0;
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 1.2;
+		color: var(--accent);
+		letter-spacing: -0.1px;
+	}
+	.fkcart-item__unit {
+		margin: 0;
+		font-size: 12px;
 		color: var(--fg-muted);
+		font-weight: 450;
 	}
 	.fkcart-item__variation {
 		list-style: none;
@@ -752,25 +755,55 @@
 		margin: 0;
 		font-size: 11px;
 		color: var(--fg-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		font-weight: 450;
 		display: flex;
-		gap: 10px;
+		flex-wrap: wrap;
+		gap: 8px;
 	}
 	.fkcart-item__variation span {
 		color: var(--fg);
 		font-weight: 500;
-		text-transform: none;
-		letter-spacing: -0.16px;
+	}
+	.fkcart-item__price-col {
+		flex: 0 0 auto;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 2px;
+		text-align: right;
+	}
+	.fkcart-item__price {
+		font-size: 15px;
+		font-weight: 700;
+		color: var(--fg);
+		letter-spacing: -0.2px;
+	}
+	.fkcart-item__price-was {
+		font-size: 12px;
+		font-weight: 450;
+		color: var(--fg-muted);
+		text-decoration: line-through;
 	}
 	.fkcart-item__foot {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
-		margin-top: auto;
-		padding-top: 4px;
+	}
+	.fkcart-item__remove {
+		padding: 6px;
+		border: 0;
+		background: transparent;
+		color: var(--fg-muted);
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: var(--radius-sm);
+		transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+	}
+	.fkcart-item__remove:hover {
+		color: var(--fg);
+		background: var(--bg-muted);
 	}
 
 	/* =================================================================
@@ -781,7 +814,7 @@
 	.fkcart-qty {
 		display: inline-flex;
 		align-items: center;
-		border: 1px solid var(--border);
+		border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
 		border-radius: var(--radius-sm);
 		background: var(--bg);
 		height: 30px;
@@ -821,98 +854,8 @@
 		user-select: none;
 	}
 
-	.fkcart-item__price-stack {
-		display: inline-flex;
-		align-items: baseline;
-		gap: 8px;
-	}
-	.fkcart-item__price {
-		font-size: 14px;
-		font-weight: 500;
-		color: var(--fg);
-		letter-spacing: -0.2px;
-	}
-	.fkcart-item__price-was {
-		font-size: 12px;
-		font-weight: 450;
-		color: var(--fg-muted);
-		text-decoration: line-through;
-		text-decoration-thickness: 1px;
-		text-decoration-color: currentColor;
-	}
-
-	.fkcart-item__saved {
-		margin: 6px 0 0;
-		padding-top: 6px;
-		border-top: 1px dashed var(--border);
-		font-size: 11px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--success, #5ba238);
-	}
-	.fkcart-item__saved-pct {
-		color: var(--fg-muted);
-		font-weight: 450;
-		margin-left: 2px;
-	}
-
-	.fkcart-item__next-tier {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		margin-top: 8px;
-		padding: 10px 12px;
-		width: 100%;
-		background: transparent;
-		border: 1px dashed var(--border);
-		border-radius: var(--radius-sm);
-		color: var(--fg);
-		font: inherit;
-		text-align: left;
-		cursor: pointer;
-		transition:
-			border-color var(--dur-fast) var(--ease),
-			background var(--dur-fast) var(--ease);
-	}
-	.fkcart-item__next-tier:hover {
-		border-color: var(--fg);
-		border-style: solid;
-		background: var(--bg-elevated);
-	}
-	.fkcart-item__next-tier-arrow {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 22px;
-		height: 22px;
-		border: 1px solid var(--fg-muted);
-		border-radius: 999px;
-		color: var(--fg);
-		font-size: 14px;
-		line-height: 1;
-		flex-shrink: 0;
-	}
-	.fkcart-item__next-tier-text {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		font-size: 11px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--fg);
-	}
-	.fkcart-item__next-tier-text small {
-		font-size: 10px;
-		font-weight: 450;
-		text-transform: none;
-		letter-spacing: 0;
-		color: var(--fg-muted);
-	}
-
 	/* =================================================================
-	   Footer — coupon, summary, checkout CTA
+	   Footer — summary, checkout CTA
 	   ================================================================= */
 
 	.fkcart-footer {
@@ -924,82 +867,12 @@
 		background: var(--bg);
 		flex-shrink: 0;
 	}
-	.fkcart-freeship {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-	}
-	.fkcart-freeship__copy {
-		font-size: 12px;
-		font-weight: 500;
-		color: var(--fg);
-		margin: 0;
-		letter-spacing: 0;
-		line-height: 1.3;
-	}
-	.fkcart-freeship__track {
-		height: 6px;
-		background: color-mix(in srgb, var(--fg) 10%, transparent);
-		border-radius: 3px;
-		overflow: hidden;
-	}
-	.fkcart-freeship__fill {
-		height: 100%;
-		background: var(--accent, #ffdd24);
-		border-radius: 3px;
-		transition: width 280ms var(--ease, ease-out);
-	}
-	.fkcart-freeship.is-unlocked .fkcart-freeship__copy {
-		color: color-mix(in srgb, var(--accent, #22c55e) 90%, var(--fg) 10%);
-	}
-	.fkcart-coupon {
-		display: flex;
-		gap: 8px;
-	}
-	.fkcart-coupon input {
-		flex: 1 1 auto;
-		padding: 10px 14px;
-		background: var(--bg);
-		color: var(--fg);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		font: inherit;
-		font-size: 13px;
-		transition: border-color var(--dur-fast) var(--ease);
-	}
-	.fkcart-coupon input::placeholder { color: var(--fg-muted); }
-	.fkcart-coupon input:focus {
-		outline: none;
-		border-color: var(--fg);
-	}
-	.fkcart-coupon button {
-		padding: 10px 16px;
-		background: transparent;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		color: var(--fg);
-		font: inherit;
-		font-size: 11px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		cursor: pointer;
-		transition:
-			background var(--dur-fast) var(--ease),
-			border-color var(--dur-fast) var(--ease);
-	}
-	.fkcart-coupon button:hover {
-		background: var(--fg);
-		color: var(--bg);
-		border-color: var(--fg);
-	}
-
 	.fkcart-summary {
 		margin: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
-		font-size: 13px;
+		gap: 6px;
+		font-size: 14px;
 	}
 	.fkcart-summary__row {
 		display: flex;
@@ -1023,7 +896,8 @@
 	}
 	.fkcart-checkout {
 		display: block;
-		padding: 15px 16px;
+		padding: 16px 16px;
+		border-radius: var(--radius-md, 10px);
 		background: var(--accent);
 		color: var(--accent-fg) !important;
 		border: 1px solid var(--accent);
@@ -1108,6 +982,88 @@
 	.fkcart-ship-protect__skip:disabled {
 		opacity: 0.6;
 		cursor: wait;
+	}
+
+	.fkcart-trust {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding-top: 14px;
+		border-top: 1px solid var(--border);
+	}
+	.fkcart-trust__secure {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 12px;
+		font-weight: 500;
+		color: var(--success, #16a34a);
+		white-space: nowrap;
+	}
+	.fkcart-trust__secure svg {
+		stroke: currentColor;
+	}
+	.fkcart-trust__payments {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+	}
+	.fkcart-pay {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 34px;
+		height: 22px;
+		padding: 0 6px;
+		border-radius: 4px;
+		font-size: 9px;
+		font-weight: 700;
+		letter-spacing: 0.02em;
+		line-height: 1;
+	}
+	.fkcart-pay--visa {
+		background: #1a1f71;
+		color: #fff;
+	}
+	.fkcart-pay--mc {
+		width: 34px;
+		padding: 0;
+		background: #000;
+		position: relative;
+	}
+	.fkcart-pay--mc::before,
+	.fkcart-pay--mc::after {
+		content: '';
+		position: absolute;
+		top: 50%;
+		width: 14px;
+		height: 14px;
+		border-radius: 50%;
+		transform: translateY(-50%);
+	}
+	.fkcart-pay--mc::before {
+		left: 8px;
+		background: #eb001b;
+	}
+	.fkcart-pay--mc::after {
+		right: 8px;
+		background: #f79e1b;
+	}
+	.fkcart-pay--amex {
+		background: #2e77bc;
+		color: #fff;
+	}
+	.fkcart-pay--disc {
+		background: #111;
+		color: #fff;
+	}
+	.fkcart-pay--btc {
+		background: #f7931a;
+		color: #fff;
+		font-size: 12px;
 	}
 
 	/* =================================================================

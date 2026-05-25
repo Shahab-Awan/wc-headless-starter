@@ -267,6 +267,100 @@ function wchs_cro_unit_price_for_qty(
 }
 
 /**
+ * Sorted bundle tier thresholds (min_qty keys) for BOGO / percentage rules.
+ *
+ * @return int[]
+ */
+function wchs_cro_tier_threshold_qtys( array $rules_data ): array {
+	if ( empty( $rules_data['rules'] ) ) {
+		return [];
+	}
+	$keys = array_map( 'intval', array_keys( $rules_data['rules'] ) );
+	sort( $keys, SORT_NUMERIC );
+	return array_values( array_filter( $keys, static fn( int $q ): bool => $q >= 1 ) );
+}
+
+/**
+ * Largest tier threshold the cart qty satisfies (bundle anchor for mixed lines).
+ */
+function wchs_cro_active_bundle_min_qty( int $qty, array $rules_data ): int {
+	$active = 0;
+	foreach ( wchs_cro_tier_threshold_qtys( $rules_data ) as $min_qty ) {
+		if ( $qty >= $min_qty ) {
+			$active = $min_qty;
+		}
+	}
+	return $active;
+}
+
+/**
+ * Line total in minor units: bundle block at the matched tier + extras at regular.
+ */
+function wchs_cro_line_total_minor_for_qty( \WC_Product $product, int $qty, array $rules_data ): int {
+	$minor          = pow( 10, (int) wc_get_price_decimals() );
+	$regular_minor  = (int) round( (float) $product->get_regular_price() * $minor );
+	if ( $qty < 1 || $regular_minor <= 0 || empty( $rules_data['rules'] ) ) {
+		return max( 0, $regular_minor * max( 0, $qty ) );
+	}
+
+	$anchor = wchs_cro_active_bundle_min_qty( $qty, $rules_data );
+	if ( $anchor < 1 ) {
+		return $regular_minor * $qty;
+	}
+
+	$bundle_unit_minor = wchs_cro_unit_price_for_qty( $product, $anchor, $rules_data );
+	$bundle_line       = $bundle_unit_minor * $anchor;
+	$overage           = max( 0, $qty - $anchor );
+
+	return $bundle_line + ( $overage * $regular_minor );
+}
+
+/**
+ * Snap cart qty on +/- so partial steps between bundles resolve to the next/previous tier.
+ */
+function wchs_cro_resolve_cart_qty_change( int $current_qty, int $proposed_qty, array $rules_data ): int {
+	$tiers = wchs_cro_tier_threshold_qtys( $rules_data );
+	if ( empty( $tiers ) ) {
+		return max( 1, $proposed_qty );
+	}
+
+	$current  = max( 1, $current_qty );
+	$proposed = max( 1, $proposed_qty );
+
+	if ( $proposed > $current ) {
+		$tier_at_current = 0;
+		$next_tier       = null;
+		foreach ( $tiers as $min_qty ) {
+			if ( $min_qty <= $current ) {
+				$tier_at_current = $min_qty;
+			}
+			if ( $min_qty > $current && null === $next_tier ) {
+				$next_tier = $min_qty;
+			}
+		}
+		if ( $tier_at_current > 0 && $current === $tier_at_current && null !== $next_tier && $proposed > $current && $proposed < $next_tier ) {
+			return $next_tier;
+		}
+		return $proposed;
+	}
+
+	if ( $proposed < $current && in_array( $current, $tiers, true ) ) {
+		$lower = 0;
+		foreach ( array_reverse( $tiers ) as $min_qty ) {
+			if ( $min_qty < $current ) {
+				$lower = $min_qty;
+				break;
+			}
+		}
+		if ( $lower > 0 && $proposed < $current && $proposed > $lower ) {
+			return $lower;
+		}
+	}
+
+	return $proposed;
+}
+
+/**
  * Build a display-ready tier rows array:
  *   [ { min_qty, unit_price, savings_per_unit, savings_pct, line_total_at_min_qty } ]
  * All monetary fields are integer minor units.
@@ -513,6 +607,9 @@ function wchs_cro_cart_item_bundle_label(
 	);
 	$best = $candidates[0];
 	$title = sprintf( 'Buy %d Get %d Free', $best['paid'], $best['free'] );
+	if ( $best['free'] < 1 ) {
+		return '';
+	}
 	return $best['flag'] !== '' ? $title . ' · ' . $best['flag'] : $title;
 }
 
@@ -538,10 +635,14 @@ function wchs_cro_cart_item_data( $cart_item ) {
 
 	$native_rules = wchs_cro_get_native_tier_rules( $product );
 	$rules_data = wchs_cro_get_tier_rules( $product );
-	$effective_unit_minor = wchs_cro_unit_price_for_qty( $product, $qty, $rules_data );
+	$uses_bogo_mixed = empty( $native_rules['rules'] ) && ! empty( $rules_data['rules'] );
+	$line_total_minor  = $uses_bogo_mixed
+		? wchs_cro_line_total_minor_for_qty( $product, $qty, $rules_data )
+		: wchs_cro_unit_price_for_qty( $product, $qty, $rules_data ) * $qty;
+	$effective_unit_minor = $qty > 0 ? (int) round( $line_total_minor / $qty ) : $regular_unit_minor;
 
 	$savings_per_unit = max( 0, $regular_unit_minor - $effective_unit_minor );
-	$savings_line = $savings_per_unit * $qty;
+	$savings_line     = max( 0, ( $regular_unit_minor * $qty ) - $line_total_minor );
 	$savings_pct = $regular_unit_minor > 0
 		? round( ( $savings_per_unit / $regular_unit_minor ) * 100, 1 )
 		: 0;
@@ -571,11 +672,15 @@ function wchs_cro_cart_item_data( $cart_item ) {
 	return [
 		'regular_unit_price'   => $regular_unit_minor,
 		'effective_unit_price' => $effective_unit_minor,
+		'line_total_minor'     => $line_total_minor,
+		'compare_line_minor'   => $regular_unit_minor * $qty,
 		'savings_per_unit'     => $savings_per_unit,
 		'savings_line_total'   => $savings_line,
 		'savings_pct'          => $savings_pct,
 		'next_tier'            => $next_tier,
 		'bundle_label'         => wchs_cro_cart_item_bundle_label( $qty, $savings_line, $native_rules, $rules_data ),
+		'tier_qty_thresholds'  => wchs_cro_tier_threshold_qtys( $rules_data ),
+		'active_bundle_min_qty' => wchs_cro_active_bundle_min_qty( $qty, $rules_data ),
 		'cross_sell_ids'       => wchs_cro_filter_cart_cross_sell_ids(
 			array_values( array_map( 'intval', (array) $product->get_cross_sell_ids() ) )
 		),
@@ -590,8 +695,12 @@ function wchs_cro_cart_item_schema() {
 		'savings_line_total'   => [ 'type' => 'integer', 'context' => [ 'view', 'edit' ], 'readonly' => true ],
 		'savings_pct'          => [ 'type' => 'number',  'context' => [ 'view', 'edit' ], 'readonly' => true ],
 		'next_tier'            => [ 'type' => [ 'object', 'null' ], 'context' => [ 'view', 'edit' ], 'readonly' => true ],
-		'bundle_label'         => [ 'type' => 'string', 'context' => [ 'view', 'edit' ], 'readonly' => true ],
-		'cross_sell_ids'       => [ 'type' => 'array', 'items' => [ 'type' => 'integer' ], 'context' => [ 'view', 'edit' ], 'readonly' => true ],
+		'bundle_label'          => [ 'type' => 'string', 'context' => [ 'view', 'edit' ], 'readonly' => true ],
+		'line_total_minor'      => [ 'type' => 'integer', 'context' => [ 'view', 'edit' ], 'readonly' => true ],
+		'compare_line_minor'    => [ 'type' => 'integer', 'context' => [ 'view', 'edit' ], 'readonly' => true ],
+		'tier_qty_thresholds'   => [ 'type' => 'array', 'items' => [ 'type' => 'integer' ], 'context' => [ 'view', 'edit' ], 'readonly' => true ],
+		'active_bundle_min_qty' => [ 'type' => 'integer', 'context' => [ 'view', 'edit' ], 'readonly' => true ],
+		'cross_sell_ids'        => [ 'type' => 'array', 'items' => [ 'type' => 'integer' ], 'context' => [ 'view', 'edit' ], 'readonly' => true ],
 	];
 }
 
@@ -968,7 +1077,20 @@ function wchs_cro_pad_cart_cross_sell_ids( array $ids ): array {
 		);
 		$fill = array_merge( $fill, $more );
 	}
-	return array_slice( array_values( array_unique( array_merge( $ids, $fill ) ) ), 0, $target );
+	$merged = array_values( array_unique( array_merge( $ids, $fill ) ) );
+	if ( count( $merged ) > 1 ) {
+		$seed = (int) sprintf( '%u', crc32( implode( ',', $reserved ) ) );
+		usort(
+			$merged,
+			static function ( int $a, int $b ) use ( $seed ): int {
+				$ha = (int) sprintf( '%u', crc32( $seed . '|' . $a ) );
+				$hb = (int) sprintf( '%u', crc32( $seed . '|' . $b ) );
+				return $ha <=> $hb;
+			}
+		);
+	}
+
+	return array_slice( $merged, 0, $target );
 }
 
 function wchs_cro_cart_data() {
@@ -993,8 +1115,11 @@ function wchs_cro_cart_data() {
 		$regular_major = (float) $product->get_regular_price();
 		$regular_unit_minor = (int) round( $regular_major * $minor );
 		$rules_data = wchs_cro_get_tier_rules( $product );
-		$eff_unit_minor = wchs_cro_unit_price_for_qty( $product, $qty, $rules_data );
-		$total_savings += max( 0, ( $regular_unit_minor - $eff_unit_minor ) * $qty );
+		$native_rules = wchs_cro_get_native_tier_rules( $product );
+		$line_minor   = empty( $native_rules['rules'] ) && ! empty( $rules_data['rules'] )
+			? wchs_cro_line_total_minor_for_qty( $product, $qty, $rules_data )
+			: wchs_cro_unit_price_for_qty( $product, $qty, $rules_data ) * $qty;
+		$total_savings += max( 0, ( $regular_unit_minor * $qty ) - $line_minor );
 
 		foreach ( (array) $product->get_cross_sell_ids() as $id ) {
 			$id = (int) $id;
@@ -1095,10 +1220,12 @@ add_action(
 				continue;
 			}
 
-			$decimals        = max( 0, (int) wc_get_price_decimals() );
-			$minor           = pow( 10, $decimals );
-			$effective_minor = wchs_cro_unit_price_for_qty( $product, $qty, $rules );
-			$effective_major = (float) wc_format_decimal( $effective_minor / $minor );
+			$decimals       = max( 0, (int) wc_get_price_decimals() );
+			$minor          = pow( 10, $decimals );
+			$line_minor     = wchs_cro_line_total_minor_for_qty( $product, $qty, $rules );
+			$effective_major = $qty > 0
+				? (float) wc_format_decimal( ( $line_minor / $minor ) / $qty )
+				: 0.0;
 
 			$regular_major = (float) wc_format_decimal( (float) $product->get_regular_price() );
 			if ( $effective_major <= 0 || $regular_major <= 0 ) {
