@@ -31,10 +31,12 @@
 		ids,
 		layout = 'strip',
 		title = 'Frequently Bought Together',
+		hideHeading = false,
 	}: {
 		ids: number[];
 		layout?: 'strip' | 'sidebar';
 		title?: string;
+		hideHeading?: boolean;
 	} = $props();
 
 	const isSidebar = $derived(layout === 'sidebar');
@@ -398,9 +400,11 @@
 		class:cart-xsell--sidebar={isSidebar}
 		aria-label={title}
 	>
-		<header class="cart-xsell__head">
-			<h3>{title}</h3>
-		</header>
+		{#if !hideHeading}
+			<header class="cart-xsell__head">
+				<h3>{title}</h3>
+			</header>
+		{/if}
 		{#if isSidebar}
 			<div class="cart-xsell__list" role="list">
 				{#each products.slice(0, CART_CROSS_SELL_TARGET_COUNT) as product (product.id)}

@@ -36,6 +36,7 @@
 	// briefly highlight it. Keyed by item.key → timestamp; CSS transition
 	// does the work.
 	let flashedKeys = $state<Record<string, number>>({});
+	let upsellMobileOpen = $state(true);
 
 	onMount(async () => {
 		await pretext.ready();
@@ -403,8 +404,35 @@
 	</div>
 
 	{#if showUpsell && cart.itemCount > 0}
-		<div class="fkcart-upsell-mobile">
-			<CartCrossSellStrip ids={crossSellIds} layout="strip" />
+		<div class="fkcart-upsell-mobile" class:is-collapsed={!upsellMobileOpen}>
+			<button
+				type="button"
+				class="fkcart-upsell-mobile__toggle"
+				aria-expanded={upsellMobileOpen}
+				aria-controls="fkcart-upsell-mobile-panel"
+				onclick={() => (upsellMobileOpen = !upsellMobileOpen)}
+			>
+				<span>Frequently Bought Together</span>
+				<svg
+					class="fkcart-upsell-mobile__chevron"
+					class:is-open={upsellMobileOpen}
+					viewBox="0 0 24 24"
+					width="16"
+					height="16"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					aria-hidden="true"
+				>
+					<path d="M6 9l6 6 6-6" />
+				</svg>
+			</button>
+			{#if upsellMobileOpen}
+				<div id="fkcart-upsell-mobile-panel" class="fkcart-upsell-mobile__panel">
+					<CartCrossSellStrip ids={crossSellIds} layout="strip" hideHeading />
+				</div>
+			{/if}
 		</div>
 	{/if}
 
@@ -556,27 +584,71 @@
 		border-top: 1px solid var(--border);
 		background: var(--bg);
 	}
+	.fkcart-upsell-mobile__toggle {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		width: 100%;
+		padding: 10px 16px;
+		border: 0;
+		background: transparent;
+		color: var(--fg);
+		font: inherit;
+		font-size: 13px;
+		font-weight: 600;
+		letter-spacing: -0.15px;
+		text-align: left;
+		cursor: pointer;
+	}
+	.fkcart-upsell-mobile__toggle:hover {
+		background: color-mix(in srgb, var(--accent) 6%, transparent);
+	}
+	.fkcart-upsell-mobile__chevron {
+		flex-shrink: 0;
+		color: var(--fg-muted);
+		transition: transform var(--dur-fast) var(--ease);
+	}
+	.fkcart-upsell-mobile__chevron.is-open {
+		transform: rotate(180deg);
+	}
+	.fkcart-upsell-mobile__panel {
+		border-top: 1px solid var(--border);
+	}
+	.fkcart-upsell-mobile.is-collapsed .fkcart-upsell-mobile__toggle {
+		border-bottom: 0;
+	}
 	.fkcart-upsell-mobile :global(.cart-xsell) {
 		border-top: 0;
-		padding: 10px 0 6px;
-	}
-	.fkcart-upsell-mobile :global(.cart-xsell__head) {
-		padding: 0 16px;
-	}
-	.fkcart-upsell-mobile :global(.cart-xsell__head h3) {
-		margin-bottom: 8px;
+		padding: 6px 0 4px;
 	}
 	.fkcart-upsell-mobile :global(.cart-xsell__viewport) {
-		padding: 0 16px;
+		padding: 0 12px;
 	}
 	.fkcart-upsell-mobile :global(.cart-xsell__progress) {
-		margin: 8px 16px 0;
+		display: none;
 	}
 	.fkcart-upsell-mobile :global(.cart-xsell__card) {
-		flex: 0 0 132px;
+		flex: 0 0 116px;
+		gap: 6px;
+	}
+	.fkcart-upsell-mobile :global(.cart-xsell__media) {
+		aspect-ratio: 1 / 0.92;
 	}
 	.fkcart-upsell-mobile :global(.cart-xsell__body) {
-		padding: 0 8px 10px;
+		padding: 0 6px 6px;
+		gap: 2px;
+	}
+	.fkcart-upsell-mobile :global(.cart-xsell__title) {
+		min-height: 22px;
+		font-size: 10px;
+		line-height: 11px;
+	}
+	.fkcart-upsell-mobile :global(.cart-xsell__price-now) {
+		font-size: 11px;
+	}
+	.fkcart-upsell-mobile :global(.cart-xsell__price-was) {
+		font-size: 10px;
 	}
 	.fkcart-main {
 		flex: 1 1 420px;
