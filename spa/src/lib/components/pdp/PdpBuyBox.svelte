@@ -85,7 +85,7 @@
 		const parts = Object.values(selection).filter(Boolean);
 		const pct =
 			maxTierPct > 0
-				? `≥${formatPct(maxTierPct)}% Purity`
+				? `≥${formatPct(maxTierPct)} Purity`
 				: product.on_sale
 					? 'On sale'
 					: '';
