@@ -15,8 +15,8 @@
 	import { onMount } from 'svelte';
 	import CartCrossSellStrip from './CartCrossSellStrip.svelte';
 	import { formatPrice } from '$lib/utils/format';
-	import { getShippingProtectionProduct } from '$lib/wc/products';
-	import type { StoreProduct } from '$lib/wc/products';
+	import { config } from '$lib/config.svelte';
+	import type { StoreApiCartItem } from '$lib/wc/cart.svelte';
 	import {
 		shippingProtectionFeeMajor,
 		shippingProtectionTierIndex
@@ -25,7 +25,6 @@
 
 	let fontsReady = $state(false);
 	let checkouting = $state(false);
-	let shipProtectProduct = $state<StoreProduct | null>(null);
 	let shipProtectBusy = $state(false);
 	let shipProtectDeclined = $state(false);
 
@@ -154,19 +153,22 @@
 		});
 	}
 
+	function isShipProtectLine(item: StoreApiCartItem): boolean {
+		if (item.extensions?.wchs_cro?.is_shipping_protection) return true;
+		const pid = config.data.pdp?.slide_cart?.shipping_protection_product_id ?? 0;
+		return pid > 0 && item.id === pid;
+	}
+
 	const shipProtectLine = $derived.by(() => {
-		const pid = shipProtectProduct?.id;
-		if (!pid || !cart.cart) return null;
-		return cart.cart.items.find((i) => i.id === pid) ?? null;
+		if (!cart.cart) return null;
+		return cart.cart.items.find(isShipProtectLine) ?? null;
 	});
 
 	const hasShipProtect = $derived(shipProtectLine !== null);
 
 	const displayCartItems = $derived.by(() => {
-		const pid = shipProtectProduct?.id;
 		if (!cart.cart) return [];
-		if (!pid) return cart.cart.items;
-		return cart.cart.items.filter((i) => i.id !== pid);
+		return cart.cart.items.filter((i) => !isShipProtectLine(i));
 	});
 
 	const visibleItemCount = $derived(
@@ -210,16 +212,12 @@
 		});
 	});
 
-	async function ensureShipProtectProduct() {
-		if (shipProtectProduct) return;
-		shipProtectProduct = await getShippingProtectionProduct();
-	}
-
 	async function addShippingProtection() {
-		if (!shipProtectProduct || shipProtectBusy || hasShipProtect) return;
+		const pid = config.data.pdp?.slide_cart?.shipping_protection_product_id;
+		if (!pid || shipProtectBusy || hasShipProtect) return;
 		shipProtectBusy = true;
 		try {
-			await cart.addItem(shipProtectProduct.id, 1, [], {
+			await cart.addItem(pid, 1, [], {
 				clicked_from: 'slide_cart_ship_protect_auto'
 			});
 			await cart.fetch().catch(() => {});
@@ -227,11 +225,6 @@
 			shipProtectBusy = false;
 		}
 	}
-
-	$effect(() => {
-		if (!cart.open || visibleItemCount === 0) return;
-		void ensureShipProtectProduct();
-	});
 
 	$effect(() => {
 		if (!browser || cart.itemCount === 0) {
@@ -245,7 +238,8 @@
 	});
 
 	$effect(() => {
-		if (!cart.open || !shipProtectProduct || hasShipProtect || shipProtectBusy) return;
+		if (!cart.open || hasShipProtect || shipProtectBusy) return;
+		if (!config.data.pdp?.slide_cart?.shipping_protection_product_id) return;
 		if (displayCartItems.length === 0 || shipProtectDeclined) return;
 		void addShippingProtection();
 	});
@@ -475,7 +469,7 @@
 				{/if}
 			</dl>
 
-			{#if shipProtectProduct && hasShipProtect && displayCartItems.length > 0}
+			{#if hasShipProtect && displayCartItems.length > 0}
 				<div class="fkcart-ship-protect" aria-live="polite">
 					<div class="fkcart-ship-protect__icon" aria-hidden="true">
 						<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
