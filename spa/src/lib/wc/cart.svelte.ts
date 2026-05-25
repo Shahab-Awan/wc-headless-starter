@@ -152,7 +152,7 @@ class CartStore {
 	private mutationChain: Promise<unknown> = Promise.resolve();
 	private pruningProtection = false;
 
-	itemCount = $derived(this.cart?.items_count ?? 0);
+	itemCount = $derived.by(() => this.countVisibleItems());
 	subtotal = $derived(this.cart?.totals.total_items ?? '0');
 	currencyMinorUnit = $derived(this.cart?.totals.currency_minor_unit ?? 2);
 	currencySymbol = $derived(this.cart?.totals.currency_symbol ?? '$');
@@ -172,13 +172,22 @@ class CartStore {
 		return Math.max(this.cart.items_count ?? 0, this.cart.items?.length ?? 0);
 	}
 
-	private visibleItemCount(): number {
-		if (!this.cart) return 0;
+	private isShippingProtectionItem(item: StoreApiCartItem): boolean {
+		if (item.extensions?.wchs_cro?.is_shipping_protection) return true;
 		const protectId = this.shippingProtectionProductId();
+		return protectId !== null && item.id === protectId;
+	}
+
+	private countVisibleItems(): number {
+		if (!this.cart) return 0;
 		return this.cart.items.reduce((n, item) => {
-			if (protectId && item.id === protectId) return n;
+			if (this.isShippingProtectionItem(item)) return n;
 			return n + item.quantity;
 		}, 0);
+	}
+
+	private visibleItemCount(): number {
+		return this.countVisibleItems();
 	}
 
 	private async ensureCartHandoffToken(): Promise<string | null> {
@@ -207,8 +216,7 @@ class CartStore {
 	}
 
 	private hasRegularCartItems(cart: StoreApiCart): boolean {
-		const protectId = this.shippingProtectionProductId();
-		return cart.items.some((item) => (protectId ? item.id !== protectId : true));
+		return cart.items.some((item) => !this.isShippingProtectionItem(item));
 	}
 
 	/**
