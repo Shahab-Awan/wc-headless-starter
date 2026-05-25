@@ -457,11 +457,12 @@
 			if (!canPurchase(product)) return isOutOfStock(product) ? 'Out of Stock' : 'Unavailable';
 			return product.add_to_cart?.text ?? 'Add to Cart';
 		}
-		// Variable
 		const missing = product.attributes.filter((a) => !selection[a.name]).map((a) => a.name);
 		if (missing.length) return `Select ${missing[0]}`;
 		if (!selectedVariationId) return 'Unavailable';
-		if (selectedVariation && !canPurchase(selectedVariation)) return 'Out of Stock';
+		if (selectedVariation && !canPurchase(selectedVariation)) {
+			return isOutOfStock(selectedVariation) ? 'Out of Stock' : 'Unavailable';
+		}
 		return 'Add to Cart';
 	});
 
@@ -614,6 +615,7 @@
 			{selection}
 			onSelectTerm={selectTerm}
 			{termAvailable}
+			{variations}
 			{selectedVariation}
 			{quantity}
 			onQuantityChange={(q) => (quantity = q)}

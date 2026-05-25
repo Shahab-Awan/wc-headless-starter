@@ -250,14 +250,8 @@ function wchs_import_cart_into_classic_session( array $safe_data ): void {
 	foreach ( $safe_data as $key => $value ) {
 		$classic->set( $key, $value );
 	}
-	if ( function_exists( 'wchs_protected_shipping_flag_from_store_cart' ) ) {
-		wchs_protected_shipping_flag_from_store_cart( $safe_data );
-	}
 	if ( WC()->cart ) {
 		WC()->cart->get_cart_from_session();
-		if ( function_exists( 'wchs_strip_shipping_protection_products_from_cart' ) ) {
-			wchs_strip_shipping_protection_products_from_cart();
-		}
 		WC()->cart->calculate_totals();
 	}
 }

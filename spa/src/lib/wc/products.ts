@@ -102,6 +102,7 @@ export type StoreProductVariation = {
 	images: StoreProduct['images'];
 	is_in_stock: boolean;
 	is_purchasable: boolean;
+	stock_availability?: { text: string; class: string };
 	extensions?: StoreProduct['extensions'];
 };
 

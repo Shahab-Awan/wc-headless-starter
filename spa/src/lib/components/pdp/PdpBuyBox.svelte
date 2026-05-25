@@ -26,6 +26,7 @@
 		selection,
 		onSelectTerm,
 		termAvailable,
+		variations,
 		selectedVariation,
 		quantity,
 		onQuantityChange,
@@ -50,6 +51,7 @@
 		selection: Record<string, string>;
 		onSelectTerm: (attr: string, value: string) => void;
 		termAvailable: (attr: string, value: string) => boolean;
+		variations: StoreProductVariation[];
 		selectedVariation: StoreProductVariation | null;
 		quantity: number;
 		onQuantityChange: (q: number) => void;
@@ -143,6 +145,8 @@
 		onQuantityChange(row.min_qty);
 	}
 
+	const variationById = $derived(new Map(variations.map((v) => [v.id, v])));
+
 	const addButtonLabel = $derived.by(() => {
 		if (justAdded) return 'Added';
 		if (adding) return 'Adding…';
@@ -150,17 +154,27 @@
 		return `Add to Cart — ${formatMoneyInt(lineTotal)}`;
 	});
 
+	function variationIdForTerm(attrName: string, termName: string): number | null {
+		for (const ref of product.variations) {
+			const thisAttr = ref.attributes.find((a) => a.name === attrName);
+			if (!thisAttr || thisAttr.value !== termName) continue;
+			const matchesSelection = ref.attributes.every((a) => {
+				if (a.name === attrName) return true;
+				const chosen = selection[a.name];
+				return chosen === undefined || chosen === a.value;
+			});
+			if (matchesSelection) return ref.id;
+		}
+		return null;
+	}
+
 	function sizePriceForTerm(attrName: string, termName: string): string {
 		if (!product.has_options) return '';
-		const sig = product.variations.find((v) => {
-			const a = v.attributes.find((x) => x.name === attrName);
-			return a?.value === termName;
-		});
-		if (!sig) return '';
-		const vid = sig.id;
-		const full = selectedVariation?.id === vid ? selectedVariation : null;
-		const minor = full ? Number(full.prices.price) : Number(product.prices.price);
-		return formatMoneyInt(minor);
+		const vid = variationIdForTerm(attrName, termName);
+		if (!vid) return '';
+		const full = variationById.get(vid);
+		if (!full) return '';
+		return formatMoneyInt(Number(full.prices.price));
 	}
 </script>
 
@@ -292,6 +306,7 @@
 				class="pdp-buy__add"
 				class:pdp-buy__add--success={justAdded}
 				disabled={!canAdd || adding}
+				aria-busy={adding}
 				onclick={onAdd}
 			>
 				<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -670,6 +685,9 @@
 	.pdp-buy__add:disabled {
 		opacity: 0.45;
 		cursor: not-allowed;
+	}
+	.pdp-buy__add[aria-busy='true'] {
+		cursor: wait;
 	}
 	.pdp-buy__add--success {
 		background: var(--success, #059669);
