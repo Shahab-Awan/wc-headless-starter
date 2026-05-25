@@ -1,0 +1,11 @@
+/**
+ * FunnelKit/WFACP sometimes injects a duplicate WC terms block inside #payment.
+ * Hide only that stray block; the real terms checkbox stays in the normal
+ * checkout footer. Does not touch gateway radios, card icons, or other inputs.
+ */
+#payment ul.payment_methods .woocommerce-terms-and-conditions-wrapper,
+#payment .payment_box .woocommerce-terms-and-conditions-wrapper,
+.wfacp_main_form #payment .woocommerce-terms-and-conditions-wrapper,
+.wffn-checkout-form #payment .woocommerce-terms-and-conditions-wrapper {
+	display: none !important;
+}

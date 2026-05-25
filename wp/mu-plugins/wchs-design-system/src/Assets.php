@@ -63,8 +63,8 @@ class Assets {
 
 		if ( $this->is_checkout_surface() ) {
 			wp_enqueue_style(
-				'wchs-ds-hide-card-icons',
-				WCHS_DS_URL . '/assets/checkout-hide-card-icons.css',
+				'wchs-ds-hide-stray-payment-terms',
+				WCHS_DS_URL . '/assets/checkout-hide-stray-payment-terms.css',
 				[ 'wchs-ds-tokens' ],
 				WCHS_DS_VERSION
 			);
@@ -133,10 +133,7 @@ class Assets {
 	}
 
 	/**
-	 * Strip WooCommerce's own stylesheets so our overrides don't fight
-	 * their high-specificity rules. We keep select2 (needed for the
-	 * dropdown logic), the blocks CSS (unused but cheap), and any
-	 * third-party plugin styles that aren't WC core.
+	 * Native /checkout and FunnelKit store checkout (wc-overrides may be skipped there).
 	 */
 	private function is_checkout_surface(): bool {
 		if ( function_exists( 'wchs_funnelkit_is_checkout_request' ) && wchs_funnelkit_is_checkout_request() ) {
@@ -147,6 +144,12 @@ class Assets {
 			&& ! is_wc_endpoint_url( 'order-received' );
 	}
 
+	/**
+	 * Strip WooCommerce's own stylesheets so our overrides don't fight
+	 * their high-specificity rules. We keep select2 (needed for the
+	 * dropdown logic), the blocks CSS (unused but cheap), and any
+	 * third-party plugin styles that aren't WC core.
+	 */
 	private function dequeue_wc_styles(): void {
 		$handles = [
 			'woocommerce-general',
