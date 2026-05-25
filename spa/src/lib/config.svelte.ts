@@ -532,12 +532,22 @@ export type PdpCrossSellConfig = {
 	view_all_url?: string;
 };
 
+export type ShippingProtectionTierConfig = {
+	up_to: number | null;
+	/** Fee in minor units (cents). */
+	fee: number;
+};
+
 export type SlideCartConfig = {
 	cross_sell_exclude_product_ids?: number[];
 	cross_sell_exclude_slugs?: string[];
+	/** Hidden product for slide-cart shipping protection addon (from WP slug). */
+	shipping_protection_product_id?: number;
+	shipping_protection_tiers?: ShippingProtectionTierConfig[];
 };
 
 export const CART_CROSS_SELL_DEFAULT_EXCLUDE_SLUGS = ['bac-water-10ml', 'shipping-protection'] as const;
+export const SHIPPING_PROTECTION_SLUG = 'shipping-protection';
 export const CART_CROSS_SELL_TARGET_COUNT = 4;
 
 export function cartCrossSellExcludeSlugs(): string[] {
@@ -767,7 +777,7 @@ const DEFAULTS: SiteConfig = {
 		shell_url: '',
 		sync_url: '',
 		open_class: 'fkcart-mini-open',
-		cart_selector: '#fkcart-floating-toggler'
+		cart_selector: '.site-header__cart'
 	},
 	spa_origin: 'http://localhost:5175',
 	brand_name: 'Online Store',

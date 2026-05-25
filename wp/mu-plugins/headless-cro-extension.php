@@ -521,6 +521,15 @@ function wchs_cro_cart_item_data( $cart_item ) {
 		return [];
 	}
 	$product = $cart_item['data'];
+	if ( wchs_shipping_protection_product_id() > 0
+		&& (int) ( $cart_item['product_id'] ?? 0 ) === wchs_shipping_protection_product_id() ) {
+		$minor     = pow( 10, (int) wc_get_price_decimals() );
+		$fee_major = (float) $product->get_price();
+		return [
+			'is_shipping_protection' => true,
+			'fee_minor'              => (int) round( $fee_major * $minor ),
+		];
+	}
 	$qty = (int) $cart_item['quantity'];
 
 	$minor = pow( 10, (int) wc_get_price_decimals() );
@@ -593,6 +602,98 @@ function wchs_cro_cart_item_schema() {
  */
 function wchs_cro_cart_cross_sell_default_exclude_slugs(): array {
 	return [ 'bac-water-10ml', 'shipping-protection' ];
+}
+
+/**
+ * Published WooCommerce product ID for a slug (works for hidden catalog items).
+ */
+function wchs_cro_product_id_from_slug( string $slug ): int {
+	$slug = sanitize_title( $slug );
+	if ( $slug === '' ) {
+		return 0;
+	}
+	$posts = get_posts(
+		[
+			'post_type'      => 'product',
+			'name'           => $slug,
+			'post_status'    => 'publish',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+		]
+	);
+	return isset( $posts[0] ) ? (int) $posts[0] : 0;
+}
+
+/**
+ * Shipping protection product ID (hidden ancillary).
+ */
+function wchs_shipping_protection_product_id(): int {
+	static $id = null;
+	if ( is_int( $id ) ) {
+		return $id;
+	}
+	$id = wchs_cro_product_id_from_slug( 'shipping-protection' );
+	return $id;
+}
+
+/**
+ * Tiered shipping protection fees by cart subtotal (major units, excludes protection line).
+ *
+ * @return array<int, array{up_to: float|null, fee: float}>
+ */
+function wchs_shipping_protection_tiers(): array {
+	return [
+		[ 'up_to' => 100.0, 'fee' => 8.0 ],
+		[ 'up_to' => 300.0, 'fee' => 12.0 ],
+		[ 'up_to' => null, 'fee' => 16.0 ],
+	];
+}
+
+/**
+ * @param float $subtotal_major Cart subtotal excluding shipping protection.
+ */
+function wchs_shipping_protection_fee_major( float $subtotal_major ): float {
+	$subtotal_major = max( 0.0, $subtotal_major );
+	foreach ( wchs_shipping_protection_tiers() as $tier ) {
+		if ( null === $tier['up_to'] || $subtotal_major < (float) $tier['up_to'] ) {
+			return (float) $tier['fee'];
+		}
+	}
+	$tiers = wchs_shipping_protection_tiers();
+	$last  = end( $tiers );
+	return is_array( $last ) ? (float) $last['fee'] : 16.0;
+}
+
+/**
+ * @param \WC_Cart|null $cart
+ */
+function wchs_shipping_protection_cart_subtotal_major( $cart = null ): float {
+	if ( ! function_exists( 'WC' ) ) {
+		return 0.0;
+	}
+	if ( ! $cart instanceof \WC_Cart ) {
+		$cart = WC()->cart;
+	}
+	if ( ! $cart || $cart->is_empty() ) {
+		return 0.0;
+	}
+	$protect_id = wchs_shipping_protection_product_id();
+	$sum        = 0.0;
+	foreach ( $cart->get_cart() as $item ) {
+		$pid = (int) ( $item['product_id'] ?? 0 );
+		if ( $protect_id > 0 && $pid === $protect_id ) {
+			continue;
+		}
+		if ( ! empty( $item['line_subtotal'] ) ) {
+			$sum += (float) $item['line_subtotal'];
+			continue;
+		}
+		if ( empty( $item['data'] ) || ! $item['data'] instanceof \WC_Product ) {
+			continue;
+		}
+		$sum += (float) $item['data']->get_price() * (int) ( $item['quantity'] ?? 1 );
+	}
+	return max( 0.0, $sum );
 }
 
 /**
@@ -879,7 +980,11 @@ function wchs_cro_cart_data() {
 	$cross_sell_ids = [];
 	$minor = pow( 10, (int) wc_get_price_decimals() );
 
+	$protect_id = wchs_shipping_protection_product_id();
 	foreach ( WC()->cart->get_cart() as $cart_item ) {
+		if ( $protect_id > 0 && (int) ( $cart_item['product_id'] ?? 0 ) === $protect_id ) {
+			continue;
+		}
 		if ( empty( $cart_item['data'] ) || ! $cart_item['data'] instanceof \WC_Product ) {
 			continue;
 		}
@@ -906,11 +1011,28 @@ function wchs_cro_cart_data() {
 		}
 	}
 
+	$basis_major = wchs_shipping_protection_cart_subtotal_major( WC()->cart );
+	$fee_major   = wchs_shipping_protection_fee_major( $basis_major );
+	$minor       = pow( 10, (int) wc_get_price_decimals() );
+
 	return [
-		'total_savings'  => $total_savings,
-		'cross_sell_ids' => wchs_cro_pad_cart_cross_sell_ids(
+		'total_savings'       => $total_savings,
+		'cross_sell_ids'      => wchs_cro_pad_cart_cross_sell_ids(
 			array_values( array_map( 'intval', array_keys( $cross_sell_ids ) ) )
 		),
+		'shipping_protection' => [
+			'subtotal_basis_minor' => (int) round( $basis_major * $minor ),
+			'fee_minor'            => (int) round( $fee_major * $minor ),
+			'tiers'                => array_map(
+				static function ( $tier ) use ( $minor ) {
+					return [
+						'up_to' => null === $tier['up_to'] ? null : (float) $tier['up_to'],
+						'fee'   => (int) round( (float) $tier['fee'] * $minor ),
+					];
+				},
+				wchs_shipping_protection_tiers()
+			),
+		],
 	];
 }
 
@@ -928,6 +1050,17 @@ function wchs_cro_cart_schema() {
 			'context'     => [ 'view', 'edit' ],
 			'readonly'    => true,
 			'items'       => [ 'type' => 'integer' ],
+		],
+		'shipping_protection' => [
+			'description' => 'Tiered shipping protection fee for the current cart.',
+			'type'        => 'object',
+			'context'     => [ 'view', 'edit' ],
+			'readonly'    => true,
+			'properties'  => [
+				'subtotal_basis_minor' => [ 'type' => 'integer' ],
+				'fee_minor'            => [ 'type' => 'integer' ],
+				'tiers'                => [ 'type' => 'array' ],
+			],
 		],
 	];
 }
@@ -978,6 +1111,35 @@ add_action(
 		}
 	},
 	15,
+	1
+);
+
+add_action(
+	'woocommerce_before_calculate_totals',
+	static function ( $cart ) {
+		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
+			return;
+		}
+		if ( did_action( 'woocommerce_before_calculate_totals' ) >= 2 ) {
+			return;
+		}
+		$protect_id = wchs_shipping_protection_product_id();
+		if ( $protect_id < 1 ) {
+			return;
+		}
+		$fee_major = wchs_shipping_protection_fee_major( wchs_shipping_protection_cart_subtotal_major( $cart ) );
+		foreach ( $cart->get_cart() as $item ) {
+			if ( (int) ( $item['product_id'] ?? 0 ) !== $protect_id ) {
+				continue;
+			}
+			if ( empty( $item['data'] ) || ! $item['data'] instanceof \WC_Product ) {
+				continue;
+			}
+			$item['data']->set_price( wc_format_decimal( $fee_major ) );
+			break;
+		}
+	},
+	25,
 	1
 );
 

@@ -12,13 +12,26 @@
 	import { cart } from '$lib/wc/cart.svelte';
 	import { config } from '$lib/config.svelte';
 	import { pretext } from '$lib/pretext/engine';
+	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	import CartCrossSellStrip from './CartCrossSellStrip.svelte';
 	import { formatPrice } from '$lib/utils/format';
+	import { getShippingProtectionProduct } from '$lib/wc/products';
+	import type { StoreProduct } from '$lib/wc/products';
+	import {
+		shippingProtectionFeeMajor,
+		shippingProtectionTierIndex
+	} from '$lib/shipping-protection';
 
 	let couponCode = $state('');
 	let fontsReady = $state(false);
 	let checkouting = $state(false);
+	let shipProtectProduct = $state<StoreProduct | null>(null);
+	let shipProtectBusy = $state(false);
+	let shipProtectDeclined = $state(false);
+
+	const SHIP_PROTECT_DECLINED_KEY = 'wchs_ship_protect_declined';
+	let shipProtectTierTracked = -1;
 
 	// Flash-on-mutation: when an item's quantity or total changes we
 	// briefly highlight it. Keyed by item.key → timestamp; CSS transition
@@ -116,6 +129,123 @@
 		return Number.isInteger(p) ? `${p}%` : `${p.toFixed(1)}%`;
 	}
 
+	const shipProtectLine = $derived.by(() => {
+		const pid = shipProtectProduct?.id;
+		if (!pid || !cart.cart) return null;
+		return cart.cart.items.find((i) => i.id === pid) ?? null;
+	});
+
+	const hasShipProtect = $derived(shipProtectLine !== null);
+
+	const displayCartItems = $derived.by(() => {
+		const pid = shipProtectProduct?.id;
+		if (!cart.cart) return [];
+		if (!pid) return cart.cart.items;
+		return cart.cart.items.filter((i) => i.id !== pid);
+	});
+
+	const visibleItemCount = $derived(
+		displayCartItems.reduce((n, i) => n + i.quantity, 0)
+	);
+
+	const shipProtectSubtotalMajor = $derived.by(() => {
+		const mu = cart.currencyMinorUnit || 2;
+		const fromApi = cart.cart?.extensions?.wchs_cro?.shipping_protection?.subtotal_basis_minor;
+		if (typeof fromApi === 'number' && fromApi >= 0) {
+			return fromApi / Math.pow(10, mu);
+		}
+		let minor = 0;
+		for (const item of displayCartItems) {
+			minor += Number(item.totals.line_total ?? 0);
+		}
+		return minor / Math.pow(10, mu);
+	});
+
+	const shipProtectFeeMinor = $derived.by(() => {
+		const fromApi = cart.cart?.extensions?.wchs_cro?.shipping_protection?.fee_minor;
+		if (typeof fromApi === 'number' && fromApi > 0) {
+			return fromApi;
+		}
+		if (shipProtectLine) {
+			return Number(shipProtectLine.totals.line_total ?? 0);
+		}
+		const major = shippingProtectionFeeMajor(shipProtectSubtotalMajor);
+		return Math.round(major * Math.pow(10, cart.currencyMinorUnit || 2));
+	});
+
+	const shipProtectPriceLabel = $derived.by(() => {
+		return formatPrice(shipProtectFeeMinor, {
+			currency_minor_unit: cart.currencyMinorUnit,
+			currency_symbol: cart.currencySymbol,
+			currency_code: cart.currencyCode
+		});
+	});
+
+	async function ensureShipProtectProduct() {
+		if (shipProtectProduct) return;
+		shipProtectProduct = await getShippingProtectionProduct();
+	}
+
+	async function addShippingProtection() {
+		if (!shipProtectProduct || shipProtectBusy || hasShipProtect) return;
+		shipProtectBusy = true;
+		try {
+			await cart.addItem(shipProtectProduct.id, 1, [], {
+				clicked_from: 'slide_cart_ship_protect_auto'
+			});
+		} finally {
+			shipProtectBusy = false;
+		}
+	}
+
+	async function removeShippingProtection() {
+		if (!shipProtectLine || shipProtectBusy) return;
+		shipProtectBusy = true;
+		try {
+			await cart.removeItem(shipProtectLine.key);
+			shipProtectDeclined = true;
+			if (browser) {
+				sessionStorage.setItem(SHIP_PROTECT_DECLINED_KEY, '1');
+			}
+		} finally {
+			shipProtectBusy = false;
+		}
+	}
+
+	$effect(() => {
+		if (!cart.open || cart.itemCount === 0) return;
+		void ensureShipProtectProduct();
+	});
+
+	$effect(() => {
+		if (!browser || cart.itemCount === 0) {
+			shipProtectDeclined = false;
+			if (browser) sessionStorage.removeItem(SHIP_PROTECT_DECLINED_KEY);
+			return;
+		}
+		if (sessionStorage.getItem(SHIP_PROTECT_DECLINED_KEY) === '1') {
+			shipProtectDeclined = true;
+		}
+	});
+
+	$effect(() => {
+		if (!cart.open || !shipProtectProduct || hasShipProtect || shipProtectBusy) return;
+		if (displayCartItems.length === 0 || shipProtectDeclined) return;
+		void addShippingProtection();
+	});
+
+	$effect(() => {
+		if (!hasShipProtect || !cart.cart) {
+			shipProtectTierTracked = -1;
+			return;
+		}
+		const tier = shippingProtectionTierIndex(shipProtectSubtotalMajor);
+		if (shipProtectTierTracked >= 0 && tier !== shipProtectTierTracked) {
+			void cart.fetch();
+		}
+		shipProtectTierTracked = tier;
+	});
+
 	$effect(() => {
 		if (typeof document === 'undefined') return;
 		document.documentElement.classList.toggle('fkcart-trigger-open', cart.open);
@@ -141,7 +271,7 @@
 	<header class="fkcart-header">
 		<h2 class="fkcart-header__title">
 			Cart
-			<span class="fkcart-header__count tabular-nums">({cart.itemCount})</span>
+			<span class="fkcart-header__count tabular-nums">({visibleItemCount || cart.itemCount})</span>
 		</h2>
 		<button type="button" class="fkcart-close" onclick={close} aria-label="Close cart">
 			<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
@@ -162,7 +292,7 @@
 			</div>
 		{:else if cart.cart}
 			<ul class="fkcart-items">
-				{#each cart.cart.items as item (item.key)}
+				{#each displayCartItems as item (item.key)}
 					{@const h = titleHeight(item.name)}
 					{@const isFlashing = !!flashedKeys[item.key]}
 					{@const cro = item.extensions?.wchs_cro}
@@ -339,6 +469,23 @@
 				{/if}
 			</dl>
 
+			{#if shipProtectProduct && hasShipProtect && displayCartItems.length > 0}
+				<div class="fkcart-ship-protect" aria-live="polite">
+					<div class="fkcart-ship-protect__icon" aria-hidden="true">
+						<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+							<path
+								d="M12 2 4 5v6c0 5.25 3.44 10.15 8 11.35.55.14 1.12.14 1.67 0 4.56-1.2 8-6.1 8-11.35V5l-8-3zm-1.2 14.2-2.5-2.5 1.4-1.4.9.9 3.3-3.3 1.4 1.4-4.5 4.5z"
+							/>
+						</svg>
+					</div>
+					<div class="fkcart-ship-protect__copy">
+						<span class="fkcart-ship-protect__title">Shipping Protection</span>
+						<p class="fkcart-ship-protect__desc">Free returns + package protection</p>
+					</div>
+					<span class="fkcart-ship-protect__price tabular-nums">{shipProtectPriceLabel}</span>
+				</div>
+			{/if}
+
 			<a
 				href={cart.checkoutUrl()}
 				class="fkcart-checkout"
@@ -348,6 +495,17 @@
 			>
 				Checkout
 			</a>
+
+			{#if hasShipProtect}
+				<button
+					type="button"
+					class="fkcart-ship-protect__skip"
+					disabled={shipProtectBusy}
+					onclick={removeShippingProtection}
+				>
+					Continue without shipping protection
+				</button>
+			{/if}
 		</footer>
 	{/if}
 	</div>
@@ -888,6 +1046,68 @@
 	}
 	.fkcart-checkout:active {
 		transform: scale(0.985);
+	}
+
+	.fkcart-ship-protect {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 12px 14px;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md, 8px);
+		background: var(--bg);
+	}
+	.fkcart-ship-protect__icon {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--accent);
+	}
+	.fkcart-ship-protect__copy {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+	.fkcart-ship-protect__title {
+		display: block;
+		font-size: 14px;
+		font-weight: 700;
+		line-height: 1.2;
+		color: var(--fg);
+		letter-spacing: -0.01em;
+	}
+	.fkcart-ship-protect__desc {
+		margin: 2px 0 0;
+		font-size: 12px;
+		line-height: 1.35;
+		color: var(--fg-muted);
+	}
+	.fkcart-ship-protect__price {
+		flex-shrink: 0;
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--fg);
+		white-space: nowrap;
+	}
+	.fkcart-ship-protect__skip {
+		margin: 0;
+		padding: 0;
+		border: 0;
+		background: none;
+		font: inherit;
+		font-size: 12px;
+		color: var(--fg-muted);
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		cursor: pointer;
+		align-self: center;
+	}
+	.fkcart-ship-protect__skip:hover:not(:disabled) {
+		color: var(--fg);
+	}
+	.fkcart-ship-protect__skip:disabled {
+		opacity: 0.6;
+		cursor: wait;
 	}
 
 	/* =================================================================

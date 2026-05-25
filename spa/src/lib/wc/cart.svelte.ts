@@ -43,9 +43,16 @@ export type WchsCroCartItem = {
 	cross_sell_ids: number[];
 };
 
+export type WchsCroShippingProtection = {
+	subtotal_basis_minor: number;
+	fee_minor: number;
+	tiers?: { up_to: number | null; fee: number }[];
+};
+
 export type WchsCroCartTop = {
 	total_savings: number;
 	cross_sell_ids: number[];
+	shipping_protection?: WchsCroShippingProtection;
 };
 
 export type StoreApiCartItem = {
@@ -288,11 +295,7 @@ class CartStore {
 		await this.mutate(() =>
 			request<StoreApiCart>('/cart/add-item', { method: 'POST', body: { id, quantity, variation } })
 		);
-		if (config.data.funnelkit_cart?.enabled) {
-			void import('$lib/funnelkit-cart').then((fk) => fk.openFunnelKitCart(this.itemCount));
-		} else {
-			this.open = true;
-		}
+		this.open = true;
 		dispatch('added_to_cart', { id, quantity });
 		// GA4 + Omnisend + Klaviyo + Meta + TikTok + Pinterest ecommerce
 		// tracking — find the item in the cart to get name/price. Every

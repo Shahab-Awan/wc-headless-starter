@@ -1095,6 +1095,23 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 				)
 			);
 		}
+		if ( function_exists( 'wchs_cro_product_id_from_slug' ) ) {
+			$slide['shipping_protection_product_id'] = wchs_cro_product_id_from_slug( 'shipping-protection' );
+		}
+		if ( function_exists( 'wchs_shipping_protection_tiers' ) ) {
+			$minor = function_exists( 'wc_get_price_decimals' )
+				? pow( 10, (int) wc_get_price_decimals() )
+				: 100;
+			$slide['shipping_protection_tiers'] = array_map(
+				static function ( $tier ) use ( $minor ) {
+					return [
+						'up_to' => null === $tier['up_to'] ? null : (float) $tier['up_to'],
+						'fee'   => (int) round( (float) $tier['fee'] * $minor ),
+					];
+				},
+				wchs_shipping_protection_tiers()
+			);
+		}
 		$pdp['slide_cart'] = $slide;
 	}
 	$shop_cfg       = \WCHS\Admin\AdminPage::get_shop_config();

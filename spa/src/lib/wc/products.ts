@@ -1,5 +1,5 @@
 import { request } from './store-api';
-import { isCartCrossSellBlockedProduct } from '$lib/config.svelte';
+import { config, isCartCrossSellBlockedProduct, SHIPPING_PROTECTION_SLUG } from '$lib/config.svelte';
 import { canPurchase } from './stock';
 
 /** Drop ancillary products (shipping protection, BAC water) from storefront listings. */
@@ -143,6 +143,26 @@ export async function getProduct(slug: string): Promise<StoreProduct | null> {
 	const product = results[0] ?? null;
 	if (product && isCartCrossSellBlockedProduct(product.id, product.slug)) return null;
 	return product;
+}
+
+/** Hidden ancillary products (shipping protection, etc.) — not filtered from catalog rules. */
+export async function getAncillaryProductBySlug(slug: string): Promise<StoreProduct | null> {
+	const results = await request<StoreProduct[]>('/products', { query: { slug } });
+	const product = results[0] ?? null;
+	if (!product?.is_purchasable) return null;
+	return product;
+}
+
+export async function getShippingProtectionProduct(): Promise<StoreProduct | null> {
+	const id = config.data.pdp?.slide_cart?.shipping_protection_product_id;
+	if (id && id > 0) {
+		const rows = await request<StoreProduct[]>('/products', {
+			query: { include: String(id), per_page: 1 }
+		});
+		const product = rows[0] ?? null;
+		if (product?.is_purchasable) return product;
+	}
+	return getAncillaryProductBySlug(SHIPPING_PROTECTION_SLUG);
 }
 
 /**
