@@ -46,6 +46,8 @@ export type WchsCroCartItem = {
 	tier_qty_thresholds?: number[];
 	active_bundle_min_qty?: number;
 	cross_sell_ids: number[];
+	is_shipping_protection?: boolean;
+	fee_minor?: number;
 };
 
 export type WchsCroShippingProtection = {
@@ -148,6 +150,7 @@ class CartStore {
 	 * Reads (GET /cart) do not need the mutex. Only writes.
 	 */
 	private mutationChain: Promise<unknown> = Promise.resolve();
+	private pruningProtection = false;
 
 	itemCount = $derived(this.cart?.items_count ?? 0);
 	subtotal = $derived(this.cart?.totals.total_items ?? '0');
@@ -167,6 +170,15 @@ class CartStore {
 	private activeItemCount(): number {
 		if (!this.cart) return 0;
 		return Math.max(this.cart.items_count ?? 0, this.cart.items?.length ?? 0);
+	}
+
+	private visibleItemCount(): number {
+		if (!this.cart) return 0;
+		const protectId = this.shippingProtectionProductId();
+		return this.cart.items.reduce((n, item) => {
+			if (protectId && item.id === protectId) return n;
+			return n + item.quantity;
+		}, 0);
 	}
 
 	private async ensureCartHandoffToken(): Promise<string | null> {
@@ -189,13 +201,48 @@ class CartStore {
 	 * Mirror the current cart state to the shadow. Called after every
 	 * successful mutation and after fetch.
 	 */
+	private shippingProtectionProductId(): number | null {
+		const id = config.data.pdp?.slide_cart?.shipping_protection_product_id;
+		return typeof id === 'number' && id > 0 ? id : null;
+	}
+
+	private hasRegularCartItems(cart: StoreApiCart): boolean {
+		const protectId = this.shippingProtectionProductId();
+		return cart.items.some((item) => (protectId ? item.id !== protectId : true));
+	}
+
+	/**
+	 * Remove shipping protection when it is the only line left (e.g. user
+	 * deleted all products). Protection must not outlive purchasable items.
+	 */
+	private async pruneOrphanShippingProtection(): Promise<void> {
+		if (this.pruningProtection || !this.cart) return;
+		const protectId = this.shippingProtectionProductId();
+		if (!protectId || this.hasRegularCartItems(this.cart)) return;
+
+		const line = this.cart.items.find((item) => item.id === protectId);
+		if (!line) return;
+
+		this.pruningProtection = true;
+		try {
+			await this.mutate(() =>
+				request<StoreApiCart>('/cart/remove-item', { method: 'POST', body: { key: line.key } })
+			);
+		} finally {
+			this.pruningProtection = false;
+		}
+	}
+
 	private syncShadow() {
 		if (!this.cart) return;
-		const items: ShadowItem[] = this.cart.items.map((item) => ({
-			id: item.id,
-			quantity: item.quantity,
-			variation: item.variation?.length ? item.variation : undefined
-		}));
+		const protectId = this.shippingProtectionProductId();
+		const items: ShadowItem[] = this.cart.items
+			.filter((item) => !protectId || item.id !== protectId)
+			.map((item) => ({
+				id: item.id,
+				quantity: item.quantity,
+				variation: item.variation?.length ? item.variation : undefined
+			}));
 		writeShadow(items);
 	}
 
@@ -206,6 +253,7 @@ class CartStore {
 		try {
 			this.cart = await request<StoreApiCart>('/cart');
 			await this.maybeReplayFromShadow();
+			await this.pruneOrphanShippingProtection();
 			this.syncShadow();
 		} catch (e) {
 			this.error = e instanceof Error ? e.message : String(e);
@@ -288,6 +336,7 @@ class CartStore {
 						const fresh = await request<StoreApiCart>('/cart');
 						if (gen === this.generation) {
 							this.cart = fresh;
+							await this.pruneOrphanShippingProtection();
 							this.syncShadow();
 						}
 					} catch {
@@ -401,21 +450,21 @@ class CartStore {
 	}
 
 	async beginCheckout(): Promise<string> {
-		const hadVisibleItems = this.activeItemCount() > 0;
+		const hadVisibleItems = this.visibleItemCount() > 0;
 
 		// Prime before fetch — Safari can drop sessionStorage between cart edits
 		// and checkout; a fresh GET /cart re-establishes Cart-Token + nonce.
 		await primeSession().catch(() => {});
 		await this.fetch().catch(() => {});
 
-		if (this.activeItemCount() < 1 && hadVisibleItems) {
-			for (let attempt = 0; attempt < 2 && this.activeItemCount() < 1; attempt++) {
+		if (this.visibleItemCount() < 1 && hadVisibleItems) {
+			for (let attempt = 0; attempt < 2 && this.visibleItemCount() < 1; attempt++) {
 				await primeSession().catch(() => {});
 				await this.fetch().catch(() => {});
 			}
 		}
 
-		if (this.activeItemCount() < 1) {
+		if (this.visibleItemCount() < 1) {
 			this.open = true;
 			return this.cartEntryUrl();
 		}

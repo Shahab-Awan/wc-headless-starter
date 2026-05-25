@@ -620,8 +620,11 @@ function wchs_cro_cart_item_data( $cart_item ) {
 	$product = $cart_item['data'];
 	if ( wchs_shipping_protection_product_id() > 0
 		&& (int) ( $cart_item['product_id'] ?? 0 ) === wchs_shipping_protection_product_id() ) {
-		$minor     = pow( 10, (int) wc_get_price_decimals() );
-		$fee_major = (float) $product->get_price();
+		$minor = pow( 10, (int) wc_get_price_decimals() );
+		$cart  = function_exists( 'WC' ) ? WC()->cart : null;
+		$fee_major = $cart instanceof \WC_Cart
+			? wchs_shipping_protection_fee_major( wchs_shipping_protection_cart_subtotal_major( $cart ) )
+			: (float) $product->get_price();
 		return [
 			'is_shipping_protection' => true,
 			'fee_minor'              => (int) round( $fee_major * $minor ),
@@ -1241,33 +1244,93 @@ add_action(
 	1
 );
 
+/**
+ * Apply tiered shipping-protection fee to the hidden ancillary line item.
+ * Must run on every calculate_totals pass — WC often invokes it twice per
+ * Store API request; the legacy did_action>=2 guard left the catalog price
+ * (e.g. $2.99) on the line after auto-add in the slide cart.
+ *
+ * @param \WC_Cart $cart Cart instance.
+ */
+function wchs_apply_shipping_protection_cart_prices( $cart ): void {
+	if ( ! $cart instanceof \WC_Cart ) {
+		return;
+	}
+	$protect_id = wchs_shipping_protection_product_id();
+	if ( $protect_id < 1 ) {
+		return;
+	}
+	$fee_major = wchs_shipping_protection_fee_major( wchs_shipping_protection_cart_subtotal_major( $cart ) );
+	foreach ( $cart->get_cart() as $item ) {
+		if ( (int) ( $item['product_id'] ?? 0 ) !== $protect_id ) {
+			continue;
+		}
+		if ( empty( $item['data'] ) || ! $item['data'] instanceof \WC_Product ) {
+			continue;
+		}
+		$item['data']->set_price( wc_format_decimal( $fee_major ) );
+		break;
+	}
+}
+
 add_action(
 	'woocommerce_before_calculate_totals',
 	static function ( $cart ) {
 		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
 			return;
 		}
-		if ( did_action( 'woocommerce_before_calculate_totals' ) >= 2 ) {
-			return;
-		}
-		$protect_id = wchs_shipping_protection_product_id();
-		if ( $protect_id < 1 ) {
-			return;
-		}
-		$fee_major = wchs_shipping_protection_fee_major( wchs_shipping_protection_cart_subtotal_major( $cart ) );
-		foreach ( $cart->get_cart() as $item ) {
-			if ( (int) ( $item['product_id'] ?? 0 ) !== $protect_id ) {
-				continue;
-			}
-			if ( empty( $item['data'] ) || ! $item['data'] instanceof \WC_Product ) {
-				continue;
-			}
-			$item['data']->set_price( wc_format_decimal( $fee_major ) );
+		wchs_apply_shipping_protection_cart_prices( $cart );
+	},
+	99,
+	1
+);
+
+/**
+ * Drop shipping protection when no purchasable products remain in the cart.
+ */
+function wchs_prune_orphan_shipping_protection(): void {
+	if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+		return;
+	}
+	$protect_id = wchs_shipping_protection_product_id();
+	if ( $protect_id < 1 ) {
+		return;
+	}
+	$has_regular = false;
+	foreach ( WC()->cart->get_cart() as $item ) {
+		if ( (int) ( $item['product_id'] ?? 0 ) !== $protect_id ) {
+			$has_regular = true;
 			break;
 		}
+	}
+	if ( $has_regular ) {
+		return;
+	}
+	foreach ( WC()->cart->get_cart() as $cart_item_key => $item ) {
+		if ( (int) ( $item['product_id'] ?? 0 ) === $protect_id ) {
+			WC()->cart->remove_cart_item( $cart_item_key );
+			break;
+		}
+	}
+}
+
+add_action( 'woocommerce_cart_item_removed', 'wchs_prune_orphan_shipping_protection', 20 );
+add_action( 'woocommerce_after_cart_item_quantity_update', 'wchs_prune_orphan_shipping_protection', 20 );
+
+add_action(
+	'woocommerce_add_to_cart',
+	static function ( $cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data ) {
+		unset( $cart_item_key, $quantity, $variation_id, $variation, $cart_item_data );
+		if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+			return;
+		}
+		if ( (int) $product_id !== wchs_shipping_protection_product_id() ) {
+			return;
+		}
+		wchs_apply_shipping_protection_cart_prices( WC()->cart );
 	},
-	25,
-	1
+	20,
+	6
 );
 
 /**

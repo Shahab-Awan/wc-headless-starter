@@ -174,7 +174,7 @@
 	);
 
 	const crossSellIds = $derived(cart.cart?.extensions?.wchs_cro?.cross_sell_ids ?? []);
-	const showUpsell = $derived(crossSellIds.length > 0 && cart.itemCount > 0);
+	const showUpsell = $derived(crossSellIds.length > 0 && visibleItemCount > 0);
 
 	const shipProtectSubtotalMajor = $derived.by(() => {
 		const mu = cart.currencyMinorUnit || 2;
@@ -194,8 +194,9 @@
 		if (typeof fromApi === 'number' && fromApi > 0) {
 			return fromApi;
 		}
-		if (shipProtectLine) {
-			return Number(shipProtectLine.totals.line_total ?? 0);
+		const croFee = shipProtectLine?.extensions?.wchs_cro?.fee_minor;
+		if (typeof croFee === 'number' && croFee > 0) {
+			return croFee;
 		}
 		const major = shippingProtectionFeeMajor(shipProtectSubtotalMajor);
 		return Math.round(major * Math.pow(10, cart.currencyMinorUnit || 2));
@@ -221,13 +222,14 @@
 			await cart.addItem(shipProtectProduct.id, 1, [], {
 				clicked_from: 'slide_cart_ship_protect_auto'
 			});
+			await cart.fetch().catch(() => {});
 		} finally {
 			shipProtectBusy = false;
 		}
 	}
 
 	$effect(() => {
-		if (!cart.open || cart.itemCount === 0) return;
+		if (!cart.open || visibleItemCount === 0) return;
 		void ensureShipProtectProduct();
 	});
 
@@ -293,7 +295,7 @@
 	<header class="fkcart-header">
 		<h2 class="fkcart-header__title">
 			Review Your Cart
-			<span class="fkcart-header__count tabular-nums">({visibleItemCount || cart.itemCount})</span>
+			<span class="fkcart-header__count tabular-nums">({visibleItemCount})</span>
 		</h2>
 		<button type="button" class="fkcart-close" onclick={close} aria-label="Close cart">
 			<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
@@ -302,10 +304,10 @@
 		</button>
 	</header>
 
-	<div class="fkcart-body" class:has-zero-state={cart.itemCount === 0}>
+	<div class="fkcart-body" class:has-zero-state={visibleItemCount === 0}>
 		{#if cart.loading && !cart.cart}
 			<p class="fkcart-state">Loading…</p>
-		{:else if cart.itemCount === 0}
+		{:else if visibleItemCount === 0}
 			<div class="fkcart-empty">
 				<p class="fkcart-empty__msg">Your cart is empty</p>
 				<button type="button" class="fkcart-empty__cta" onclick={close}>
@@ -415,7 +417,7 @@
 		{/if}
 	</div>
 
-	{#if showUpsell && cart.itemCount > 0}
+	{#if showUpsell && visibleItemCount > 0}
 		<div class="fkcart-upsell-mobile" class:is-collapsed={!upsellMobileOpen}>
 			<button
 				type="button"
@@ -448,7 +450,7 @@
 		</div>
 	{/if}
 
-	{#if cart.cart && cart.itemCount > 0}
+	{#if cart.cart && visibleItemCount > 0}
 		{@const cartCro = cart.cart.extensions?.wchs_cro}
 		{@const hasSavings = !!cartCro && cartCro.total_savings > 0}
 		<footer class="fkcart-footer">
@@ -500,7 +502,7 @@
 				{checkouting ? 'Loading…' : 'Checkout'}
 			</a>
 
-			{#if hasShipProtect}
+			{#if hasShipProtect && displayCartItems.length > 0}
 				<button
 					type="button"
 					class="fkcart-ship-protect__skip"
