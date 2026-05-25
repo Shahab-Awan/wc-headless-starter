@@ -7,6 +7,7 @@
 	 * cart. BAC water, protected shipping, and admin-configured exclusions
 	 * are stripped server-side and again here as a safety net.
 	 */
+	import { goto } from '$app/navigation';
 	import { onMount, untrack } from 'svelte';
 	import EmblaCarousel, { type EmblaCarouselType } from 'embla-carousel';
 	import { cart } from '$lib/wc/cart.svelte';
@@ -392,6 +393,26 @@
 			currency_code: cart.currencyCode,
 		});
 	}
+
+	function productHref(slug: string): string {
+		return `/product/${slug}`;
+	}
+
+	function openProduct(e: MouseEvent, slug: string) {
+		if (
+			e.defaultPrevented ||
+			e.button !== 0 ||
+			e.metaKey ||
+			e.ctrlKey ||
+			e.shiftKey ||
+			e.altKey
+		) {
+			return;
+		}
+		e.preventDefault();
+		cart.toggle(false);
+		void goto(productHref(slug));
+	}
 </script>
 
 {#if products.length > 0}
@@ -413,24 +434,30 @@
 					{@const current = Number(product.prices.price)}
 					{@const onSale = regular > current}
 					<article class="cart-xsell__card cart-xsell__card--row" role="listitem">
-						<a class="cart-xsell__thumb" href="/product/{product.slug}">
-							{#if product.images[0]}
-								<img
-									src={product.images[0].thumbnail || product.images[0].src}
-									alt={product.images[0].alt || product.name}
-									loading="lazy"
-								/>
-							{/if}
-						</a>
-						<div class="cart-xsell__row-body">
-							<a class="cart-xsell__title" href="/product/{product.slug}">{product.name}</a>
-							<p class="cart-xsell__price tabular-nums">
-								<span class="cart-xsell__price-now">{formatMoneyInt(current)}</span>
-								{#if onSale}
-									<span class="cart-xsell__price-was">{formatMoneyInt(regular)}</span>
+						<a
+							class="cart-xsell__card-link cart-xsell__card-link--row"
+							href={productHref(product.slug)}
+							onclick={(e) => openProduct(e, product.slug)}
+						>
+							<span class="cart-xsell__thumb">
+								{#if product.images[0]}
+									<img
+										src={product.images[0].thumbnail || product.images[0].src}
+										alt={product.images[0].alt || product.name}
+										loading="lazy"
+									/>
 								{/if}
-							</p>
-						</div>
+							</span>
+							<span class="cart-xsell__row-body">
+								<span class="cart-xsell__title">{product.name}</span>
+								<span class="cart-xsell__price tabular-nums">
+									<span class="cart-xsell__price-now">{formatMoneyInt(current)}</span>
+									{#if onSale}
+										<span class="cart-xsell__price-was">{formatMoneyInt(regular)}</span>
+									{/if}
+								</span>
+							</span>
+						</a>
 					</article>
 				{/each}
 			</div>
@@ -443,7 +470,11 @@
 				{@const current = Number(product.prices.price)}
 				{@const onSale = regular > current}
 				<article class="cart-xsell__card" role="listitem">
-					<a class="cart-xsell__link" href="/product/{product.slug}">
+					<a
+						class="cart-xsell__link"
+						href={productHref(product.slug)}
+						onclick={(e) => openProduct(e, product.slug)}
+					>
 						<div class="cart-xsell__media">
 							{#if product.images[0]}
 								<img
@@ -569,16 +600,28 @@
 	}
 	.cart-xsell__card--row {
 		flex: 0 0 auto;
-		flex-direction: row;
-		align-items: center;
-		gap: 8px;
-		padding: 8px;
+		padding: 0;
 		width: 100%;
 	}
+	.cart-xsell__card-link--row {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		gap: 12px;
+		width: 100%;
+		padding: 12px;
+		text-decoration: none;
+		color: inherit;
+		border-radius: inherit;
+		cursor: pointer;
+	}
+	.cart-xsell__card-link--row:hover .cart-xsell__title {
+		color: color-mix(in srgb, var(--accent) 72%, var(--fg));
+	}
 	.cart-xsell__thumb {
-		flex: 0 0 64px;
-		width: 64px;
-		height: 64px;
+		flex: 0 0 84px;
+		width: 84px;
+		height: 84px;
 		display: block;
 		background: color-mix(in srgb, var(--accent) 6%, var(--bg-muted));
 		border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
@@ -595,20 +638,25 @@
 		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 6px;
 	}
 	.cart-xsell--sidebar .cart-xsell__title {
+		display: block;
 		min-height: 0;
-		font-size: 11px;
-		line-height: 1.25;
-		line-clamp: 2;
-		-webkit-line-clamp: 2;
+		font-size: 12px;
+		line-height: 1.3;
+		line-clamp: 3;
+		-webkit-line-clamp: 3;
 		color: var(--accent);
-		text-decoration: none;
 	}
-	.cart-xsell--sidebar .cart-xsell__title:hover {
-		color: color-mix(in srgb, var(--accent) 72%, var(--fg));
-		text-decoration: none;
+	.cart-xsell--sidebar .cart-xsell__price {
+		gap: 4px;
+	}
+	.cart-xsell--sidebar .cart-xsell__price-now {
+		font-size: 13px;
+	}
+	.cart-xsell--sidebar .cart-xsell__price-was {
+		font-size: 11px;
 	}
 	.cart-xsell__add-btn--row {
 		position: static;

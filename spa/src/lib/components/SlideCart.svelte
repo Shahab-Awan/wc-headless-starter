@@ -55,6 +55,16 @@
 		cart.toggle(false);
 	}
 
+	async function goToCheckout() {
+		if (checkouting) return;
+		checkouting = true;
+		try {
+			window.location.href = await cart.beginCheckout();
+		} finally {
+			checkouting = false;
+		}
+	}
+
 	async function beginCheckout(event: MouseEvent) {
 		if (
 			event.defaultPrevented ||
@@ -68,14 +78,30 @@
 		}
 
 		event.preventDefault();
-		if (checkouting) return;
+		event.stopPropagation();
+		await goToCheckout();
+	}
 
-		checkouting = true;
+	async function continueWithoutShippingProtection() {
+		if (shipProtectBusy || checkouting) return;
+		shipProtectBusy = true;
 		try {
-			window.location.href = await cart.beginCheckout();
+			if (shipProtectLine) {
+				await cart.removeItem(shipProtectLine.key);
+				shipProtectDeclined = true;
+				if (browser) {
+					try {
+						sessionStorage.setItem(SHIP_PROTECT_DECLINED_KEY, '1');
+					} catch {
+						// Safari private mode / storage quota
+					}
+				}
+			}
+			await cart.fetch().catch(() => {});
 		} finally {
-			checkouting = false;
+			shipProtectBusy = false;
 		}
+		await goToCheckout();
 	}
 
 	function resolvedQty(item: (typeof displayCartItems)[number], proposed: number): number {
@@ -195,20 +221,6 @@
 			await cart.addItem(shipProtectProduct.id, 1, [], {
 				clicked_from: 'slide_cart_ship_protect_auto'
 			});
-		} finally {
-			shipProtectBusy = false;
-		}
-	}
-
-	async function removeShippingProtection() {
-		if (!shipProtectLine || shipProtectBusy) return;
-		shipProtectBusy = true;
-		try {
-			await cart.removeItem(shipProtectLine.key);
-			shipProtectDeclined = true;
-			if (browser) {
-				sessionStorage.setItem(SHIP_PROTECT_DECLINED_KEY, '1');
-			}
 		} finally {
 			shipProtectBusy = false;
 		}
@@ -485,15 +497,15 @@
 				aria-busy={checkouting}
 				onclick={beginCheckout}
 			>
-				Checkout
+				{checkouting ? 'Loading…' : 'Checkout'}
 			</a>
 
 			{#if hasShipProtect}
 				<button
 					type="button"
 					class="fkcart-ship-protect__skip"
-					disabled={shipProtectBusy}
-					onclick={removeShippingProtection}
+					disabled={shipProtectBusy || checkouting}
+					onclick={continueWithoutShippingProtection}
 				>
 					Continue without shipping protection
 				</button>
@@ -565,11 +577,11 @@
 	}
 	.fkcart-modal.has-upsell {
 		flex-direction: row;
-		width: min(668px, 100vw);
+		width: min(692px, 100vw);
 	}
 	.fkcart-upsell--desktop {
-		flex: 0 0 248px;
-		width: 248px;
+		flex: 0 0 272px;
+		width: 272px;
 		min-width: 0;
 		display: flex;
 		flex-direction: column;

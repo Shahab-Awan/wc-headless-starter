@@ -159,6 +159,32 @@ class CartStore {
 		return `${config.data.spa_origin.replace(/\/$/, '')}/shop?open_cart=1`;
 	}
 
+	private wpCheckoutBaseUrl(): string {
+		const path = (config.data.checkout_handoff_path || '/checkout').replace(/\/+$/, '') || '/checkout';
+		return config.wpUrl(`${path}/`);
+	}
+
+	private activeItemCount(): number {
+		if (!this.cart) return 0;
+		return Math.max(this.cart.items_count ?? 0, this.cart.items?.length ?? 0);
+	}
+
+	private async ensureCartHandoffToken(): Promise<string | null> {
+		let token = currentCartToken();
+		if (token) return token;
+
+		await primeSession().catch(() => {});
+		token = currentCartToken();
+		if (token) return token;
+
+		try {
+			await request<StoreApiCart>('/cart');
+		} catch {
+			// best-effort — checkout flow will fall back if still missing
+		}
+		return currentCartToken();
+	}
+
 	/**
 	 * Mirror the current cart state to the shadow. Called after every
 	 * successful mutation and after fetch.
@@ -375,32 +401,34 @@ class CartStore {
 	}
 
 	async beginCheckout(): Promise<string> {
-		const hadVisibleItems = (this.cart?.items_count ?? 0) > 0;
-		await this.fetch();
-		if ((this.cart?.items_count ?? 0) < 1 && hadVisibleItems) {
-			// If the user can already see items in the slide cart but the first
-			// checkout-time fetch comes back empty, treat that as a transient
-			// session/token hiccup and retry once before bouncing them back to shop.
-			await primeSession().catch(() => {});
-			await this.fetch().catch(() => {});
+		const hadVisibleItems = this.activeItemCount() > 0;
+
+		// Prime before fetch — Safari can drop sessionStorage between cart edits
+		// and checkout; a fresh GET /cart re-establishes Cart-Token + nonce.
+		await primeSession().catch(() => {});
+		await this.fetch().catch(() => {});
+
+		if (this.activeItemCount() < 1 && hadVisibleItems) {
+			for (let attempt = 0; attempt < 2 && this.activeItemCount() < 1; attempt++) {
+				await primeSession().catch(() => {});
+				await this.fetch().catch(() => {});
+			}
 		}
-		if ((this.cart?.items_count ?? 0) < 1) {
+
+		if (this.activeItemCount() < 1) {
 			this.open = true;
 			return this.cartEntryUrl();
 		}
 
-		let href = this.checkoutUrl();
-		if (!/\?cart=/.test(href)) {
-			await primeSession().catch(() => {});
-			href = this.checkoutUrl();
-		}
+		const token = await this.ensureCartHandoffToken();
+		const href = token ? config.checkoutUrl(token) : this.wpCheckoutBaseUrl();
 
-		if (/\?cart=/.test(href) && this.cart?.items?.length && typeof window !== 'undefined') {
+		if (token && this.cart?.items?.length && typeof window !== 'undefined') {
 			const { trackCustomerLabsCheckoutMade } = await import('$lib/analytics');
 			trackCustomerLabsCheckoutMade(this.cart!);
 		}
 
-		return /\?cart=/.test(href) ? href : this.cartEntryUrl();
+		return href;
 	}
 
 	/**
@@ -417,9 +445,10 @@ class CartStore {
 	 * Origin comes from the runtime config store (wp_origin field) so
 	 * one SPA bundle can serve multiple per-site deployments.
 	 */
+	/** Link target for the checkout CTA — never the shop fallback (Safari native click). */
 	checkoutUrl(): string {
 		const cartToken = currentCartToken();
-		return cartToken ? config.checkoutUrl(cartToken) : this.cartEntryUrl();
+		return cartToken ? config.checkoutUrl(cartToken) : this.wpCheckoutBaseUrl();
 	}
 }
 

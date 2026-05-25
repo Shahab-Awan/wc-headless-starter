@@ -19,6 +19,7 @@ import { isCaptchaChallenge, handleCaptchaChallenge } from '$lib/siteground-capt
 const BASE = '/wp-json/wc/store/v1';
 
 const CART_TOKEN_KEY = 'wchs_cart_token';
+const CART_TOKEN_LS_KEY = 'wchs_cart_token_ls';
 const NONCE_KEY = 'wchs_store_nonce';
 
 // In-memory cache of tokens. SessionStorage is the persistence layer, but
@@ -36,6 +37,21 @@ function loadCartToken(): string | null {
 	} catch {
 		// sessionStorage disabled (private browsing, security policy, etc.)
 	}
+	if (cartTokenCache) return cartTokenCache;
+	try {
+		if (typeof localStorage !== 'undefined') {
+			cartTokenCache = localStorage.getItem(CART_TOKEN_LS_KEY);
+			if (cartTokenCache && typeof sessionStorage !== 'undefined') {
+				try {
+					sessionStorage.setItem(CART_TOKEN_KEY, cartTokenCache);
+				} catch {
+					// best-effort rehydrate
+				}
+			}
+		}
+	} catch {
+		// localStorage disabled
+	}
 	return cartTokenCache;
 }
 
@@ -47,6 +63,13 @@ function saveCartToken(token: string) {
 		}
 	} catch {
 		// sessionStorage disabled
+	}
+	try {
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem(CART_TOKEN_LS_KEY, token);
+		}
+	} catch {
+		// localStorage disabled
 	}
 }
 
@@ -85,6 +108,13 @@ export function clearCartToken() {
 		}
 	} catch {
 		// sessionStorage disabled
+	}
+	try {
+		if (typeof localStorage !== 'undefined') {
+			localStorage.removeItem(CART_TOKEN_LS_KEY);
+		}
+	} catch {
+		// localStorage disabled
 	}
 }
 
