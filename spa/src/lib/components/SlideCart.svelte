@@ -271,7 +271,7 @@
 	aria-hidden={!cart.open}
 >
 	{#if showUpsell}
-		<div class="fkcart-upsell">
+		<div class="fkcart-upsell fkcart-upsell--desktop">
 			<CartCrossSellStrip ids={crossSellIds} layout="sidebar" />
 		</div>
 	{/if}
@@ -400,6 +400,13 @@
 				{/each}
 			</ul>
 		{/if}
+	</div>
+
+	{#if showUpsell && cart.itemCount > 0}
+		<div class="fkcart-upsell-mobile">
+			<CartCrossSellStrip ids={crossSellIds} layout="strip" />
+		</div>
+	{/if}
 
 	{#if cart.cart && cart.itemCount > 0}
 		{@const cartCro = cart.cart.extensions?.wchs_cro}
@@ -483,7 +490,6 @@
 		</footer>
 	{/if}
 	</div>
-	</div>
 </aside>
 
 <style>
@@ -531,10 +537,11 @@
 	}
 	.fkcart-modal.has-upsell {
 		flex-direction: row;
-		width: min(780px, 100vw);
+		width: min(668px, 100vw);
 	}
-	.fkcart-upsell {
-		flex: 0 0 320px;
+	.fkcart-upsell--desktop {
+		flex: 0 0 248px;
+		width: 248px;
 		min-width: 0;
 		display: flex;
 		flex-direction: column;
@@ -542,27 +549,59 @@
 		background: var(--bg-elevated, var(--bg));
 		overflow: hidden;
 	}
+	.fkcart-upsell-mobile {
+		display: none;
+		flex: 0 0 auto;
+		flex-shrink: 0;
+		border-top: 1px solid var(--border);
+		background: var(--bg);
+	}
+	.fkcart-upsell-mobile :global(.cart-xsell) {
+		border-top: 0;
+		padding: 10px 0 6px;
+	}
+	.fkcart-upsell-mobile :global(.cart-xsell__head) {
+		padding: 0 16px;
+	}
+	.fkcart-upsell-mobile :global(.cart-xsell__head h3) {
+		margin-bottom: 8px;
+	}
+	.fkcart-upsell-mobile :global(.cart-xsell__viewport) {
+		padding: 0 16px;
+	}
+	.fkcart-upsell-mobile :global(.cart-xsell__progress) {
+		margin: 8px 16px 0;
+	}
+	.fkcart-upsell-mobile :global(.cart-xsell__card) {
+		flex: 0 0 132px;
+	}
+	.fkcart-upsell-mobile :global(.cart-xsell__body) {
+		padding: 0 8px 10px;
+	}
 	.fkcart-main {
 		flex: 1 1 420px;
 		min-width: 0;
 		max-width: 420px;
+		height: 100%;
 		display: flex;
 		flex-direction: column;
+		min-height: 0;
 	}
 	@media (max-width: 720px) {
 		.fkcart-modal.has-upsell {
 			flex-direction: column;
 			width: 100vw;
 		}
-		.fkcart-upsell {
-			flex: 0 0 auto;
-			max-height: 38vh;
-			border-right: 0;
-			border-bottom: 1px solid var(--border);
+		.fkcart-upsell--desktop {
+			display: none;
+		}
+		.fkcart-upsell-mobile {
+			display: block;
 		}
 		.fkcart-main {
 			flex: 1 1 auto;
 			max-width: none;
+			width: 100%;
 		}
 	}
 	@media (max-width: 520px) {
@@ -583,6 +622,7 @@
 		justify-content: space-between;
 		padding: 22px 24px;
 		border-bottom: 1px solid var(--border);
+		flex-shrink: 0;
 	}
 	.fkcart-header__title {
 		margin: 0;
@@ -624,10 +664,16 @@
 
 	.fkcart-body {
 		flex: 1 1 auto;
+		min-height: 0;
 		overflow-y: auto;
-		/* Horizontal padding moved onto .fkcart-item so the flash
-		   animation can span the full drawer width without clipping */
-		padding: 8px 0 16px;
+		overflow-x: hidden;
+		-webkit-overflow-scrolling: touch;
+		padding: 8px 0 0;
+	}
+	.fkcart-body.has-zero-state {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
 	}
 	.fkcart-state {
 		color: var(--fg-muted);
@@ -860,12 +906,14 @@
 
 	.fkcart-footer {
 		border-top: 1px solid var(--border);
-		padding: 20px 24px 24px;
+		padding: 14px 20px 16px;
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: 12px;
 		background: var(--bg);
 		flex-shrink: 0;
+		margin-top: auto;
+		box-shadow: 0 -6px 20px color-mix(in srgb, var(--fg) 6%, transparent);
 	}
 	.fkcart-summary {
 		margin: 0;
@@ -896,7 +944,7 @@
 	}
 	.fkcart-checkout {
 		display: block;
-		padding: 16px 16px;
+		padding: 14px 14px;
 		border-radius: var(--radius-md, 10px);
 		background: var(--accent);
 		color: var(--accent-fg) !important;
@@ -925,8 +973,8 @@
 	.fkcart-ship-protect {
 		display: flex;
 		align-items: center;
-		gap: 12px;
-		padding: 12px 14px;
+		gap: 10px;
+		padding: 10px 12px;
 		border: 1px solid var(--border);
 		border-radius: var(--radius-md, 8px);
 		background: var(--bg);
@@ -988,8 +1036,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 12px;
-		padding-top: 14px;
+		gap: 10px;
+		padding-top: 10px;
 		border-top: 1px solid var(--border);
 	}
 	.fkcart-trust__secure {

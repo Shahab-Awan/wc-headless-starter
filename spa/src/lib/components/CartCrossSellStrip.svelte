@@ -396,10 +396,10 @@
 	<section
 		class="cart-xsell"
 		class:cart-xsell--sidebar={isSidebar}
-		aria-label={isSidebar ? title : 'You might also like'}
+		aria-label={title}
 	>
 		<header class="cart-xsell__head">
-			<h3>{isSidebar ? title : 'You might also like'}</h3>
+			<h3>{title}</h3>
 		</header>
 		{#if isSidebar}
 			<div class="cart-xsell__list" role="list">
@@ -408,12 +408,7 @@
 					{@const regular = cro?.regular_price ?? Number(product.prices.regular_price)}
 					{@const current = Number(product.prices.price)}
 					{@const onSale = regular > current}
-					{@const s = getState(product)}
-					{@const steps = getSteps(product)}
-					{@const curStep = steps[s.stepIdx]}
-					{@const isQtyStep = curStep?.type === 'quantity'}
-					{@const ready = (!product.has_options || allSelected(product, s.attrs)) && isQtyStep}
-					<article class="cart-xsell__card cart-xsell__card--row" class:just-added={s.justAdded} role="listitem">
+					<article class="cart-xsell__card cart-xsell__card--row" role="listitem">
 						<a class="cart-xsell__thumb" href="/product/{product.slug}">
 							{#if product.images[0]}
 								<img
@@ -426,39 +421,12 @@
 						<div class="cart-xsell__row-body">
 							<a class="cart-xsell__title" href="/product/{product.slug}">{product.name}</a>
 							<p class="cart-xsell__price tabular-nums">
+								<span class="cart-xsell__price-now">{formatMoneyInt(current)}</span>
 								{#if onSale}
 									<span class="cart-xsell__price-was">{formatMoneyInt(regular)}</span>
 								{/if}
-								<span class="cart-xsell__price-now">{formatMoneyInt(current)}</span>
 							</p>
 						</div>
-						<button
-							type="button"
-							class="cart-xsell__add-btn cart-xsell__add-btn--row"
-							class:is-adding={addingId === product.id}
-							class:just-added={s.justAdded}
-							onclick={(e) => {
-								e.preventDefault();
-								e.stopPropagation();
-								if (mode === 'complex') {
-									miniAdd(e, product);
-									return;
-								}
-								if (product.has_options) {
-									openModal(product);
-								} else {
-									miniAdd(e, product);
-								}
-							}}
-							disabled={addingId === product.id || (mode === 'complex' && !ready)}
-							aria-label="Add {product.name} to cart"
-						>
-							{#if s.justAdded}
-								<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-							{:else}
-								<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-							{/if}
-						</button>
 					</article>
 				{/each}
 			</div>
@@ -470,14 +438,9 @@
 				{@const regular = cro?.regular_price ?? Number(product.prices.regular_price)}
 				{@const current = Number(product.prices.price)}
 				{@const onSale = regular > current}
-				{@const s = getState(product)}
-				{@const steps = getSteps(product)}
-				{@const curStep = steps[s.stepIdx]}
-				{@const isQtyStep = curStep?.type === 'quantity'}
-				{@const ready = (!product.has_options || allSelected(product, s.attrs)) && isQtyStep}
-				<article class="cart-xsell__card" class:just-added={s.justAdded} role="listitem">
-					<div class="cart-xsell__media">
-						<a href="/product/{product.slug}">
+				<article class="cart-xsell__card" role="listitem">
+					<a class="cart-xsell__link" href="/product/{product.slug}">
+						<div class="cart-xsell__media">
 							{#if product.images[0]}
 								<img
 									src={product.images[0].thumbnail || product.images[0].src}
@@ -485,102 +448,16 @@
 									loading="lazy"
 								/>
 							{/if}
-						</a>
-						{#if mode === 'complex'}
-							<!-- svelte-ignore a11y_no_static_element_interactions -->
-							<div class="cart-xsell__controls" onpointerdown={(e) => e.stopPropagation()}>
-								{#if s.stepIdx > 0}
-									<button type="button" class="cart-xsell__ctrl-btn" onclick={(e) => miniBack(e, product)} aria-label="Back">
-										<svg viewBox="0 0 10 10" width="10" height="10" fill="none"><path d="M6.5 1.5L3 5l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-									</button>
+						</div>
+						<div class="cart-xsell__body">
+							<p class="cart-xsell__title">{product.name}</p>
+							<p class="cart-xsell__price tabular-nums">
+								<span class="cart-xsell__price-now">{formatMoneyInt(current)}</span>
+								{#if onSale}
+									<span class="cart-xsell__price-was">{formatMoneyInt(regular)}</span>
 								{/if}
-
-								{#if isQtyStep}
-									<button type="button" class="cart-xsell__ctrl-btn" onclick={(e) => miniQtyDec(e, product)} disabled={s.qty <= 1} aria-label="Decrease quantity">
-										<svg viewBox="0 0 10 10" width="10" height="10" fill="none"><path d="M2 5h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-									</button>
-									<span class="cart-xsell__ctrl-qty">{s.qty}</span>
-									<button type="button" class="cart-xsell__ctrl-btn" onclick={(e) => miniQtyInc(e, product)} aria-label="Increase quantity">
-										<svg viewBox="0 0 10 10" width="10" height="10" fill="none"><path d="M5 2v6M2 5h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-									</button>
-								{:else if curStep?.type === 'attribute'}
-									<select
-										class="cart-xsell__ctrl-select"
-										value={s.attrs[curStep.key] ?? ''}
-										onchange={(e) => { const v = (e.currentTarget as HTMLSelectElement).value; if (v) miniSelect(product, v); }}
-									>
-										<option value="" disabled>{curStep.key}</option>
-										{#each getStepOptions(product, s.stepIdx, s.attrs) as opt}
-											<option value={opt}>{opt}</option>
-										{/each}
-									</select>
-									{#if s.attrs[curStep.key]}
-										<button type="button" class="cart-xsell__ctrl-btn" onclick={(e) => { e.preventDefault(); e.stopPropagation(); miniStates.set(product.id, { ...s, stepIdx: s.stepIdx + 1 }); miniStates = new Map(miniStates); }} aria-label="Next">
-											<svg viewBox="0 0 10 10" width="10" height="10" fill="none"><path d="M3.5 1.5L7 5l-3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-										</button>
-									{/if}
-								{/if}
-							</div>
-							<!-- svelte-ignore a11y_no_static_element_interactions -->
-							<button
-								type="button"
-								class="cart-xsell__add-btn"
-								class:is-adding={addingId === product.id}
-								class:just-added={s.justAdded}
-								onclick={(e) => miniAdd(e, product)}
-								onpointerdown={(e) => e.stopPropagation()}
-								disabled={addingId === product.id || !ready}
-							>
-								{#if s.justAdded}
-									<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-								{:else}
-									<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-								{/if}
-							</button>
-						{:else}
-							<!-- Simple mode: just the + button -->
-							<!-- svelte-ignore a11y_no_static_element_interactions -->
-							<button
-								type="button"
-								class="cart-xsell__add-btn"
-								class:is-adding={addingId === product.id}
-								class:just-added={s.justAdded}
-								onclick={(e) => {
-									e.preventDefault();
-									e.stopPropagation();
-									if (product.has_options) {
-										openModal(product);
-									} else {
-										miniAdd(e, product);
-									}
-								}}
-								onpointerdown={(e) => e.stopPropagation()}
-								disabled={addingId === product.id}
-							>
-								{#if s.justAdded}
-									<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-								{:else}
-									<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-								{/if}
-							</button>
-						{/if}
-					</div>
-					<a class="cart-xsell__link" href="/product/{product.slug}">
-					<div class="cart-xsell__body">
-						<p class="cart-xsell__title">{product.name}</p>
-						<p class="cart-xsell__price tabular-nums">
-							{#if onSale}
-								<span class="cart-xsell__price-was">{formatMoneyInt(regular)}</span>
-							{/if}
-							<span class="cart-xsell__price-now">{formatMoneyInt(current)}</span>
-						</p>
-						{#if cro && cro.tiers.length > 0 && cro.tiers[cro.tiers.length - 1].savings_pct > 0}
-							{@const maxPct = cro.tiers[cro.tiers.length - 1].savings_pct}
-							<p class="cart-xsell__tier-hint">
-								Bulk save up to {Number.isInteger(maxPct) ? `${maxPct}%` : `${maxPct.toFixed(1)}%`}
 							</p>
-						{/if}
-					</div>
+						</div>
 					</a>
 				</article>
 			{/each}
@@ -664,23 +541,24 @@
 		background: transparent;
 	}
 	.cart-xsell--sidebar .cart-xsell__head {
-		padding: 22px 20px 14px;
+		padding: 18px 14px 12px;
 		text-align: center;
 		flex-shrink: 0;
 	}
 	.cart-xsell--sidebar .cart-xsell__head h3 {
 		margin: 0;
-		font-size: 14px;
+		font-size: 13px;
 		font-weight: 600;
 		text-transform: none;
 		letter-spacing: -0.2px;
 		color: var(--fg);
+		line-height: 1.25;
 	}
 	.cart-xsell__list {
 		flex: 1 1 auto;
 		min-height: 0;
 		overflow-y: auto;
-		padding: 0 16px 20px;
+		padding: 0 12px 16px;
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
@@ -689,14 +567,14 @@
 		flex: 0 0 auto;
 		flex-direction: row;
 		align-items: center;
-		gap: 10px;
-		padding: 10px;
+		gap: 8px;
+		padding: 8px;
 		width: 100%;
 	}
 	.cart-xsell__thumb {
-		flex: 0 0 72px;
-		width: 72px;
-		height: 72px;
+		flex: 0 0 64px;
+		width: 64px;
+		height: 64px;
 		display: block;
 		background: color-mix(in srgb, var(--accent) 6%, var(--bg-muted));
 		border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
@@ -717,8 +595,9 @@
 	}
 	.cart-xsell--sidebar .cart-xsell__title {
 		min-height: 0;
-		font-size: 12px;
+		font-size: 11px;
 		line-height: 1.25;
+		line-clamp: 2;
 		-webkit-line-clamp: 2;
 		color: var(--accent);
 		text-decoration: none;
@@ -734,13 +613,13 @@
 	.cart-xsell__head {
 		padding: 0 24px;
 	}
-	.cart-xsell__head h3 {
+	.cart-xsell:not(.cart-xsell--sidebar) .cart-xsell__head h3 {
 		margin: 0 0 12px;
-		font-size: 11px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.08em;
-		color: var(--fg-muted);
+		font-size: 13px;
+		font-weight: 600;
+		text-transform: none;
+		letter-spacing: -0.2px;
+		color: var(--fg);
 	}
 	.cart-xsell__viewport {
 		overflow: hidden;
@@ -807,15 +686,9 @@
 		flex: 1 1 auto;
 	}
 	.cart-xsell__media {
-		position: relative;
 		aspect-ratio: 1 / 1;
-		background: var(--bg-muted);
+		background: color-mix(in srgb, var(--accent) 6%, var(--bg-muted));
 		overflow: hidden;
-	}
-	.cart-xsell__media a {
-		display: block;
-		width: 100%;
-		height: 100%;
 	}
 	.cart-xsell__media img {
 		width: 100%;
@@ -845,26 +718,23 @@
 	}
 	.cart-xsell__price {
 		margin: 0;
-		font-size: 12px;
-		font-weight: 500;
-		color: var(--fg);
 		display: flex;
-		gap: 6px;
-		align-items: baseline;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 2px;
+	}
+	.cart-xsell__price-now {
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--fg);
+		line-height: 1.2;
 	}
 	.cart-xsell__price-was {
 		color: var(--fg-muted);
 		font-weight: 450;
 		font-size: 11px;
+		line-height: 1.2;
 		text-decoration: line-through;
-	}
-	.cart-xsell__tier-hint {
-		margin: 0;
-		font-size: 10px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--success, #5ba238);
 	}
 	/* Mini step controls — overlaid at top of image */
 	.cart-xsell__controls {
