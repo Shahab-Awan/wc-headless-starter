@@ -560,6 +560,22 @@ export function cartCrossSellExcludeProductIds(): number[] {
 	return [...new Set([...fromConfig])];
 }
 
+/** Shipping protection only — hidden from shop/catalog API lists, not BAC water. */
+export function isCatalogHiddenSlug(slug: string): boolean {
+	const s = slug.trim().toLowerCase();
+	if (!s) return false;
+	if (s === SHIPPING_PROTECTION_SLUG || s.startsWith(`${SHIPPING_PROTECTION_SLUG}-`)) return true;
+	if (/shipping[-_]?protection|protected[-_]?shipping/.test(s)) return true;
+	return false;
+}
+
+export function isCatalogHiddenProduct(id: number, slug = ''): boolean {
+	const protectId = config.data.pdp?.slide_cart?.shipping_protection_product_id;
+	if (protectId && id === protectId) return true;
+	if (slug) return isCatalogHiddenSlug(slug);
+	return false;
+}
+
 export function isCartCrossSellBlockedSlug(slug: string): boolean {
 	const s = slug.trim().toLowerCase();
 	if (!s) return false;

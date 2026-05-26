@@ -20,6 +20,7 @@
 	import { onMount } from 'svelte';
 	import ProductSlider from './ProductSlider.svelte';
 	import { getProductsByIds } from '$lib/wc/products';
+	import { isCartCrossSellBlockedProduct } from '$lib/config.svelte';
 	import type { StoreProduct } from '$lib/wc/products';
 
 	let { title = 'Recently viewed', edge_to_edge = false }: {
@@ -65,7 +66,9 @@
 			const fetched = await getProductsByIds(ids);
 			// Restore the LRU order that ids was in (the API may return any order)
 			const byId = new Map(fetched.map(p => [p.id, p]));
-			products = ids.map(id => byId.get(id)).filter((p): p is StoreProduct => !!p);
+			products = ids
+				.map((id) => byId.get(id))
+				.filter((p): p is StoreProduct => !!p && !isCartCrossSellBlockedProduct(p.id, p.slug));
 		} catch {
 			products = [];
 		} finally {

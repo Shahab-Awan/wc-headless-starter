@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import ProductSlider from './ProductSlider.svelte';
 	import { listProducts, getProductsByIds, type StoreProduct } from '$lib/wc/products';
-	import { config as siteConfig } from '$lib/config.svelte';
+	import { config as siteConfig, isCartCrossSellBlockedProduct } from '$lib/config.svelte';
 	import { auth } from '$lib/wc/auth.svelte';
 	import type { ProductSliderModuleConfig, SpacingPreset } from '$lib/config.svelte';
 
@@ -40,6 +40,9 @@
 				default:
 					products = await listProducts({ per_page: 12 });
 			}
+			products = products.filter(
+				(p) => !isCartCrossSellBlockedProduct(p.id, p.slug)
+			);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		} finally {

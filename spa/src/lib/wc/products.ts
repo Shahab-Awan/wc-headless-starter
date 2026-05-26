@@ -1,10 +1,10 @@
 import { request } from './store-api';
-import { config, isCartCrossSellBlockedProduct, SHIPPING_PROTECTION_SLUG } from '$lib/config.svelte';
+import { config, isCatalogHiddenProduct, SHIPPING_PROTECTION_SLUG } from '$lib/config.svelte';
 import { canPurchase } from './stock';
 
-/** Drop ancillary products (shipping protection, BAC water) from storefront listings. */
+/** Drop shipping protection from shop/catalog product list responses. */
 export function filterCatalogProducts(products: StoreProduct[]): StoreProduct[] {
-	return products.filter((p) => !isCartCrossSellBlockedProduct(p.id, p.slug));
+	return products.filter((p) => !isCatalogHiddenProduct(p.id, p.slug));
 }
 
 export type StoreProductAttributeTerm = { id: number; name: string; slug: string; default?: boolean };
@@ -142,7 +142,7 @@ export async function listCategories(opts?: { parent?: number }): Promise<StoreC
 export async function getProduct(slug: string): Promise<StoreProduct | null> {
 	const results = await request<StoreProduct[]>('/products', { query: { slug } });
 	const product = results[0] ?? null;
-	if (product && isCartCrossSellBlockedProduct(product.id, product.slug)) return null;
+	if (product && isCatalogHiddenProduct(product.id, product.slug)) return null;
 	return product;
 }
 

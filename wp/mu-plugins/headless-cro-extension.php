@@ -708,7 +708,7 @@ function wchs_cro_cart_item_schema() {
 }
 
 /**
- * Default product slugs hidden from shop/catalog and never recommended.
+ * Default product slugs never recommended in cart/PDP cross-sells.
  *
  * @return string[]
  */
@@ -809,12 +809,14 @@ function wchs_shipping_protection_cart_subtotal_major( $cart = null ): float {
 }
 
 /**
- * Product IDs excluded from shop grids, sliders, and recommendations.
+ * Product IDs excluded from Store API catalog listings (shipping protection only).
+ * BAC water stays purchasable on /shop; cross-sell exclusions are separate.
  *
  * @return int[]
  */
 function wchs_cro_catalog_excluded_product_ids(): array {
-	return wchs_cro_cart_cross_sell_excluded_product_ids();
+	$protect_id = wchs_shipping_protection_product_id();
+	return $protect_id > 0 ? [ $protect_id ] : [];
 }
 
 /**
@@ -1334,7 +1336,7 @@ add_action(
 );
 
 /**
- * Keep ancillary products (shipping protection, BAC water) out of Store API catalog queries.
+ * Keep shipping protection out of Store API catalog queries (BAC water is shop-visible).
  */
 add_filter(
 	'woocommerce_product_data_store_cpt_get_products_query',
