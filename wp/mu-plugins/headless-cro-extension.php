@@ -467,9 +467,7 @@ function wchs_cro_product_data( $product ) {
 		'regular_price'  => (int) round( $regular_major * $minor ),
 		'tier_type'      => wchs_cro_get_tier_rules( $product )['type'],
 		'tiers'          => wchs_cro_build_tier_rows( $product ),
-		'cross_sell_ids' => wchs_cro_filter_cart_cross_sell_ids(
-			array_values( array_map( 'intval', (array) $product->get_cross_sell_ids() ) )
-		),
+		'cross_sell_ids' => wchs_cro_pdp_cross_sell_ids( $product_id ),
 		'coa_url'        => $coa_url ? esc_url_raw( $coa_url ) : '',
 		'coa_batch'      => wchs_cro_coa_meta( $product_id, '_wchs_coa_batch', $parent_id ),
 		'coa_lab'        => wchs_cro_coa_meta( $product_id, '_wchs_coa_lab', $parent_id ),
@@ -749,6 +747,18 @@ function wchs_shipping_protection_product_id(): int {
 }
 
 /**
+ * BAC water ancillary product (slide-cart + PDP cross-sell rail anchor).
+ */
+function wchs_bac_water_product_id(): int {
+	static $id = null;
+	if ( is_int( $id ) ) {
+		return $id;
+	}
+	$id = wchs_cro_product_id_from_slug( 'bac-water-10ml' );
+	return $id;
+}
+
+/**
  * Tiered shipping protection fees by cart subtotal (major units, excludes protection line).
  *
  * @return array<int, array{up_to: float|null, fee: float}>
@@ -1005,17 +1015,20 @@ function wchs_cro_query_cart_cross_sell_candidates( array $args ): array {
 	}
 	$exclude = array_values( array_unique( array_filter( array_map( 'intval', (array) ( $args['exclude'] ?? [] ) ) ) ) );
 	$limit     = max( 1, (int) ( $args['limit'] ?? wchs_cro_cart_cross_sell_target_count() ) );
+	$orderby   = isset( $args['orderby'] ) && 'rand' === $args['orderby'] ? 'rand' : 'meta_value_num';
 	$query     = [
 		'status'       => 'publish',
 		'limit'        => $limit + count( $exclude ) + 4,
-		'orderby'      => 'meta_value_num',
-		'meta_key'     => 'total_sales',
-		'order'        => 'DESC',
+		'orderby'      => $orderby,
 		'exclude'      => $exclude,
 		'stock_status' => 'instock',
 		'type'         => [ 'simple', 'variable' ],
 		'return'       => 'ids',
 	];
+	if ( 'meta_value_num' === $orderby ) {
+		$query['meta_key'] = 'total_sales';
+		$query['order']    = 'DESC';
+	}
 	$categories = array_values( array_filter( array_map( 'intval', (array) ( $args['category'] ?? [] ) ) ) );
 	if ( ! empty( $categories ) ) {
 		$query['category'] = $categories;
@@ -1046,56 +1059,96 @@ function wchs_cro_query_cart_cross_sell_candidates( array $args ): array {
 }
 
 /**
- * Filter exclusions, then backfill with in-stock best sellers until target count.
+ * BAC water first, then random in-stock products (slide cart or PDP rails).
  *
- * @param int[] $ids
+ * @param int   $random_count Slots after BAC water.
+ * @param int[] $exclude      Product IDs to omit.
+ * @return int[]
+ */
+function wchs_cro_build_bac_first_cross_sell_ids( int $random_count, array $exclude = [] ): array {
+	$random_count = max( 0, $random_count );
+	$exclude      = array_values( array_unique( array_filter( array_map( 'intval', $exclude ) ) ) );
+	$bac_id       = wchs_bac_water_product_id();
+	$out          = [];
+
+	if ( $bac_id > 0 && ! in_array( $bac_id, $exclude, true ) ) {
+		$bac = wc_get_product( $bac_id );
+		if ( $bac && $bac->is_purchasable() && $bac->is_in_stock() ) {
+			$out[] = $bac_id;
+		}
+	}
+
+	$exclude = array_values( array_unique( array_merge( $exclude, $out ) ) );
+	if ( $random_count < 1 ) {
+		return $out;
+	}
+
+	$random = wchs_cro_query_cart_cross_sell_candidates(
+		[
+			'exclude' => $exclude,
+			'limit'   => $random_count,
+			'orderby' => 'rand',
+		]
+	);
+
+	return array_values( array_merge( $out, $random ) );
+}
+
+/**
+ * PDP “Often ordered with” rail: BAC water + 2 random products.
+ *
+ * @param int $product_id Viewed product (simple, variable parent, or variation).
+ * @return int[]
+ */
+function wchs_cro_pdp_cross_sell_ids( int $product_id ): array {
+	$exclude = [ $product_id ];
+	$product = wc_get_product( $product_id );
+	if ( $product && $product->is_type( 'variation' ) ) {
+		$parent_id = (int) $product->get_parent_id();
+		if ( $parent_id > 0 ) {
+			$exclude[] = $parent_id;
+		}
+	}
+	return wchs_cro_build_bac_first_cross_sell_ids( 2, $exclude );
+}
+
+/**
+ * Product IDs in cart (and shipping protection) — omit from cross-sell rails.
+ *
+ * @return int[]
+ */
+function wchs_cro_cart_cross_sell_context_exclude_ids(): array {
+	$exclude = [];
+	$protect = wchs_shipping_protection_product_id();
+	if ( $protect > 0 ) {
+		$exclude[] = $protect;
+	}
+	if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+		return array_values( array_unique( array_map( 'intval', $exclude ) ) );
+	}
+	foreach ( WC()->cart->get_cart() as $cart_item ) {
+		if ( ! empty( $cart_item['product_id'] ) ) {
+			$exclude[] = (int) $cart_item['product_id'];
+		}
+		if ( ! empty( $cart_item['variation_id'] ) ) {
+			$exclude[] = (int) $cart_item['variation_id'];
+		}
+	}
+	return array_values( array_unique( array_filter( array_map( 'intval', $exclude ) ) ) );
+}
+
+/**
+ * Slide-cart cross-sell rail: BAC water + 3 random products.
+ *
+ * @param int[] $ids Unused; kept for call-site compatibility.
  * @return int[]
  */
 function wchs_cro_pad_cart_cross_sell_ids( array $ids ): array {
+	unset( $ids );
 	if ( ! function_exists( 'WC' ) || ! WC()->cart || WC()->cart->is_empty() ) {
 		return [];
 	}
-	$target = wchs_cro_cart_cross_sell_target_count();
-	$ids    = wchs_cro_filter_cart_cross_sell_ids( $ids );
-	if ( count( $ids ) >= $target ) {
-		return array_slice( $ids, 0, $target );
-	}
-	$reserved = array_values( array_unique( array_merge( wchs_cro_cart_cross_sell_reserved_ids(), $ids ) ) );
-	$fill     = [];
-	$cat_ids  = wchs_cro_cart_product_category_ids();
-	if ( ! empty( $cat_ids ) ) {
-		$fill = wchs_cro_query_cart_cross_sell_candidates(
-			[
-				'category' => $cat_ids,
-				'exclude'  => $reserved,
-				'limit'    => $target - count( $ids ),
-			]
-		);
-	}
-	$reserved = array_values( array_unique( array_merge( $reserved, $fill ) ) );
-	if ( count( $ids ) + count( $fill ) < $target ) {
-		$more = wchs_cro_query_cart_cross_sell_candidates(
-			[
-				'exclude' => $reserved,
-				'limit'   => $target - count( $ids ) - count( $fill ),
-			]
-		);
-		$fill = array_merge( $fill, $more );
-	}
-	$merged = array_values( array_unique( array_merge( $ids, $fill ) ) );
-	if ( count( $merged ) > 1 ) {
-		$seed = (int) sprintf( '%u', crc32( implode( ',', $reserved ) ) );
-		usort(
-			$merged,
-			static function ( int $a, int $b ) use ( $seed ): int {
-				$ha = (int) sprintf( '%u', crc32( $seed . '|' . $a ) );
-				$hb = (int) sprintf( '%u', crc32( $seed . '|' . $b ) );
-				return $ha <=> $hb;
-			}
-		);
-	}
-
-	return array_slice( $merged, 0, $target );
+	return wchs_cro_build_bac_first_cross_sell_ids( 3, wchs_cro_cart_cross_sell_context_exclude_ids() );
 }
 
 function wchs_cro_cart_data() {
@@ -1147,9 +1200,7 @@ function wchs_cro_cart_data() {
 
 	return [
 		'total_savings'       => $total_savings,
-		'cross_sell_ids'      => wchs_cro_pad_cart_cross_sell_ids(
-			array_values( array_map( 'intval', array_keys( $cross_sell_ids ) ) )
-		),
+		'cross_sell_ids'      => wchs_cro_pad_cart_cross_sell_ids( [] ),
 		'shipping_protection' => [
 			'subtotal_basis_minor' => (int) round( $basis_major * $minor ),
 			'fee_minor'            => (int) round( $fee_major * $minor ),

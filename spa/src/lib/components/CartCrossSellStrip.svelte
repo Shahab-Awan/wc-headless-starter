@@ -24,7 +24,7 @@
 	import {
 		CART_CROSS_SELL_TARGET_COUNT,
 		config,
-		isCartCrossSellBlockedProduct,
+		isCatalogHiddenProduct,
 	} from '$lib/config.svelte';
 	import { formatPrice } from '$lib/utils/format';
 
@@ -44,7 +44,7 @@
 
 	const mode = $derived(config.data.pdp?.cross_sell_mode ?? 'simple');
 	const recommendIds = $derived(
-		ids.filter((id) => !isCartCrossSellBlockedProduct(id)).slice(0, CART_CROSS_SELL_TARGET_COUNT)
+		ids.filter((id) => !isCatalogHiddenProduct(id)).slice(0, CART_CROSS_SELL_TARGET_COUNT)
 	);
 
 	// Modal state for simple mode variable products
@@ -366,7 +366,7 @@
 			.then((list) => {
 				const order = new Map(recommendIds.map((id, i) => [id, i]));
 				products = list
-					.filter((p) => !isCartCrossSellBlockedProduct(p.id, p.slug))
+					.filter((p) => !isCatalogHiddenProduct(p.id, p.slug))
 					.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 			})
 			.finally(() => {
