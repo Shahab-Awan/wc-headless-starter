@@ -574,11 +574,13 @@
 	.fkcart-modal.has-upsell {
 		flex-direction: row;
 		width: min(720px, 100vw);
+		max-width: 100vw;
 	}
 	.fkcart-upsell--desktop {
-		flex: 0 0 300px;
-		width: 300px;
+		flex: 0 0 clamp(240px, 32vw, 300px);
+		width: clamp(240px, 32vw, 300px);
 		min-width: 0;
+		max-width: 42%;
 		display: flex;
 		flex-direction: column;
 		border-right: 1px solid var(--border);
@@ -661,11 +663,26 @@
 	.fkcart-main {
 		flex: 1 1 420px;
 		min-width: 0;
-		max-width: 420px;
+		max-width: min(420px, 58vw);
+		width: min(420px, 58vw);
 		height: 100%;
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
+	}
+	@media (max-width: 900px) and (min-width: 721px) {
+		.fkcart-modal.has-upsell {
+			width: 100vw;
+		}
+		.fkcart-upsell--desktop {
+			flex: 0 0 min(36vw, 260px);
+			width: min(36vw, 260px);
+		}
+		.fkcart-main {
+			flex: 1 1 auto;
+			width: auto;
+			max-width: none;
+		}
 	}
 	@media (max-width: 720px) {
 		.fkcart-modal.has-upsell {

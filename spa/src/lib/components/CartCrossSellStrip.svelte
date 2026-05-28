@@ -8,7 +8,7 @@
 	 * are stripped server-side and again here as a safety net.
 	 */
 	import { goto } from '$app/navigation';
-	import { onMount, untrack } from 'svelte';
+	import { onMount } from 'svelte';
 	import EmblaCarousel, { type EmblaCarouselType } from 'embla-carousel';
 	import { cart } from '$lib/wc/cart.svelte';
 	import {
@@ -101,7 +101,8 @@
 
 	let products = $state<StoreProduct[]>([]);
 	let loading = $state(false);
-	let loadedForIds = $state<string>('');
+	let loadedForIds = $state('');
+	let fetchGeneration = 0;
 	let addingId = $state<number | null>(null);
 	let miniStates = $state<Map<number, MiniState>>(new Map());
 
@@ -349,28 +350,28 @@
 		return () => embla?.destroy();
 	});
 
-	// Re-fetch whenever the id list changes. Cache by stringified-sorted key
-	// so toggling "cart item removed" doesn't re-fetch the same set.
+	// Re-fetch only when the server id list changes (order preserved — BAC first).
 	$effect(() => {
-		const key = [...recommendIds].sort((a, b) => a - b).join(',');
+		const key = recommendIds.join(',');
 		if (key === loadedForIds) return;
-		untrack(() => {
-			loadedForIds = key;
-		});
 		if (recommendIds.length === 0) {
 			products = [];
+			loadedForIds = key;
 			return;
 		}
+		const gen = ++fetchGeneration;
 		loading = true;
 		getProductsByIds(recommendIds.slice(0, CART_CROSS_SELL_TARGET_COUNT))
 			.then((list) => {
+				if (gen !== fetchGeneration) return;
 				const order = new Map(recommendIds.map((id, i) => [id, i]));
 				products = list
 					.filter((p) => !isCatalogHiddenProduct(p.id, p.slug))
 					.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+				loadedForIds = key;
 			})
 			.finally(() => {
-				loading = false;
+				if (gen === fetchGeneration) loading = false;
 			});
 	});
 
@@ -420,6 +421,7 @@
 	<section
 		class="cart-xsell"
 		class:cart-xsell--sidebar={isSidebar}
+		class:is-loading={loading}
 		aria-label={title}
 	>
 		{#if !hideHeading}
@@ -593,16 +595,21 @@
 	.cart-xsell--sidebar .cart-xsell__list {
 		flex: 1 1 auto;
 		min-height: 0;
+		overflow-x: hidden;
 		overflow-y: auto;
 		padding: 0 10px 14px;
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
+		-webkit-overflow-scrolling: touch;
 	}
 	.cart-xsell--sidebar .cart-xsell__card {
-		flex: 1 1 0;
-		min-height: 0;
+		flex: 0 0 auto;
 		width: 100%;
+		max-width: 100%;
+	}
+	.cart-xsell.is-loading {
+		opacity: 0.92;
 	}
 	.cart-xsell--sidebar .cart-xsell__card--stack {
 		padding: 0;
@@ -614,7 +621,6 @@
 		align-items: center;
 		justify-content: flex-start;
 		width: 100%;
-		height: 100%;
 		min-height: 132px;
 		padding: 14px 12px;
 		box-sizing: border-box;

@@ -1065,13 +1065,73 @@ function wchs_cro_query_cart_cross_sell_candidates( array $args ): array {
 }
 
 /**
- * BAC water first, then random in-stock products (slide cart or PDP rails).
+ * Cart composition fingerprint — new picks only when lines/qty change.
+ */
+function wchs_cro_cart_cross_sell_fingerprint(): string {
+	if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+		return '';
+	}
+	$protect = wchs_shipping_protection_product_id();
+	$parts   = [];
+	foreach ( WC()->cart->get_cart() as $item ) {
+		$pid = (int) ( $item['product_id'] ?? 0 );
+		if ( $protect > 0 && $pid === $protect ) {
+			continue;
+		}
+		$parts[] = $pid . 'x' . (int) ( $item['quantity'] ?? 1 );
+	}
+	sort( $parts );
+	return implode( ',', $parts );
+}
+
+/**
+ * @param int[] $ids
+ * @param int[] $exclude
+ */
+function wchs_cro_sanitize_bac_first_cross_sell_ids( array $ids, array $exclude, int $max ): array {
+	$max     = max( 1, $max );
+	$exclude = array_values( array_unique( array_filter( array_map( 'intval', $exclude ) ) ) );
+	$bac_id  = wchs_bac_water_product_id();
+	$clean   = [];
+
+	foreach ( $ids as $id ) {
+		$id = (int) $id;
+		if ( $id < 1 || in_array( $id, $exclude, true ) ) {
+			continue;
+		}
+		if ( $id !== $bac_id && wchs_cro_is_cart_cross_sell_blocked_product_id( $id ) ) {
+			continue;
+		}
+		if ( in_array( $id, $clean, true ) ) {
+			continue;
+		}
+		$product = wc_get_product( $id );
+		if ( ! $product || ! $product->is_purchasable() || ! $product->is_in_stock() ) {
+			continue;
+		}
+		$clean[] = $id;
+	}
+
+	if ( $bac_id > 0 && ! in_array( $bac_id, $exclude, true ) ) {
+		$clean = array_values( array_filter( $clean, static fn( int $id ): bool => $id !== $bac_id ) );
+		$bac   = wc_get_product( $bac_id );
+		if ( $bac && $bac->is_purchasable() && $bac->is_in_stock() ) {
+			array_unshift( $clean, $bac_id );
+		}
+	}
+
+	return array_slice( $clean, 0, $max );
+}
+
+/**
+ * BAC water first, then a seeded shuffle of in-stock candidates (stable per seed).
  *
- * @param int   $random_count Slots after BAC water.
- * @param int[] $exclude      Product IDs to omit.
+ * @param int    $random_count Slots after BAC water.
+ * @param int[]  $exclude      Product IDs to omit.
+ * @param string $seed         Cache key for deterministic order.
  * @return int[]
  */
-function wchs_cro_build_bac_first_cross_sell_ids( int $random_count, array $exclude = [] ): array {
+function wchs_cro_build_bac_first_cross_sell_ids( int $random_count, array $exclude = [], string $seed = '' ): array {
 	$random_count = max( 0, $random_count );
 	$exclude      = array_values( array_unique( array_filter( array_map( 'intval', $exclude ) ) ) );
 	$bac_id       = wchs_bac_water_product_id();
@@ -1089,15 +1149,68 @@ function wchs_cro_build_bac_first_cross_sell_ids( int $random_count, array $excl
 		return $out;
 	}
 
-	$random = wchs_cro_query_cart_cross_sell_candidates(
+	$pool = wchs_cro_query_cart_cross_sell_candidates(
 		[
 			'exclude' => $exclude,
-			'limit'   => $random_count,
-			'orderby' => 'rand',
+			'limit'   => max( 12, $random_count * 5 ),
 		]
 	);
+	if ( count( $pool ) > 1 && '' !== $seed ) {
+		usort(
+			$pool,
+			static function ( int $a, int $b ) use ( $seed ): int {
+				$ha = (int) sprintf( '%u', crc32( $seed . '|' . $a ) );
+				$hb = (int) sprintf( '%u', crc32( $seed . '|' . $b ) );
+				return $ha <=> $hb;
+			}
+		);
+	}
+	$random = array_slice( $pool, 0, $random_count );
 
-	return array_values( array_merge( $out, $random ) );
+	return array_values( array_unique( array_merge( $out, $random ) ) );
+}
+
+/**
+ * Stable cross-sell list for a scope (cart fingerprint or PDP product id).
+ *
+ * @param int    $random_count Slots after BAC water.
+ * @param int[]  $exclude      Product IDs to omit.
+ * @param string $scope        Session cache scope.
+ * @return int[]
+ */
+function wchs_cro_stable_bac_first_cross_sell_ids( int $random_count, array $exclude, string $scope ): array {
+	$max = 1 + max( 0, $random_count );
+	if ( '' === $scope ) {
+		return wchs_cro_sanitize_bac_first_cross_sell_ids(
+			wchs_cro_build_bac_first_cross_sell_ids( $random_count, $exclude, 'ephemeral' ),
+			$exclude,
+			$max
+		);
+	}
+
+	$scope_key = 'wchs_xsell_' . md5( $scope );
+	$fp_key    = $scope_key . '_fp';
+
+	if ( function_exists( 'WC' ) && WC()->session ) {
+		$stored_fp  = WC()->session->get( $fp_key );
+		$stored_ids = WC()->session->get( $scope_key );
+		if ( is_string( $stored_fp ) && $stored_fp === $scope && is_array( $stored_ids ) && ! empty( $stored_ids ) ) {
+			$sanitized = wchs_cro_sanitize_bac_first_cross_sell_ids( $stored_ids, $exclude, $max );
+			if ( ! empty( $sanitized ) ) {
+				return $sanitized;
+			}
+		}
+	}
+
+	$ids = wchs_cro_build_bac_first_cross_sell_ids( $random_count, $exclude, $scope );
+	$ids = wchs_cro_sanitize_bac_first_cross_sell_ids( $ids, $exclude, $max );
+
+	if ( function_exists( 'WC' ) && WC()->session && ! empty( $ids ) ) {
+		WC()->session->set( $fp_key, $scope );
+		WC()->session->set( $scope_key, $ids );
+	}
+
+	return $ids;
 }
 
 /**
@@ -1115,7 +1228,7 @@ function wchs_cro_pdp_cross_sell_ids( int $product_id ): array {
 			$exclude[] = $parent_id;
 		}
 	}
-	return wchs_cro_build_bac_first_cross_sell_ids( 2, $exclude );
+	return wchs_cro_stable_bac_first_cross_sell_ids( 2, $exclude, 'pdp:' . $product_id );
 }
 
 /**
@@ -1154,7 +1267,11 @@ function wchs_cro_pad_cart_cross_sell_ids( array $ids ): array {
 	if ( ! function_exists( 'WC' ) || ! WC()->cart || WC()->cart->is_empty() ) {
 		return [];
 	}
-	return wchs_cro_build_bac_first_cross_sell_ids( 3, wchs_cro_cart_cross_sell_context_exclude_ids() );
+	$scope = wchs_cro_cart_cross_sell_fingerprint();
+	if ( '' === $scope ) {
+		return [];
+	}
+	return wchs_cro_stable_bac_first_cross_sell_ids( 3, wchs_cro_cart_cross_sell_context_exclude_ids(), 'cart:' . $scope );
 }
 
 function wchs_cro_cart_data() {
