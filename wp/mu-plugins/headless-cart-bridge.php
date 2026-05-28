@@ -252,6 +252,9 @@ function wchs_import_cart_into_classic_session( array $safe_data ): void {
 	}
 	if ( WC()->cart ) {
 		WC()->cart->get_cart_from_session();
+		if ( function_exists( 'wchs_cart_line_seed_unit_price_locks_from_session' ) ) {
+			wchs_cart_line_seed_unit_price_locks_from_session( WC()->cart );
+		}
 		WC()->cart->calculate_totals();
 	}
 }

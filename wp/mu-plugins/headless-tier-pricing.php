@@ -182,41 +182,69 @@ add_action( 'woocommerce_process_product_meta', function ( $product_id ) {
 
 // ─── Cart price adjustment ──────────────────────────────────────
 
-add_action( 'woocommerce_before_calculate_totals', function ( $cart ) {
-	if ( is_admin() && ! defined( 'DOING_AJAX' ) ) return;
-	if ( did_action( 'woocommerce_before_calculate_totals' ) >= 2 ) return;
+add_action(
+	'woocommerce_before_calculate_totals',
+	function ( $cart ) {
+		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
+			return;
+		}
+		if ( ! $cart instanceof \WC_Cart ) {
+			return;
+		}
 
-	foreach ( $cart->get_cart() as $item ) {
-		$product    = $item['data'];
-		$product_id = $item['product_id'];
-		$qty        = $item['quantity'];
+		foreach ( $cart->get_cart() as $cart_item_key => $item ) {
+			$product    = $item['data'];
+			$product_id = (int) $item['product_id'];
+			$qty        = (int) $item['quantity'];
 
-		$type = get_post_meta( $product_id, '_tiered_price_rules_type', true );
-		if ( ! in_array( $type, [ 'fixed', 'percentage' ], true ) ) continue;
+			if ( function_exists( 'wchs_cart_line_locked_unit_price_major' ) ) {
+				$locked = wchs_cart_line_locked_unit_price_major( $item, $qty );
+				if ( null !== $locked ) {
+					$product->set_price( wc_format_decimal( $locked ) );
+					continue;
+				}
+			}
 
-		$meta_key = 'fixed' === $type ? '_fixed_price_rules' : '_percentage_price_rules';
-		$rules    = (array) get_post_meta( $product_id, $meta_key, true );
-		if ( empty( $rules ) ) continue;
+			$type = get_post_meta( $product_id, '_tiered_price_rules_type', true );
+			if ( ! in_array( $type, [ 'fixed', 'percentage' ], true ) ) {
+				continue;
+			}
 
-		$_product = wc_get_product( $product_id );
-		if ( ! $_product ) continue;
-		$regular = (float) $_product->get_regular_price();
-		$best    = $regular;
+			$meta_key = 'fixed' === $type ? '_fixed_price_rules' : '_percentage_price_rules';
+			$rules    = (array) get_post_meta( $product_id, $meta_key, true );
+			if ( empty( $rules ) ) {
+				continue;
+			}
 
-		foreach ( $rules as $min_qty => $val ) {
-			if ( $qty < (int) $min_qty ) continue;
-			if ( 'fixed' === $type ) {
-				$best = (float) $val;
-			} else {
-				$best = $regular * ( 1 - ( (float) $val / 100 ) );
+			$_product = wc_get_product( $product_id );
+			if ( ! $_product ) {
+				continue;
+			}
+			$regular = (float) $_product->get_regular_price();
+			$best    = $regular;
+
+			foreach ( $rules as $min_qty => $val ) {
+				if ( $qty < (int) $min_qty ) {
+					continue;
+				}
+				if ( 'fixed' === $type ) {
+					$best = (float) $val;
+				} else {
+					$best = $regular * ( 1 - ( (float) $val / 100 ) );
+				}
+			}
+
+			if ( abs( $best - $regular ) > 0.001 ) {
+				$product->set_price( $best );
+				if ( function_exists( 'wchs_cart_line_store_unit_price_lock' ) ) {
+					wchs_cart_line_store_unit_price_lock( $cart, $cart_item_key, $best, $qty );
+				}
 			}
 		}
-
-		if ( abs( $best - $regular ) > 0.001 ) {
-			$product->set_price( $best );
-		}
-	}
-}, 10, 1 );
+	},
+	98,
+	1
+);
 
 // ─── Show tier discount in checkout order review ──────────────
 // Appends a strikethrough regular price and savings badge to the

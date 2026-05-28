@@ -620,9 +620,15 @@ function wchs_cro_cart_item_data( $cart_item ) {
 		&& (int) ( $cart_item['product_id'] ?? 0 ) === wchs_shipping_protection_product_id() ) {
 		$minor = pow( 10, (int) wc_get_price_decimals() );
 		$cart  = function_exists( 'WC' ) ? WC()->cart : null;
-		$fee_major = $cart instanceof \WC_Cart
-			? wchs_shipping_protection_fee_major( wchs_shipping_protection_cart_subtotal_major( $cart ) )
-			: (float) $product->get_price();
+		$basis_major = $cart instanceof \WC_Cart
+			? wchs_shipping_protection_cart_subtotal_major( $cart )
+			: 0.0;
+		$locked      = wchs_shipping_protection_locked_fee_major( $cart_item, $basis_major );
+		$fee_major   = null !== $locked
+			? $locked
+			: ( $cart instanceof \WC_Cart
+				? wchs_shipping_protection_fee_major( $basis_major )
+				: (float) $product->get_price() );
 		return [
 			'is_shipping_protection' => true,
 			'fee_minor'              => (int) round( $fee_major * $minor ),
@@ -1156,6 +1162,8 @@ function wchs_cro_cart_data() {
 		return [ 'total_savings' => 0, 'cross_sell_ids' => [] ];
 	}
 
+	wchs_prune_orphan_shipping_protection();
+
 	$total_savings = 0;
 	$cross_sell_ids = [];
 	$minor = pow( 10, (int) wc_get_price_decimals() );
@@ -1246,22 +1254,89 @@ function wchs_cro_cart_schema() {
 	];
 }
 
+/**
+ * Lock tier/BOGO unit price on a cart line (reused on every calculate_totals pass).
+ *
+ * @param \WC_Cart $cart           Cart instance.
+ * @param string    $cart_item_key Line key.
+ */
+function wchs_cart_line_store_unit_price_lock( $cart, string $cart_item_key, float $unit_major, int $qty ): void {
+	if ( ! isset( $cart->cart_contents[ $cart_item_key ] ) ) {
+		return;
+	}
+	$cart->cart_contents[ $cart_item_key ]['wchs_line_unit_major'] = $unit_major;
+	$cart->cart_contents[ $cart_item_key ]['wchs_line_qty']        = $qty;
+}
+
+/**
+ * @param array<string, mixed> $item Cart line.
+ */
+function wchs_cart_line_locked_unit_price_major( array $item, int $qty ): ?float {
+	if ( ! isset( $item['wchs_line_unit_major'], $item['wchs_line_qty'] ) ) {
+		return null;
+	}
+	if ( (int) $item['wchs_line_qty'] !== $qty ) {
+		return null;
+	}
+	$unit = (float) $item['wchs_line_unit_major'];
+	return $unit > 0 ? $unit : null;
+}
+
+/**
+ * Seed locks from session-imported Store API prices before checkout recalculates.
+ *
+ * @param \WC_Cart $cart Cart instance.
+ */
+function wchs_cart_line_seed_unit_price_locks_from_session( $cart ): void {
+	if ( ! $cart instanceof \WC_Cart ) {
+		return;
+	}
+	$protect_id = wchs_shipping_protection_product_id();
+	foreach ( $cart->get_cart() as $cart_item_key => $item ) {
+		if ( empty( $item['data'] ) || ! $item['data'] instanceof \WC_Product ) {
+			continue;
+		}
+		$pid = (int) ( $item['product_id'] ?? 0 );
+		if ( $protect_id > 0 && $pid === $protect_id ) {
+			continue;
+		}
+		$qty = (int) ( $item['quantity'] ?? 0 );
+		if ( $qty < 1 ) {
+			continue;
+		}
+		if ( null !== wchs_cart_line_locked_unit_price_major( $item, $qty ) ) {
+			continue;
+		}
+		$unit     = (float) $item['data']->get_price( 'edit' );
+		$regular  = (float) $item['data']->get_regular_price( 'edit' );
+		if ( $unit > 0 && ( $regular <= 0 || abs( $unit - $regular ) > 0.00001 ) ) {
+			wchs_cart_line_store_unit_price_lock( $cart, $cart_item_key, $unit, $qty );
+		}
+	}
+}
+
 add_action(
 	'woocommerce_before_calculate_totals',
 	function ( $cart ) {
 		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
 			return;
 		}
-		if ( did_action( 'woocommerce_before_calculate_totals' ) >= 2 ) {
+		if ( ! $cart instanceof \WC_Cart ) {
 			return;
 		}
 
-		foreach ( $cart->get_cart() as $item ) {
+		foreach ( $cart->get_cart() as $cart_item_key => $item ) {
 			if ( empty( $item['data'] ) || ! $item['data'] instanceof \WC_Product ) {
 				continue;
 			}
 			$product = $item['data'];
 			$qty     = (int) $item['quantity'];
+
+			$locked = wchs_cart_line_locked_unit_price_major( $item, $qty );
+			if ( null !== $locked ) {
+				$product->set_price( wc_format_decimal( $locked ) );
+				continue;
+			}
 
 			if ( ! empty( wchs_cro_get_native_tier_rules( $product )['rules'] ) ) {
 				continue;
@@ -1276,9 +1351,9 @@ add_action(
 				continue;
 			}
 
-			$decimals       = max( 0, (int) wc_get_price_decimals() );
-			$minor          = pow( 10, $decimals );
-			$line_minor     = wchs_cro_line_total_minor_for_qty( $product, $qty, $rules );
+			$decimals        = max( 0, (int) wc_get_price_decimals() );
+			$minor           = pow( 10, $decimals );
+			$line_minor      = wchs_cro_line_total_minor_for_qty( $product, $qty, $rules );
 			$effective_major = $qty > 0
 				? (float) wc_format_decimal( ( $line_minor / $minor ) / $qty )
 				: 0.0;
@@ -1290,18 +1365,49 @@ add_action(
 
 			if ( abs( $effective_major - $regular_major ) > 0.00001 ) {
 				$product->set_price( $effective_major );
+				wchs_cart_line_store_unit_price_lock( $cart, $cart_item_key, $effective_major, $qty );
 			}
 		}
 	},
-	15,
+	98,
 	1
 );
 
 /**
+ * Persist tier fee on the cart line so checkout reuses the SPA-calculated price.
+ *
+ * @param \WC_Cart $cart           Cart instance.
+ * @param string    $cart_item_key Line key.
+ * @param float     $fee_major     Locked fee (major units).
+ * @param float     $basis_major   Product subtotal used for the tier.
+ */
+function wchs_shipping_protection_store_line_lock( $cart, string $cart_item_key, float $fee_major, float $basis_major ): void {
+	if ( ! isset( $cart->cart_contents[ $cart_item_key ] ) ) {
+		return;
+	}
+	$cart->cart_contents[ $cart_item_key ]['wchs_ship_protect_fee_major']  = $fee_major;
+	$cart->cart_contents[ $cart_item_key ]['wchs_ship_protect_basis_major'] = $basis_major;
+}
+
+/**
+ * @param array<string, mixed> $item Cart line.
+ */
+function wchs_shipping_protection_locked_fee_major( array $item, float $basis_major ): ?float {
+	if ( ! isset( $item['wchs_ship_protect_fee_major'], $item['wchs_ship_protect_basis_major'] ) ) {
+		return null;
+	}
+	$fee   = (float) $item['wchs_ship_protect_fee_major'];
+	$basis = (float) $item['wchs_ship_protect_basis_major'];
+	if ( $fee <= 0 || abs( $basis - $basis_major ) > 0.009 ) {
+		return null;
+	}
+	return $fee;
+}
+
+/**
  * Apply tiered shipping-protection fee to the hidden ancillary line item.
- * Must run on every calculate_totals pass — WC often invokes it twice per
- * Store API request; the legacy did_action>=2 guard left the catalog price
- * (e.g. $2.99) on the line after auto-add in the slide cart.
+ * Fee is calculated in the cart and locked on the line; checkout reuses the
+ * lock unless the product subtotal changes (qty add/remove).
  *
  * @param \WC_Cart $cart Cart instance.
  */
@@ -1313,15 +1419,22 @@ function wchs_apply_shipping_protection_cart_prices( $cart ): void {
 	if ( $protect_id < 1 ) {
 		return;
 	}
-	$fee_major = wchs_shipping_protection_fee_major( wchs_shipping_protection_cart_subtotal_major( $cart ) );
-	foreach ( $cart->get_cart() as $item ) {
+	$basis_major = wchs_shipping_protection_cart_subtotal_major( $cart );
+	foreach ( $cart->get_cart() as $cart_item_key => $item ) {
 		if ( (int) ( $item['product_id'] ?? 0 ) !== $protect_id ) {
 			continue;
 		}
 		if ( empty( $item['data'] ) || ! $item['data'] instanceof \WC_Product ) {
 			continue;
 		}
+		$locked = wchs_shipping_protection_locked_fee_major( $item, $basis_major );
+		if ( null !== $locked ) {
+			$item['data']->set_price( wc_format_decimal( $locked ) );
+			break;
+		}
+		$fee_major = wchs_shipping_protection_fee_major( $basis_major );
 		$item['data']->set_price( wc_format_decimal( $fee_major ) );
+		wchs_shipping_protection_store_line_lock( $cart, $cart_item_key, $fee_major, $basis_major );
 		break;
 	}
 }
@@ -1339,10 +1452,11 @@ add_action(
 );
 
 /**
- * Drop shipping protection when no purchasable products remain in the cart.
+ * Drop shipping protection when it is the only cart line left.
  */
 function wchs_prune_orphan_shipping_protection(): void {
-	if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+	static $pruning = false;
+	if ( $pruning || ! function_exists( 'WC' ) || ! WC()->cart ) {
 		return;
 	}
 	$protect_id = wchs_shipping_protection_product_id();
@@ -1360,15 +1474,22 @@ function wchs_prune_orphan_shipping_protection(): void {
 		return;
 	}
 	foreach ( WC()->cart->get_cart() as $cart_item_key => $item ) {
-		if ( (int) ( $item['product_id'] ?? 0 ) === $protect_id ) {
-			WC()->cart->remove_cart_item( $cart_item_key );
-			break;
+		if ( (int) ( $item['product_id'] ?? 0 ) !== $protect_id ) {
+			continue;
 		}
+		$pruning = true;
+		try {
+			WC()->cart->remove_cart_item( $cart_item_key );
+		} finally {
+			$pruning = false;
+		}
+		break;
 	}
 }
 
 add_action( 'woocommerce_cart_item_removed', 'wchs_prune_orphan_shipping_protection', 20 );
 add_action( 'woocommerce_after_cart_item_quantity_update', 'wchs_prune_orphan_shipping_protection', 20 );
+add_action( 'woocommerce_checkout_update_order_review', 'wchs_prune_orphan_shipping_protection', 20 );
 
 add_action(
 	'woocommerce_add_to_cart',
