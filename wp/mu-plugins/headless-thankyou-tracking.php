@@ -3,7 +3,7 @@
  * Plugin Name: Headless Thank-You Tracking
  * Description: Native /checkout/order-received/ confirmation copy + purchase pixels
  *              (CustomerLabs Purchased, GTM purchase). Works with upsell URLs that use order_key.
- * Version:     0.3.1
+ * Version:     0.3.2
  * Author:      WCHS Contributors
  */
 
@@ -52,12 +52,42 @@ add_action(
 	4
 );
 
+function wchs_thankyou_has_order_query(): bool {
+	if ( empty( $_GET['order_id'] ) ) {
+		return false;
+	}
+	if ( ! empty( $_GET['key'] ) || ! empty( $_GET['order_key'] ) ) {
+		return true;
+	}
+	return ! empty( $_GET['wfty_source'] );
+}
+
+/**
+ * FunnelKit thank-you permalink (e.g. /order-confirmed/thank-you-page/).
+ */
+function wchs_thankyou_is_funnelkit_ty_path(): bool {
+	$path = trim( (string) ( wp_parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH ) ?? '' ), '/' );
+	if ( $path === '' ) {
+		return false;
+	}
+	return (bool) preg_match( '#^(order-confirmed|thankyou|thank-you)(/|$)#', $path );
+}
+
 function wchs_thankyou_is_order_received_request(): bool {
 	if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-received' ) ) {
 		return true;
 	}
 	$path = wp_parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH ) ?? '';
-	return (bool) preg_match( '#/checkout/order-received/\d+/?#', $path );
+	if ( preg_match( '#/checkout/order-received/\d+/?#', $path ) ) {
+		return true;
+	}
+	if ( wchs_thankyou_is_funnelkit_ty_path() && wchs_thankyou_has_order_query() ) {
+		return true;
+	}
+	if ( function_exists( 'wchs_is_funnelkit_thankyou_request' ) && wchs_is_funnelkit_thankyou_request() ) {
+		return true;
+	}
+	return false;
 }
 
 function wchs_thankyou_request_order_id(): int {
@@ -96,6 +126,11 @@ function wchs_thankyou_request_key(): string {
  * Resolve + validate the order for the current thank-you / upsell request.
  */
 function wchs_thankyou_resolve_order(): ?\WC_Order {
+	$queued = wchs_thankyou_peek_queued_order();
+	if ( $queued instanceof \WC_Order ) {
+		return $queued;
+	}
+
 	$order_id = wchs_thankyou_request_order_id();
 	if ( ! $order_id ) {
 		return null;
@@ -113,6 +148,36 @@ function wchs_thankyou_resolve_order(): ?\WC_Order {
 
 	return $order;
 }
+
+/**
+ * @param \WC_Order $order
+ */
+function wchs_thankyou_queue_order( \WC_Order $order ): void {
+	$GLOBALS['wchs_thankyou_queued_order'] = $order;
+}
+
+function wchs_thankyou_peek_queued_order(): ?\WC_Order {
+	$order = $GLOBALS['wchs_thankyou_queued_order'] ?? null;
+	return $order instanceof \WC_Order ? $order : null;
+}
+
+add_action(
+	'woocommerce_thankyou',
+	static function ( $order_id ) {
+		$order_id = absint( $order_id );
+		if ( $order_id < 1 ) {
+			return;
+		}
+		if ( ! wchs_thankyou_is_order_received_request() && ! wchs_thankyou_is_funnelkit_ty_path() ) {
+			return;
+		}
+		$order = wc_get_order( $order_id );
+		if ( $order instanceof \WC_Order ) {
+			wchs_thankyou_queue_order( $order );
+		}
+	},
+	5
+);
 
 function wchs_thankyou_confirmation_html( \WC_Order $order ): string {
 	$number = $order->get_order_number();
@@ -279,6 +344,63 @@ function wchs_thankyou_purchase_scripts_html( \WC_Order $order ): string {
 	return (string) ob_get_clean();
 }
 
+/**
+ * FunnelKit exposes wfocu_tracking_data on thank-you / upsell — same Purchased attrs when PHP order is unavailable.
+ */
+function wchs_thankyou_funnelkit_tracking_fallback_script(): string {
+	ob_start();
+	?>
+<script data-wchs-thankyou-purchase-fk>
+(function(){
+  var dedupePrefix = 'wchs_cl_purchased_';
+  function clStr(v) { return { t: 'string', v: String(v).slice(0, 2000) }; }
+  function clNum(v) { return { t: 'number', v: String(v) }; }
+  function fireCl(orderId, currency, total, email) {
+    var dedupeKey = dedupePrefix + orderId;
+    try { if (sessionStorage.getItem(dedupeKey)) return true; } catch (e) {}
+    if (typeof window._cl !== 'object' || typeof window._cl.trackClick !== 'function') return false;
+    window._cl.trackClick('Purchased', {
+      productProperties: [],
+      customProperties: {
+        transaction_id: clStr(orderId),
+        order_id: clStr(orderId),
+        currency: clStr(currency || 'USD'),
+        value: clNum(total),
+        page_url: clStr(window.location.href.split('#')[0])
+      }
+    });
+    if (email && typeof window._cl.identify === 'function') {
+      window._cl.identify({
+        customProperties: {
+          identify_by_email: { t: 'string', v: email, ib: true }
+        }
+      });
+    }
+    try { sessionStorage.setItem(dedupeKey, '1'); } catch (e) {}
+    try { sessionStorage.setItem('wchs_purchase_fired_' + orderId, '1'); } catch (e) {}
+    return true;
+  }
+  function fromFk() {
+    var d = window.wfocu_tracking_data;
+    if (!d || typeof d !== 'object') return false;
+    var orderId = d.ga_transaction_id || d.transaction_id || '';
+    if (!orderId) return false;
+    var total = d.total != null ? d.total : (d.revenue != null ? d.revenue : 0);
+    var currency = d.currency || 'USD';
+    return fireCl(String(orderId), currency, total, d.email || '');
+  }
+  var attempts = 0;
+  var timer = setInterval(function () {
+    if (fromFk()) { clearInterval(timer); return; }
+    if (attempts >= 120) clearInterval(timer);
+    attempts++;
+  }, 500);
+})();
+</script>
+	<?php
+	return (string) ob_get_clean();
+}
+
 function wchs_thankyou_emit_confirmation_once( \WC_Order $order ): void {
 	static $emitted = [];
 	$id = (int) $order->get_id();
@@ -311,7 +433,7 @@ add_action(
 		if ( ! ( $order instanceof \WC_Order ) ) {
 			return;
 		}
-		echo "\n<!-- wchs-thankyou-tracking v0.3.1 -->\n";
+		echo "\n<!-- wchs-thankyou-tracking v0.3.2 -->\n";
 		wchs_thankyou_emit_confirmation_once( $order );
 	},
 	5
@@ -320,14 +442,18 @@ add_action(
 add_action(
 	'wp_footer',
 	function () {
-		if ( ! wchs_thankyou_is_order_received_request() ) {
+		if ( ! wchs_thankyou_is_order_received_request() && ! wchs_thankyou_is_funnelkit_ty_path() ) {
 			return;
 		}
 		$order = wchs_thankyou_resolve_order();
-		if ( ! ( $order instanceof \WC_Order ) ) {
+		if ( $order instanceof \WC_Order ) {
+			wchs_thankyou_emit_scripts_once( $order );
 			return;
 		}
-		wchs_thankyou_emit_scripts_once( $order );
+		if ( wchs_thankyou_is_funnelkit_ty_path() && wchs_thankyou_has_order_query() ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			echo wchs_thankyou_funnelkit_tracking_fallback_script();
+		}
 	},
 	99
 );

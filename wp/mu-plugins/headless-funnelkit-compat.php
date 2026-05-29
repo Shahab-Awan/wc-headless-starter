@@ -326,14 +326,25 @@ function wchs_is_funnelkit_native_path( string $path ): bool {
  */
 function wchs_is_funnelkit_thankyou_request(): bool {
 	$path = wp_parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH ) ?? '';
+	$trim = trim( $path, '/' );
+
+	if ( function_exists( 'wchs_thankyou_has_order_query' ) && wchs_thankyou_has_order_query() ) {
+		if ( preg_match( '#^(order-confirmed|thankyou|thank-you)(/|$)#', $trim ) ) {
+			return true;
+		}
+	}
+
 	if ( wchs_is_funnelkit_native_path( $path ) ) {
-		$root = strtok( trim( $path, '/' ), '/' );
-		if ( in_array( $root, [ 'thankyou', 'thank-you' ], true ) ) {
+		$root = strtok( $trim, '/' );
+		if ( in_array( $root, [ 'thankyou', 'thank-you', 'order-confirmed' ], true ) ) {
 			return true;
 		}
 		foreach ( wchs_funnelkit_permalink_roots() as $base ) {
-			if ( in_array( $base, [ 'thankyou', 'thank-you' ], true ) ) {
+			if ( in_array( $base, [ 'thankyou', 'thank-you', 'order-confirmed' ], true ) ) {
 				continue;
+			}
+			if ( $root === $base && function_exists( 'wchs_thankyou_has_order_query' ) && wchs_thankyou_has_order_query() ) {
+				return true;
 			}
 			if ( $root === $base && ! empty( $_GET['order_id'] ) && ! empty( $_GET['key'] ) ) {
 				return true;
@@ -343,7 +354,7 @@ function wchs_is_funnelkit_thankyou_request(): bool {
 
 	return ! empty( $_GET['wfty_source'] )
 		|| ! empty( $_GET['wfty_id'] )
-		|| ( ! empty( $_GET['order_id'] ) && ! empty( $_GET['key'] ) && wchs_is_funnelkit_native_path( $path ) );
+		|| ( ! empty( $_GET['order_id'] ) && ( ! empty( $_GET['key'] ) || ! empty( $_GET['order_key'] ) ) && wchs_is_funnelkit_native_path( $path ) );
 }
 
 /**
