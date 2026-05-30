@@ -1049,7 +1049,9 @@ export function trackCustomerLabsPurchased(order: StoreOrder): void {
 			/* private mode */
 		}
 		if (typeof window._cl?.trackClick !== 'function') return;
-		window._cl.trackClick('Purchased', { productProperties, customProperties });
+		const payload = { productProperties, customProperties };
+		window._cl.trackClick('Purchased', payload);
+		window._cl.trackClick('pur_1', payload);
 		clIdentifyFromOrder(order);
 		try {
 			sessionStorage.setItem(dedupeKey, '1');

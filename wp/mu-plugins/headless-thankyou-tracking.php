@@ -302,7 +302,7 @@ function wchs_thankyou_purchase_scripts_html( \WC_Order $order ): string {
     try {
       if (sessionStorage.getItem(dedupeKey)) return true;
     } catch (e) {}
-    window._cl.trackClick('Purchased', {
+    var clPayload = {
       productProperties: p.clProducts,
       customProperties: {
         transaction_id: clStr(p.orderId),
@@ -314,7 +314,9 @@ function wchs_thankyou_purchase_scripts_html( \WC_Order $order ): string {
         tax: clNum(p.tax),
         page_url: clStr(p.pageUrl)
       }
-    });
+    };
+    window._cl.trackClick('Purchased', clPayload);
+    window._cl.trackClick('pur_1', clPayload);
     if (p.email && typeof window._cl.identify === 'function') {
       window._cl.identify({
         customProperties: {
@@ -359,7 +361,7 @@ function wchs_thankyou_funnelkit_tracking_fallback_script(): string {
     var dedupeKey = dedupePrefix + orderId;
     try { if (sessionStorage.getItem(dedupeKey)) return true; } catch (e) {}
     if (typeof window._cl !== 'object' || typeof window._cl.trackClick !== 'function') return false;
-    window._cl.trackClick('Purchased', {
+    var clPayload = {
       productProperties: [],
       customProperties: {
         transaction_id: clStr(orderId),
@@ -368,7 +370,9 @@ function wchs_thankyou_funnelkit_tracking_fallback_script(): string {
         value: clNum(total),
         page_url: clStr(window.location.href.split('#')[0])
       }
-    });
+    };
+    window._cl.trackClick('Purchased', clPayload);
+    window._cl.trackClick('pur_1', clPayload);
     if (email && typeof window._cl.identify === 'function') {
       window._cl.identify({
         customProperties: {
