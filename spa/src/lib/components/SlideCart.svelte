@@ -212,6 +212,13 @@
 		});
 	});
 
+	const checkoutDueLabel = $derived.by(() => {
+		if (checkouting) return 'Loading…';
+		const total = cart.cart?.totals?.total_price ?? cart.subtotal;
+		const formatted = formatMoney(total, cart.currencyMinorUnit, cart.currencySymbol);
+		return `Checkout+ | ${formatted}`;
+	});
+
 	async function addShippingProtection() {
 		const pid = config.data.pdp?.slide_cart?.shipping_protection_product_id;
 		if (!pid || shipProtectBusy || hasShipProtect) return;
@@ -448,16 +455,8 @@
 		{@const cartCro = cart.cart.extensions?.wchs_cro}
 		{@const hasSavings = !!cartCro && cartCro.total_savings > 0}
 		<footer class="fkcart-footer">
-			<dl class="fkcart-summary tabular-nums">
-				<div class="fkcart-summary__row">
-					<dt>Subtotal</dt>
-					{#key cart.subtotal}
-						<dd class="fkcart-summary__value">
-							{formatMoney(cart.subtotal, cart.currencyMinorUnit, cart.currencySymbol)}
-						</dd>
-					{/key}
-				</div>
-				{#if hasSavings && cartCro}
+			{#if hasSavings && cartCro}
+				<dl class="fkcart-summary tabular-nums">
 					<div class="fkcart-summary__row fkcart-summary__row--savings">
 						<dt>You saved</dt>
 						{#key cartCro.total_savings}
@@ -466,8 +465,8 @@
 							</dd>
 						{/key}
 					</div>
-				{/if}
-			</dl>
+				</dl>
+			{/if}
 
 			{#if hasShipProtect && displayCartItems.length > 0}
 				<div class="fkcart-ship-protect" aria-live="polite">
@@ -479,7 +478,7 @@
 						</svg>
 					</div>
 					<div class="fkcart-ship-protect__copy">
-						<span class="fkcart-ship-protect__title">Shipping Protection</span>
+						<span class="fkcart-ship-protect__title">Checkout+</span>
 						<p class="fkcart-ship-protect__desc">Free returns + package protection</p>
 					</div>
 					<span class="fkcart-ship-protect__price tabular-nums">{shipProtectPriceLabel}</span>
@@ -493,7 +492,7 @@
 				aria-busy={checkouting}
 				onclick={beginCheckout}
 			>
-				{checkouting ? 'Loading…' : 'Checkout'}
+				{checkoutDueLabel}
 			</a>
 
 			{#if hasShipProtect && displayCartItems.length > 0}
@@ -503,7 +502,7 @@
 					disabled={shipProtectBusy || checkouting}
 					onclick={continueWithoutShippingProtection}
 				>
-					Continue without shipping protection
+					Checkout without free returns &amp; package protection
 				</button>
 			{/if}
 
@@ -1041,19 +1040,17 @@
 	}
 	.fkcart-checkout {
 		display: block;
-		padding: 14px 14px;
-		border-radius: var(--radius-md, 10px);
+		padding: 14px 16px;
+		border-radius: 999px;
 		background: var(--accent);
 		color: var(--accent-fg) !important;
 		border: 1px solid var(--accent);
-		border-radius: var(--radius-sm);
 		text-decoration: none;
 		text-align: center;
 		font-family: inherit;
-		font-size: 12px;
+		font-size: 14px;
 		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
+		letter-spacing: -0.01em;
 		transition:
 			background var(--dur-fast) var(--ease),
 			color var(--dur-fast) var(--ease),
