@@ -38,11 +38,17 @@
 		return hay.includes(q);
 	}
 
-	/** Label inside a product group — variation mg/size, or Main when parent has a COA. */
+	/** Label inside a product group — variation mg/size, or General when parent has a COA. */
 	function certCardTitle(c: CoaLibraryCertificate): string {
 		const variation = c.variation_label.trim();
 		if (variation) return variation;
-		return 'Main';
+		return 'General';
+	}
+
+	function displayMeta(value: string): string {
+		const v = value.trim();
+		if (!v || v.toLowerCase() === 'array') return '';
+		return v;
 	}
 
 	function sortCertificates(certs: CoaLibraryCertificate[]): CoaLibraryCertificate[] {
@@ -66,10 +72,6 @@
 		}
 		return out;
 	});
-
-	function certBatch(c: CoaLibraryCertificate): string {
-		return c.batch.trim();
-	}
 
 	async function onDownload(
 		e: MouseEvent,
@@ -137,39 +139,30 @@
 		<ul class="coa-lib__list">
 			{#each filteredProducts as product (product.id)}
 				<li class="coa-lib__product">
-					<div class="coa-lib__product-top">
-						<h2 class="coa-lib__product-name">
+					<article class="coa-lib__group">
+						<h2 class="coa-lib__group-title">
 							<svg class="coa-lib__flask" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
 								<path d="M9 3h6v7l5 9a2 2 0 0 1-1.7 3H5.7A2 2 0 0 1 4 19l5-9V3z"/>
 								<path d="M9 3h6"/>
 							</svg>
 							{product.name}
 						</h2>
-					</div>
-					<ul class="coa-lib__certs">
-						{#each product.certificates as cert (cert.id)}
-							<li class="coa-lib__card">
-								<div class="coa-lib__card-body">
-									<h3 class="coa-lib__cert-title">{certCardTitle(cert)}</h3>
-									{#if certBatch(cert) || cert.lab.trim()}
-										<p class="coa-lib__meta">
-											{#if certBatch(cert)}
-												<span>Batch: {certBatch(cert)}</span>
-											{/if}
-											{#if cert.lab.trim()}
-												<span class="coa-lib__meta-lab">{cert.lab.trim()}</span>
-											{/if}
-										</p>
-									{/if}
-									<a class="coa-lib__view-product" href="/product/{product.slug}">
-										View product
-										<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-											<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-											<path d="M15 3h6v6M10 14L21 3"/>
-										</svg>
-									</a>
-								</div>
-								<div class="coa-lib__card-actions">
+						<ul class="coa-lib__rows">
+							{#each product.certificates as cert (cert.id)}
+								<li class="coa-lib__row">
+									<div class="coa-lib__row-main">
+										<span class="coa-lib__row-label">{certCardTitle(cert)}</span>
+										{#if displayMeta(cert.batch) || displayMeta(cert.lab)}
+											<p class="coa-lib__row-meta">
+												{#if displayMeta(cert.batch)}
+													<span>Batch: {displayMeta(cert.batch)}</span>
+												{/if}
+												{#if displayMeta(cert.lab)}
+													<span>{displayMeta(cert.lab)}</span>
+												{/if}
+											</p>
+										{/if}
+									</div>
 									<a
 										class="coa-lib__download"
 										href={cert.coa_url}
@@ -182,10 +175,17 @@
 										</svg>
 										{downloadingId === cert.id ? '…' : 'COA'}
 									</a>
-								</div>
-							</li>
-						{/each}
-					</ul>
+								</li>
+							{/each}
+						</ul>
+						<a class="coa-lib__view-product" href="/product/{product.slug}">
+							View product
+							<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+								<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+								<path d="M15 3h6v6M10 14L21 3"/>
+							</svg>
+						</a>
+					</article>
 				</li>
 			{/each}
 		</ul>
@@ -276,20 +276,29 @@
 		padding: 0;
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 40px 24px;
-		align-items: start;
+		gap: 20px 20px;
+		align-items: stretch;
 	}
 	.coa-lib__product {
 		min-width: 0;
 	}
-	.coa-lib__product-top {
-		margin-bottom: 12px;
+	.coa-lib__group {
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		padding: 18px 20px 16px;
+		border: 1px solid var(--border);
+		border-radius: 16px;
+		background: var(--bg);
+		box-shadow: 0 1px 2px color-mix(in srgb, var(--fg) 4%, transparent);
 	}
-	.coa-lib__product-name {
+	.coa-lib__group-title {
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		margin: 0;
+		margin: 0 0 14px;
+		padding-bottom: 12px;
+		border-bottom: 1px solid var(--border);
 		font-size: 17px;
 		font-weight: 700;
 		color: var(--fg);
@@ -299,26 +308,51 @@
 		color: var(--accent);
 		flex-shrink: 0;
 	}
-	.coa-lib__cert-title {
-		margin: 0 0 8px;
+	.coa-lib__rows {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		flex: 1;
+	}
+	.coa-lib__row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 12px 0;
+		border-top: 1px solid var(--border);
+	}
+	.coa-lib__row:first-child {
+		border-top: 0;
+		padding-top: 0;
+	}
+	.coa-lib__row-main {
+		flex: 1;
+		min-width: 0;
+	}
+	.coa-lib__row-label {
+		display: block;
 		font-size: 15px;
 		font-weight: 700;
 		color: var(--fg);
 		line-height: 1.35;
 	}
-	.coa-lib__certs {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
+	.coa-lib__row-meta {
+		margin: 4px 0 0;
+		font-size: 12px;
+		color: color-mix(in srgb, var(--fg) 52%, transparent);
+		line-height: 1.4;
+	}
+	.coa-lib__row-meta span + span::before {
+		content: ' · ';
 	}
 	.coa-lib__view-product {
 		display: inline-flex;
 		align-items: center;
 		gap: 5px;
-		margin-top: 10px;
+		margin-top: 14px;
+		padding-top: 12px;
+		border-top: 1px solid var(--border);
 		font-size: 14px;
 		font-weight: 400;
 		color: color-mix(in srgb, var(--fg) 52%, transparent);
@@ -326,42 +360,6 @@
 	}
 	.coa-lib__view-product:hover {
 		color: var(--accent);
-	}
-	.coa-lib__card {
-		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: 16px;
-		min-height: 88px;
-		padding: 18px 22px;
-		border: 1px solid var(--border);
-		border-radius: 16px;
-		background: var(--bg);
-		box-shadow: 0 1px 2px color-mix(in srgb, var(--fg) 4%, transparent);
-	}
-	.coa-lib__card-body {
-		flex: 1;
-		min-width: 0;
-	}
-	.coa-lib__card-actions {
-		flex-shrink: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: stretch;
-		padding-top: 4px;
-	}
-	.coa-lib__meta {
-		margin: 0;
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 6px 18px;
-		font-size: 13px;
-		color: color-mix(in srgb, var(--fg) 52%, transparent);
-		line-height: 1.5;
-	}
-	.coa-lib__meta-lab {
-		flex-basis: 100%;
 	}
 	.coa-lib__download {
 		display: inline-flex;
@@ -389,20 +387,16 @@
 	@media (max-width: 900px) {
 		.coa-lib__list {
 			grid-template-columns: 1fr;
-			gap: 40px;
+			gap: 16px;
 		}
 	}
 	@media (max-width: 640px) {
 		.coa-lib {
 			padding: 24px 16px 56px;
 		}
-		.coa-lib__card {
+		.coa-lib__row {
 			flex-direction: column;
 			align-items: stretch;
-			padding: 18px 20px;
-		}
-		.coa-lib__card-actions {
-			width: 100%;
 		}
 		.coa-lib__download {
 			width: 100%;

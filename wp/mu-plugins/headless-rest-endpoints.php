@@ -684,12 +684,21 @@ function wchs_rest_coa_library( \WP_REST_Request $request ) {
 			];
 		}
 
+		$batch = (string) get_post_meta( $post_id, '_wchs_coa_batch', true );
+		$lab   = (string) get_post_meta( $post_id, '_wchs_coa_lab', true );
+		if ( 'Array' === $batch ) {
+			$batch = '';
+		}
+		if ( 'Array' === $lab ) {
+			$lab = '';
+		}
+
 		$groups[ $group_id ]['certificates'][] = [
 			'id'              => $post_id,
 			'variation_label' => $variation_label,
 			'coa_url'         => $url,
-			'batch'           => (string) get_post_meta( $post_id, '_wchs_coa_batch', true ),
-			'lab'             => (string) get_post_meta( $post_id, '_wchs_coa_lab', true ),
+			'batch'           => $batch,
+			'lab'             => $lab,
 			'tested'          => $modified,
 		];
 	}

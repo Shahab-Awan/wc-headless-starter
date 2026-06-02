@@ -34,6 +34,11 @@ function wchs_legacy_redirects_maybe_redirect(): void {
 	}
 
 	if ( preg_match( '#^/product/([^/]+)/?$#i', $path, $m ) ) {
+		$slug = sanitize_title( rawurldecode( $m[1] ) );
+		$spa_route = wchs_legacy_redirects_spa_route_for_mistaken_product_slug( $slug );
+		if ( '' !== $spa_route ) {
+			wchs_legacy_redirects_send( $spa_route );
+		}
 		$alias_target = wchs_legacy_redirects_product_alias_target_path( $m[1] );
 		if ( '' !== $alias_target ) {
 			wchs_legacy_redirects_send( $alias_target );
@@ -147,6 +152,23 @@ function wchs_legacy_redirects_product_alias_target_slug( string $slug ): string
 	}
 
 	return $target;
+}
+
+/**
+ * SPA routes that must not be loaded as /product/{slug} (common nav typo).
+ *
+ * @return array<string, string> mistaken slug => canonical SPA path
+ */
+function wchs_legacy_redirects_spa_mistaken_product_slugs(): array {
+	$routes = [
+		'coa-library' => '/coa-library',
+	];
+	return apply_filters( 'wchs_legacy_spa_mistaken_product_slugs', $routes );
+}
+
+function wchs_legacy_redirects_spa_route_for_mistaken_product_slug( string $slug ): string {
+	$routes = wchs_legacy_redirects_spa_mistaken_product_slugs();
+	return isset( $routes[ $slug ] ) ? (string) $routes[ $slug ] : '';
 }
 
 function wchs_legacy_redirects_product_aliases(): array {

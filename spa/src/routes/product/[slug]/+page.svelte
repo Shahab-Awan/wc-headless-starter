@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { fade, fly } from 'svelte/transition';
 	import EmblaCarousel, { type EmblaCarouselType } from 'embla-carousel';
@@ -179,6 +180,12 @@
 	$effect(() => {
 		const slug = page.params.slug ?? '';
 		if (!slug) return;
+
+		// Nav sometimes links /product/coa-library; the library is a dedicated SPA route.
+		if (slug === 'coa-library') {
+			void goto('/coa-library', { replaceState: true });
+			return;
+		}
 
 		let cancelled = false;
 		loading = true;
