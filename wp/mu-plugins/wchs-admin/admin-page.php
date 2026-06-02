@@ -589,8 +589,8 @@ class AdminPage {
 				'savings_pct' => 50,
 				'presets'     => [
 					[ 'paid_qty' => 1, 'free_qty' => 0, 'flag' => '' ],
-					[ 'paid_qty' => 2, 'free_qty' => 1, 'flag' => 'MOST POPULAR' ],
-					[ 'paid_qty' => 3, 'free_qty' => 2, 'flag' => 'BEST VALUE' ],
+					[ 'paid_qty' => 2, 'free_qty' => 0, 'flag' => 'MOST POPULAR' ],
+					[ 'paid_qty' => 3, 'free_qty' => 0, 'flag' => 'BEST VALUE' ],
 				],
 			],
 			'cross_sell'          => [

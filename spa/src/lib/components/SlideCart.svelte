@@ -182,6 +182,23 @@
 		return cart.cart.items.filter((i) => !isShipProtectLine(i));
 	});
 
+	function lineSavingsMinor(item: StoreApiCartItem): number {
+		const cro = item.extensions?.wchs_cro;
+		if (typeof cro?.savings_line_total === 'number' && cro.savings_line_total > 0) {
+			return cro.savings_line_total;
+		}
+		const compare =
+			cro?.compare_line_minor ??
+			(cro?.regular_unit_price ?? Number(item.prices.regular_price)) * item.quantity;
+		const line = cro?.line_total_minor ?? Number(item.totals.line_total);
+		return Math.max(0, compare - line);
+	}
+
+	/** One cart-wide savings total — sum of every visible line, not per-product footer rows. */
+	const cartTotalSavings = $derived.by(() => {
+		return displayCartItems.reduce((sum, item) => sum + lineSavingsMinor(item), 0);
+	});
+
 	const visibleItemCount = $derived(
 		displayCartItems.reduce((n, i) => n + i.quantity, 0)
 	);
@@ -341,7 +358,6 @@
 						(cro?.regular_unit_price ?? Number(item.prices.regular_price)) * item.quantity}
 					{@const lineMinor = cro?.line_total_minor ?? Number(item.totals.line_total)}
 					{@const showCompare = compareMinor > lineMinor}
-					{@const bundleLabel = (cro?.bundle_label?.split('·')[0] ?? '').trim()}
 					<li class="fkcart-item" class:is-flashing={isFlashing}>
 						<div class="fkcart-item__media">
 							{#if item.images[0]}
@@ -361,10 +377,6 @@
 										href={item.permalink}
 										style={h !== null ? `min-height: ${h}px` : ''}
 									>{item.name}</a>
-
-									{#if bundleLabel}
-										<p class="fkcart-item__bundle">{bundleLabel}</p>
-									{/if}
 
 									{#if item.variation.length}
 										<ul class="fkcart-item__variation">
@@ -467,16 +479,14 @@
 	{/if}
 
 	{#if cart.cart && visibleItemCount > 0}
-		{@const cartCro = cart.cart.extensions?.wchs_cro}
-		{@const hasSavings = !!cartCro && cartCro.total_savings > 0}
 		<footer class="fkcart-footer">
-			{#if hasSavings && cartCro}
+			{#if cartTotalSavings > 0}
 				<dl class="fkcart-summary tabular-nums">
 					<div class="fkcart-summary__row fkcart-summary__row--savings">
 						<dt>You saved</dt>
-						{#key cartCro.total_savings}
+						{#key cartTotalSavings}
 							<dd class="fkcart-summary__value fkcart-summary__value--savings">
-								{formatMoneyInt(cartCro.total_savings)}
+								{formatMoneyInt(cartTotalSavings)}
 							</dd>
 						{/key}
 					</div>
