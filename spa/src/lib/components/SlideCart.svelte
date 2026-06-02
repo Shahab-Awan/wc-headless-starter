@@ -140,7 +140,7 @@
 		if (e.key === 'Escape' && cart.open) close();
 	}
 
-	function formatMoney(minor: string, minorUnit: number, symbol: string, code = cart.currencyCode): string {
+	function formatMoney(minor: string | number, minorUnit: number, symbol: string, code = cart.currencyCode): string {
 		return formatPrice(minor, { currency_minor_unit: minorUnit, currency_symbol: symbol, currency_code: code });
 	}
 
@@ -151,6 +151,17 @@
 			currency_symbol: cart.currencySymbol,
 			currency_code: cart.currencyCode,
 		});
+	}
+
+	function toMinorInt(value: unknown): number {
+		const parsed =
+			typeof value === 'number'
+				? Math.round(value)
+				: typeof value === 'string'
+					? Number.parseInt(value, 10)
+					: NaN;
+		if (!Number.isFinite(parsed)) return 0;
+		return Math.max(0, parsed);
 	}
 
 	function isShipProtectLine(item: StoreApiCartItem): boolean {
@@ -186,22 +197,22 @@
 		}
 		let minor = 0;
 		for (const item of displayCartItems) {
-			minor += Number(item.totals.line_total ?? 0);
+			minor += toMinorInt(item.totals.line_total ?? 0);
 		}
-		return minor / Math.pow(10, mu);
+		return Math.max(0, minor) / Math.pow(10, mu);
 	});
 
 	const shipProtectFeeMinor = $derived.by(() => {
 		const fromApi = cart.cart?.extensions?.wchs_cro?.shipping_protection?.fee_minor;
-		if (typeof fromApi === 'number' && fromApi > 0) {
-			return fromApi;
-		}
+		const fromApiMinor = toMinorInt(fromApi);
+		if (fromApiMinor > 0) return fromApiMinor;
+
 		const croFee = shipProtectLine?.extensions?.wchs_cro?.fee_minor;
-		if (typeof croFee === 'number' && croFee > 0) {
-			return croFee;
-		}
+		const croFeeMinor = toMinorInt(croFee);
+		if (croFeeMinor > 0) return croFeeMinor;
+
 		const major = shippingProtectionFeeMajor(shipProtectSubtotalMajor);
-		return Math.round(major * Math.pow(10, cart.currencyMinorUnit || 2));
+		return Math.max(0, Math.round(major * Math.pow(10, cart.currencyMinorUnit || 2)));
 	});
 
 	const shipProtectPriceLabel = $derived.by(() => {
@@ -214,8 +225,12 @@
 
 	const checkoutDueLabel = $derived.by(() => {
 		if (checkouting) return 'Loading…';
-		const total = cart.cart?.totals?.total_price ?? cart.subtotal;
-		const formatted = formatMoney(total, cart.currencyMinorUnit, cart.currencySymbol);
+		// Button total intentionally excludes shipping so drawer math stays
+		// consistent with the pre-checkout subtotal + Checkout+ fee.
+		const itemsMinor = toMinorInt(cart.cart?.totals?.total_items ?? cart.subtotal);
+		const itemsTaxMinor = toMinorInt(cart.cart?.totals?.total_items_tax);
+		const checkoutDueMinor = Math.max(0, itemsMinor + itemsTaxMinor);
+		const formatted = formatMoney(checkoutDueMinor, cart.currencyMinorUnit, cart.currencySymbol);
 		return `Checkout+ | ${formatted}`;
 	});
 

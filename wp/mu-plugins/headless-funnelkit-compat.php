@@ -220,6 +220,10 @@ function wchs_is_checkout_builder_preview(): bool {
  * Logged-in builders may open checkout without ?cart= (Elementor iframe often omits it).
  */
 function wchs_allow_bare_checkout_handoff(): bool {
+	if ( ! wchs_use_wchs_checkout_ui() ) {
+		return true;
+	}
+
 	if ( wchs_is_checkout_builder_preview() ) {
 		return true;
 	}
