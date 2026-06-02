@@ -405,11 +405,32 @@ function wchs_cro_build_tier_rows( \WC_Product $product ): array {
  */
 function wchs_cro_coa_meta( int $product_id, string $key, int $parent_id = 0 ): string {
 	$val = (string) get_post_meta( $product_id, $key, true );
+	if ( $val === 'Array' ) {
+		$val = '';
+	}
 	if ( $val !== '' ) {
 		return $val;
 	}
 	if ( $parent_id > 0 ) {
-		return (string) get_post_meta( $parent_id, $key, true );
+		$parent_val = (string) get_post_meta( $parent_id, $key, true );
+		return $parent_val === 'Array' ? '' : $parent_val;
+	}
+	return '';
+}
+
+/**
+ * COA URL for Store API: variation meta only (no parent fallback).
+ * Parent fallback for batch/lab/metrics stays in wchs_cro_coa_meta().
+ */
+function wchs_cro_coa_url_direct( int $product_id ): string {
+	foreach ( [ '_wchs_coa_url', 'coa_url' ] as $meta_key ) {
+		$val = (string) get_post_meta( $product_id, $meta_key, true );
+		if ( $val === 'Array' ) {
+			continue;
+		}
+		if ( $val !== '' ) {
+			return esc_url_raw( $val );
+		}
 	}
 	return '';
 }
@@ -458,9 +479,9 @@ function wchs_cro_product_data( $product ) {
 	$product_id = (int) $product->get_id();
 	$parent_id  = (int) $product->get_parent_id();
 
-	$coa_url = wchs_cro_coa_meta( $product_id, '_wchs_coa_url', $parent_id );
-	if ( $coa_url === '' ) {
-		$coa_url = wchs_cro_coa_meta( $product_id, 'coa_url', $parent_id );
+	$coa_url = wchs_cro_coa_url_direct( $product_id );
+	if ( $coa_url === '' && $parent_id > 0 ) {
+		$coa_url = wchs_cro_coa_url_direct( $parent_id );
 	}
 
 	return [

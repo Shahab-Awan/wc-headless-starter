@@ -645,8 +645,10 @@ function wchs_rest_coa_library( \WP_REST_Request $request ) {
 			continue;
 		}
 
-		$url = esc_url_raw( (string) get_post_meta( $post_id, '_wchs_coa_url', true ) );
-		if ( '' === $url ) {
+		$url = function_exists( 'wchs_cro_coa_url_direct' )
+			? wchs_cro_coa_url_direct( $post_id )
+			: esc_url_raw( (string) get_post_meta( $post_id, '_wchs_coa_url', true ) );
+		if ( '' === $url || 'Array' === $url ) {
 			continue;
 		}
 

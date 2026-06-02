@@ -31,33 +31,44 @@
 		};
 	});
 
-	const filtered = $derived.by(() => {
-		const q = query.trim().toLowerCase();
-		if (!q) return products;
-		return products
-			.map((p) => {
-				const certs = p.certificates.filter((c) => certMatchesQuery(p, c, q));
-				if (!certs.length && !p.name.toLowerCase().includes(q)) return null;
-				return { ...p, certificates: certs.length ? certs : p.certificates };
-			})
-			.filter((p): p is CoaLibraryProduct => p !== null);
-	});
-
 	function certMatchesQuery(p: CoaLibraryProduct, c: CoaLibraryCertificate, q: string): boolean {
-		if (p.name.toLowerCase().includes(q)) return true;
-		if (c.batch.toLowerCase().includes(q)) return true;
-		if (c.lab.toLowerCase().includes(q)) return true;
-		if (c.variation_label.toLowerCase().includes(q)) return true;
-		return false;
+		const hay = [p.name, c.variation_label, c.batch, c.lab, certCardTitle(c)]
+			.join(' ')
+			.toLowerCase();
+		return hay.includes(q);
 	}
+
+	/** Label inside a product group — variation mg/size, or Main when parent has a COA. */
+	function certCardTitle(c: CoaLibraryCertificate): string {
+		const variation = c.variation_label.trim();
+		if (variation) return variation;
+		return 'Main';
+	}
+
+	function sortCertificates(certs: CoaLibraryCertificate[]): CoaLibraryCertificate[] {
+		return [...certs].sort((a, b) => {
+			const aMain = a.variation_label.trim() ? 1 : 0;
+			const bMain = b.variation_label.trim() ? 1 : 0;
+			if (aMain !== bMain) return aMain - bMain;
+			return a.variation_label.localeCompare(b.variation_label, undefined, { sensitivity: 'base' });
+		});
+	}
+
+	const filteredProducts = $derived.by((): CoaLibraryProduct[] => {
+		const q = query.trim().toLowerCase();
+		const out: CoaLibraryProduct[] = [];
+		for (const p of products) {
+			const certs = q
+				? p.certificates.filter((c) => certMatchesQuery(p, c, q))
+				: p.certificates;
+			if (!certs.length) continue;
+			out.push({ ...p, certificates: sortCertificates(certs) });
+		}
+		return out;
+	});
 
 	function certBatch(c: CoaLibraryCertificate): string {
 		return c.batch.trim();
-	}
-
-	function labCertificatesTitle(name: string, variationLabel: string): string {
-		if (variationLabel) return `${name} — ${variationLabel}`;
-		return `${name} Lab Certificates`;
 	}
 
 	async function onDownload(
@@ -107,7 +118,7 @@
 			<input
 				id="coa-lib-search"
 				type="search"
-				placeholder="Search by product name, batch number or lab…"
+				placeholder="Search by product, variation, batch, or lab…"
 				bind:value={query}
 				autocomplete="off"
 			/>
@@ -118,13 +129,13 @@
 		<p class="coa-lib__status" role="status">Loading certificates…</p>
 	{:else if error}
 		<p class="coa-lib__status coa-lib__status--error" role="alert">{error}</p>
-	{:else if !filtered.length}
+	{:else if !filteredProducts.length}
 		<p class="coa-lib__status">
 			{query.trim() ? 'No certificates match your search.' : 'No certificates have been published yet.'}
 		</p>
 	{:else}
 		<ul class="coa-lib__list">
-			{#each filtered as product (product.id)}
+			{#each filteredProducts as product (product.id)}
 				<li class="coa-lib__product">
 					<div class="coa-lib__product-top">
 						<h2 class="coa-lib__product-name">
@@ -139,9 +150,7 @@
 						{#each product.certificates as cert (cert.id)}
 							<li class="coa-lib__card">
 								<div class="coa-lib__card-body">
-									<h3 class="coa-lib__cert-title">
-										{labCertificatesTitle(product.name, cert.variation_label)}
-									</h3>
+									<h3 class="coa-lib__cert-title">{certCardTitle(cert)}</h3>
 									{#if certBatch(cert) || cert.lab.trim()}
 										<p class="coa-lib__meta">
 											{#if certBatch(cert)}
@@ -297,6 +306,14 @@
 		color: var(--fg);
 		line-height: 1.35;
 	}
+	.coa-lib__certs {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
 	.coa-lib__view-product {
 		display: inline-flex;
 		align-items: center;
@@ -309,14 +326,6 @@
 	}
 	.coa-lib__view-product:hover {
 		color: var(--accent);
-	}
-	.coa-lib__certs {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
 	}
 	.coa-lib__card {
 		display: flex;

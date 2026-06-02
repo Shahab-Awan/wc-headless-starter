@@ -1,12 +1,14 @@
 <?php
 /**
  * Plugin Name: Headless COA Product Fields
- * Description: COA PDF link + batch/lab fields on the WooCommerce product edit screen.
+ * Description: COA PDF on WooCommerce products and variations (Media Library + site COA library).
  *              Values power the PDP “Download COA” button via extensions.wchs_cro.
- * Version:     1.0.0
+ * Version:     1.1.0
  */
 
 defined( 'ABSPATH' ) || exit;
+
+const WCHS_COA_PARENT_META_KEY = '_wchs_coa_url';
 
 add_action(
 	'add_meta_boxes',
@@ -41,38 +43,156 @@ function wchs_coa_admin_assets( string $hook ): void {
 	if ( ! $screen || $screen->post_type !== 'product' ) {
 		return;
 	}
+
 	wp_enqueue_media();
-	wp_register_script( 'wchs-coa-product-admin', '', [], '1.0.0', true );
+	wp_register_script( 'wchs-coa-product-admin', '', [], '1.1.0', true );
 	wp_enqueue_script( 'wchs-coa-product-admin' );
+	wp_localize_script(
+		'wchs-coa-product-admin',
+		'wchsCoaAdmin',
+		[
+			'restUrl' => esc_url_raw( rest_url( 'wchs/v1/' ) ),
+			'nonce'   => wp_create_nonce( 'wp_rest' ),
+		]
+	);
 	wp_add_inline_script(
 		'wchs-coa-product-admin',
 		<<<'JS'
 (function () {
-	function bindPicker(btn) {
-		if (!btn || btn.dataset.wchsCoaBound) return;
-		btn.dataset.wchsCoaBound = '1';
-		btn.addEventListener('click', function (e) {
+	function targetInput(btn) {
+		var target = btn.getAttribute('data-target');
+		return target ? document.querySelector(target) : null;
+	}
+
+	function openMediaPicker(input) {
+		if (!input || typeof wp === 'undefined' || !wp.media) return;
+		var frame = wp.media({
+			title: 'Select COA PDF',
+			button: { text: 'Use this file' },
+			library: { type: [ 'application/pdf' ] },
+			multiple: false
+		});
+		frame.on('select', function () {
+			var attachment = frame.state().get('selection').first().toJSON();
+			if (attachment && attachment.url) {
+				input.value = attachment.url;
+				input.dispatchEvent(new Event('input', { bubbles: true }));
+			}
+		});
+		frame.open();
+	}
+
+	document.addEventListener('click', function (e) {
+		var mediaBtn = e.target.closest('.wchs-coa-pick-media');
+		if (mediaBtn) {
 			e.preventDefault();
-			var target = btn.getAttribute('data-target');
-			var input = target ? document.querySelector(target) : null;
-			if (!input) return;
-			var frame = wp.media({
-				title: 'Select COA PDF',
-				button: { text: 'Use this file' },
-				library: { type: [ 'application/pdf' ] },
-				multiple: false
-			});
-			frame.on('select', function () {
-				var attachment = frame.state().get('selection').first().toJSON();
-				if (attachment && attachment.url) {
-					input.value = attachment.url;
-					input.dispatchEvent(new Event('input', { bubbles: true }));
+			openMediaPicker(targetInput(mediaBtn));
+			return;
+		}
+		var libBtn = e.target.closest('.wchs-coa-pick-library');
+		if (libBtn) {
+			e.preventDefault();
+			var input = targetInput(libBtn);
+			if (input && window.wchsCoaAdmin) {
+				openCoaLibraryModal(input);
+			}
+		}
+	});
+
+	var libraryCache = null;
+
+	function openCoaLibraryModal(input) {
+		var overlay = document.getElementById('wchs-coa-library-modal');
+		if (!overlay) {
+			overlay = document.createElement('div');
+			overlay.id = 'wchs-coa-library-modal';
+			overlay.style.cssText =
+				'position:fixed;inset:0;z-index:100100;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:24px';
+			overlay.innerHTML =
+				'<div role="dialog" aria-modal="true" style="background:#fff;max-width:640px;width:100%;max-height:80vh;overflow:auto;border-radius:4px;box-shadow:0 8px 40px rgba(0,0,0,.2)">' +
+				'<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #dcdcde">' +
+				'<strong>Select COA from library</strong>' +
+				'<button type="button" class="button" data-wchs-coa-lib-close>Close</button>' +
+				'</div>' +
+				'<div data-wchs-coa-lib-body style="padding:12px 16px"></div>' +
+				'</div>';
+			document.body.appendChild(overlay);
+			overlay.addEventListener('click', function (ev) {
+				if (ev.target === overlay || ev.target.closest('[data-wchs-coa-lib-close]')) {
+					overlay.style.display = 'none';
 				}
 			});
-			frame.open();
-		});
+		}
+
+		var body = overlay.querySelector('[data-wchs-coa-lib-body]');
+		if (!body) return;
+		body.textContent = 'Loading…';
+		overlay.style.display = 'flex';
+		overlay._wchsTargetInput = input;
+
+		var finish = function (items) {
+			body.innerHTML = '';
+			if (!items.length) {
+				body.textContent = 'No COA PDFs found on other products yet. Upload a PDF or use Media Library.';
+				return;
+			}
+			var list = document.createElement('ul');
+			list.style.cssText = 'margin:0;padding:0;list-style:none';
+			items.forEach(function (row) {
+				var li = document.createElement('li');
+				li.style.cssText = 'border-bottom:1px solid #f0f0f1;padding:10px 0';
+				var btn = document.createElement('button');
+				btn.type = 'button';
+				btn.className = 'button button-secondary';
+				btn.style.marginRight = '8px';
+				btn.textContent = 'Use this COA';
+				btn.addEventListener('click', function () {
+					input.value = row.url;
+					input.dispatchEvent(new Event('input', { bubbles: true }));
+					overlay.style.display = 'none';
+				});
+				var label = document.createElement('span');
+				label.textContent = row.label;
+				li.appendChild(btn);
+				li.appendChild(label);
+				list.appendChild(li);
+			});
+			body.appendChild(list);
+		};
+
+		if (libraryCache) {
+			finish(libraryCache);
+			return;
+		}
+
+		fetch(window.wchsCoaAdmin.restUrl + 'coa-library', {
+			headers: { 'X-WP-Nonce': window.wchsCoaAdmin.nonce }
+		})
+			.then(function (res) {
+				return res.json();
+			})
+			.then(function (data) {
+				var flat = [];
+				(data.products || []).forEach(function (product) {
+					(product.certificates || []).forEach(function (cert) {
+						if (!cert.coa_url) return;
+						var label = product.name || product.slug || 'Product';
+						if (cert.variation_label) {
+							label += ' — ' + cert.variation_label;
+						}
+						if (cert.batch) {
+							label += ' (batch ' + cert.batch + ')';
+						}
+						flat.push({ url: cert.coa_url, label: label });
+					});
+				});
+				libraryCache = flat;
+				finish(flat);
+			})
+			.catch(function () {
+				body.textContent = 'Could not load COA library. Try Media Library instead.';
+			});
 	}
-	document.querySelectorAll('.wchs-coa-pick-media').forEach(bindPicker);
 })();
 JS
 	);
@@ -87,69 +207,88 @@ function wchs_coa_render_product_meta_box( \WP_Post $post ): void {
 		return;
 	}
 	wp_nonce_field( 'wchs_coa_save_product', 'wchs_coa_nonce' );
-	wchs_coa_render_fields( (int) $product->get_id(), '' );
+	$is_variable = $product->is_type( 'variable' );
+	?>
+	<p class="description" style="margin-top:0">
+		<?php
+		if ( $is_variable ) {
+			esc_html_e( 'Optional default COA for this product. Each variation can override with its own PDF below. Leave empty when only variations have COAs.', 'wchs' );
+		} else {
+			esc_html_e( 'Upload a PDF to Media Library, pick from the site COA library, or paste a file URL.', 'wchs' );
+		}
+		?>
+	</p>
+	<?php
+	wchs_coa_render_url_field(
+		(int) $product->get_id(),
+		[
+			'input_id'   => 'wchs_coa_url_parent',
+			'input_name' => '_wchs_product_coa_url',
+		]
+	);
 }
 
 /**
- * @param int    $post_id
- * @param string $id_suffix Appended to field ids (variation loop index).
+ * @param int   $post_id
+ * @param array{input_id: string, input_name: string} $args
  */
-function wchs_coa_render_fields( int $post_id, string $id_suffix = '' ): void {
-	$url     = (string) get_post_meta( $post_id, '_wchs_coa_url', true );
-	$batch   = (string) get_post_meta( $post_id, '_wchs_coa_batch', true );
-	$lab     = (string) get_post_meta( $post_id, '_wchs_coa_lab', true );
-	$url_id  = 'wchs_coa_url' . $id_suffix;
-	$batch_id = 'wchs_coa_batch' . $id_suffix;
-	$lab_id   = 'wchs_coa_lab' . $id_suffix;
-	$name_url = $id_suffix === '' ? '_wchs_coa_url' : '_wchs_coa_url[' . $id_suffix . ']';
-	$name_batch = $id_suffix === '' ? '_wchs_coa_batch' : '_wchs_coa_batch[' . $id_suffix . ']';
-	$name_lab = $id_suffix === '' ? '_wchs_coa_lab' : '_wchs_coa_lab[' . $id_suffix . ']';
+function wchs_coa_render_url_field( int $post_id, array $args ): void {
+	$url = wchs_coa_get_stored_url( $post_id );
 	?>
-	<p class="description" style="margin-top:0">
-		<?php esc_html_e( 'Upload a PDF to Media Library, then select it or paste the file URL. The storefront “Download COA” button uses this link.', 'wchs' ); ?>
-	</p>
-	<p class="form-field">
-		<label for="<?php echo esc_attr( $url_id ); ?>"><?php esc_html_e( 'COA PDF URL', 'wchs' ); ?></label>
-		<span style="display:flex;gap:8px;align-items:center;max-width:720px">
+	<p class="form-field wchs-coa-url-field">
+		<label for="<?php echo esc_attr( $args['input_id'] ); ?>"><?php esc_html_e( 'COA PDF URL', 'wchs' ); ?></label>
+		<span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:720px">
 			<input
 				type="url"
 				class="widefat"
-				id="<?php echo esc_attr( $url_id ); ?>"
-				name="<?php echo esc_attr( $name_url ); ?>"
+				id="<?php echo esc_attr( $args['input_id'] ); ?>"
+				name="<?php echo esc_attr( $args['input_name'] ); ?>"
 				value="<?php echo esc_attr( $url ); ?>"
 				placeholder="https://yoursite.com/wp-content/uploads/.../coa.pdf"
-				style="flex:1"
+				style="flex:1;min-width:220px"
 			/>
-			<button type="button" class="button wchs-coa-pick-media" data-target="#<?php echo esc_attr( $url_id ); ?>">
-				<?php esc_html_e( 'Select PDF', 'wchs' ); ?>
+			<button type="button" class="button wchs-coa-pick-media" data-target="#<?php echo esc_attr( $args['input_id'] ); ?>">
+				<?php esc_html_e( 'Media Library', 'wchs' ); ?>
+			</button>
+			<button type="button" class="button wchs-coa-pick-library" data-target="#<?php echo esc_attr( $args['input_id'] ); ?>">
+				<?php esc_html_e( 'COA library', 'wchs' ); ?>
 			</button>
 		</span>
 	</p>
-	<p class="form-field" style="display:flex;gap:16px;flex-wrap:wrap">
-		<span style="flex:1;min-width:200px">
-			<label for="<?php echo esc_attr( $batch_id ); ?>"><?php esc_html_e( 'Batch ID (optional)', 'wchs' ); ?></label>
-			<input
-				type="text"
-				class="widefat"
-				id="<?php echo esc_attr( $batch_id ); ?>"
-				name="<?php echo esc_attr( $name_batch ); ?>"
-				value="<?php echo esc_attr( $batch ); ?>"
-				placeholder="e.g. ALY-2026-0412"
-			/>
-		</span>
-		<span style="flex:1;min-width:200px">
-			<label for="<?php echo esc_attr( $lab_id ); ?>"><?php esc_html_e( 'Lab name (optional)', 'wchs' ); ?></label>
-			<input
-				type="text"
-				class="widefat"
-				id="<?php echo esc_attr( $lab_id ); ?>"
-				name="<?php echo esc_attr( $name_lab ); ?>"
-				value="<?php echo esc_attr( $lab ); ?>"
-				placeholder="e.g. Analytical Laboratories Inc."
-			/>
-		</span>
-	</p>
 	<?php
+}
+
+/**
+ * @param int $post_id
+ */
+function wchs_coa_get_stored_url( int $post_id ): string {
+	$url = (string) get_post_meta( $post_id, WCHS_COA_PARENT_META_KEY, true );
+	if ( $url === 'Array' ) {
+		return '';
+	}
+	if ( $url !== '' ) {
+		return $url;
+	}
+	return (string) get_post_meta( $post_id, 'coa_url', true );
+}
+
+/**
+ * @param int      $loop
+ * @param array    $variation_data
+ * @param \WP_Post $variation
+ */
+function wchs_coa_render_variation_fields( int $loop, array $variation_data, \WP_Post $variation ): void {
+	echo '<div class="form-row form-row-full wchs-coa-variation-fields" style="border-top:1px solid #eee;margin-top:12px;padding-top:12px">';
+	echo '<p><strong>' . esc_html__( 'COA (optional)', 'wchs' ) . '</strong></p>';
+	echo '<p class="description">' . esc_html__( 'Override the parent COA for this variation. Leave empty to use the parent product COA, if any.', 'wchs' ) . '</p>';
+	wchs_coa_render_url_field(
+		(int) $variation->ID,
+		[
+			'input_id'   => 'wchs_coa_url_var_' . $loop,
+			'input_name' => 'wchs_variation_coa_url[' . $loop . ']',
+		]
+	);
+	echo '</div>';
 }
 
 /**
@@ -162,23 +301,12 @@ function wchs_coa_save_product( \WC_Product $product ): void {
 	if ( ! current_user_can( 'edit_product', $product->get_id() ) ) {
 		return;
 	}
-	wchs_coa_persist_meta( $product->get_id(), [
-		'url'   => isset( $_POST['_wchs_coa_url'] ) ? wp_unslash( $_POST['_wchs_coa_url'] ) : '',
-		'batch' => isset( $_POST['_wchs_coa_batch'] ) ? wp_unslash( $_POST['_wchs_coa_batch'] ) : '',
-		'lab'   => isset( $_POST['_wchs_coa_lab'] ) ? wp_unslash( $_POST['_wchs_coa_lab'] ) : '',
-	] );
-}
 
-/**
- * @param int      $loop
- * @param array    $variation_data
- * @param \WP_Post $variation
- */
-function wchs_coa_render_variation_fields( int $loop, array $variation_data, \WP_Post $variation ): void {
-	echo '<div class="form-row form-row-full wchs-coa-variation-fields" style="border-top:1px solid #eee;margin-top:12px;padding-top:12px">';
-	echo '<p><strong>' . esc_html__( 'COA (optional override)', 'wchs' ) . '</strong></p>';
-	wchs_coa_render_fields( (int) $variation->ID, '_' . $loop );
-	echo '</div>';
+	$url_raw = $_POST['_wchs_product_coa_url'] ?? '';
+	if ( is_array( $url_raw ) ) {
+		$url_raw = '';
+	}
+	wchs_coa_persist_url( $product->get_id(), $url_raw );
 }
 
 /**
@@ -189,30 +317,28 @@ function wchs_coa_save_variation( int $variation_id, int $loop ): void {
 	if ( ! current_user_can( 'edit_post', $variation_id ) ) {
 		return;
 	}
-	$urls   = $_POST['_wchs_coa_url'] ?? [];
-	$batches = $_POST['_wchs_coa_batch'] ?? [];
-	$labs   = $_POST['_wchs_coa_lab'] ?? [];
+
+	$urls = $_POST['wchs_variation_coa_url'] ?? null;
 	if ( ! is_array( $urls ) ) {
 		return;
 	}
-	wchs_coa_persist_meta(
-		$variation_id,
-		[
-			'url'   => $urls[ $loop ] ?? '',
-			'batch' => is_array( $batches ) ? ( $batches[ $loop ] ?? '' ) : '',
-			'lab'   => is_array( $labs ) ? ( $labs[ $loop ] ?? '' ) : '',
-		]
-	);
+
+	$url_raw = $urls[ $loop ] ?? '';
+	if ( is_array( $url_raw ) ) {
+		$url_raw = '';
+	}
+	wchs_coa_persist_url( $variation_id, $url_raw );
 }
 
 /**
- * @param int                  $post_id
- * @param array{url: string, batch: string, lab: string} $data
+ * @param int                $post_id
+ * @param string|array|null $url_raw
  */
-function wchs_coa_persist_meta( int $post_id, array $data ): void {
-	$url = esc_url_raw( (string) $data['url'] );
-	update_post_meta( $post_id, '_wchs_coa_url', $url );
+function wchs_coa_persist_url( int $post_id, $url_raw ): void {
+	if ( is_array( $url_raw ) ) {
+		$url_raw = '';
+	}
+	$url = esc_url_raw( wp_unslash( (string) $url_raw ) );
+	update_post_meta( $post_id, WCHS_COA_PARENT_META_KEY, $url );
 	update_post_meta( $post_id, 'coa_url', $url );
-	update_post_meta( $post_id, '_wchs_coa_batch', sanitize_text_field( (string) $data['batch'] ) );
-	update_post_meta( $post_id, '_wchs_coa_lab', sanitize_text_field( (string) $data['lab'] ) );
 }
