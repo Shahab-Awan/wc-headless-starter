@@ -132,16 +132,6 @@ export function enrichTierRows(
 	});
 }
 
-function isSiteBogoApiTiers(tiers: WchsCroTierRow[]): boolean {
-	if (!tiers.length) return true;
-	const qtys = tiers.map((t) => t.min_qty).sort((a, b) => a - b);
-	// Site BOGO totals 1/3/5, or stale volume-era API rows 1/2/3.
-	return (
-		(qtys.length === 3 && qtys[0] === 1 && qtys[1] === 3 && qtys[2] === 5) ||
-		(qtys.length === 3 && qtys[0] === 1 && qtys[1] === 2 && qtys[2] === 3)
-	);
-}
-
 export function resolveBundleRows(
 	apiTiers: WchsCroTierRow[],
 	regularMinor: number,
@@ -154,11 +144,6 @@ export function resolveBundleRows(
 
 	if (!enabled || regularMinor <= 0) return [];
 
-	const bogoRows = buildBogoBundleRows(regularMinor, presets);
-
-	if (!apiTiers.length || isSiteBogoApiTiers(apiTiers)) {
-		return bogoRows;
-	}
-
-	return enrichTierRows(apiTiers, regularMinor, presets);
+	// Site BOGO always drives the three PDP chips when enabled.
+	return buildBogoBundleRows(regularMinor, presets);
 }

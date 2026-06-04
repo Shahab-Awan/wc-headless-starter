@@ -625,10 +625,20 @@ class AdminPage {
 			return $defaults;
 		}
 		$config = wp_parse_args( $saved, $defaults );
-		if ( function_exists( 'wchs_cro_bogo_repair_presets' ) && isset( $config['bundle_bogo']['presets'] ) ) {
-			$config['bundle_bogo']['presets'] = wchs_cro_bogo_repair_presets(
-				is_array( $config['bundle_bogo']['presets'] ) ? $config['bundle_bogo']['presets'] : []
-			);
+		if ( function_exists( 'wchs_cro_bogo_repair_presets' ) ) {
+			$raw_presets = is_array( $config['bundle_bogo']['presets'] ?? null )
+				? $config['bundle_bogo']['presets']
+				: [];
+			$repaired    = wchs_cro_bogo_repair_presets( $raw_presets );
+			$config['bundle_bogo']['presets'] = $repaired;
+			if ( wp_json_encode( $repaired ) !== wp_json_encode( $raw_presets ) ) {
+				$saved = is_array( $saved ) ? $saved : [];
+				if ( ! isset( $saved['bundle_bogo'] ) || ! is_array( $saved['bundle_bogo'] ) ) {
+					$saved['bundle_bogo'] = [];
+				}
+				$saved['bundle_bogo']['presets'] = $repaired;
+				update_option( self::PDP_OPTION, $saved, false );
+			}
 		}
 		return $config;
 	}

@@ -163,6 +163,20 @@ function wchs_cro_bogo_repair_presets( array $presets ): array {
 	return $normalized;
 }
 
+/**
+ * Site BOGO replaces native percentage tiers (volume-% leftovers on products).
+ */
+function wchs_cro_native_tier_rules_apply( \WC_Product $product ): array {
+	$native = wchs_cro_get_native_tier_rules( $product );
+	if ( empty( $native['rules'] ) ) {
+		return [ 'type' => null, 'rules' => [] ];
+	}
+	if ( wchs_cro_bogo_settings()['enabled'] && $native['type'] === 'percentage' ) {
+		return [ 'type' => null, 'rules' => [] ];
+	}
+	return $native;
+}
+
 function wchs_cro_bogo_settings(): array {
 	$bogo = [];
 	if ( class_exists( '\WCHS\Admin\AdminPage' ) ) {
@@ -230,7 +244,7 @@ function wchs_cro_get_native_tier_rules( \WC_Product $product ): array {
  * thresholds at paid+free qty) when the product has no native tiers.
  */
 function wchs_cro_get_tier_rules( \WC_Product $product ): array {
-	$native = wchs_cro_get_native_tier_rules( $product );
+	$native = wchs_cro_native_tier_rules_apply( $product );
 	if ( ! empty( $native['rules'] ) ) {
 		return $native;
 	}
@@ -431,7 +445,7 @@ function wchs_cro_build_tier_rows( \WC_Product $product ): array {
 	$regular_major = (float) $product->get_regular_price();
 	$regular_minor = (int) round( $regular_major * $minor );
 
-	$native = wchs_cro_get_native_tier_rules( $product );
+	$native = wchs_cro_native_tier_rules_apply( $product );
 	if ( empty( $native['rules'] ) ) {
 		if ( $regular_minor > 0 && wchs_cro_bogo_settings()['enabled'] ) {
 			return wchs_cro_build_bogo_bundle_rows( $regular_minor );
@@ -722,7 +736,7 @@ function wchs_cro_cart_item_data( $cart_item ) {
 	$regular_major = (float) $product->get_regular_price();
 	$regular_unit_minor = (int) round( $regular_major * $minor );
 
-	$native_rules = wchs_cro_get_native_tier_rules( $product );
+	$native_rules = wchs_cro_native_tier_rules_apply( $product );
 	$rules_data   = wchs_cro_get_tier_rules( $product );
 	$uses_bogo_mixed = empty( $native_rules['rules'] ) && ! empty( $rules_data['rules'] );
 	$line_total_minor = $uses_bogo_mixed
@@ -1530,7 +1544,8 @@ add_action(
 				continue;
 			}
 
-			if ( ! empty( wchs_cro_get_native_tier_rules( $product )['rules'] ) ) {
+			$native = wchs_cro_native_tier_rules_apply( $product );
+			if ( ! empty( $native['rules'] ) && $native['type'] === 'fixed' ) {
 				continue;
 			}
 
