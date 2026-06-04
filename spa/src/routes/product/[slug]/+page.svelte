@@ -37,7 +37,6 @@
 	import ContactForm from '$lib/components/ContactForm.svelte';
 	import SEO from '$lib/components/SEO.svelte';
 	import { formatPrice, priceAsNumber } from '$lib/utils/format';
-	import { volumeLineTotalMinor } from '$lib/pdp/bogo-bundles';
 
 	const pdpModules = $derived(config.data.pdp?.modules ?? []);
 
@@ -461,19 +460,7 @@
 	// Effective unit price accounting for tier pricing
 	const unitPrice = $derived(activeTier ? activeTier.unit_price : baseUnitPrice);
 
-	// Line total — volume % off per line qty (same product only; cart mirrors PHP).
-	const lineTotal = $derived.by(() => {
-		if (!product || regularMinor <= 0) return 0;
-		const bogo = config.data.pdp?.bundle_bogo;
-		if (hasTiers && bogo?.enabled !== false) {
-			return volumeLineTotalMinor(
-				regularMinor,
-				quantity,
-				bogo?.savings_pct ?? 50
-			);
-		}
-		return unitPrice * quantity;
-	});
+	const lineTotal = $derived(unitPrice * quantity);
 
 	function formatMoneyInt(minorInt: number): string {
 		if (!product) return '';

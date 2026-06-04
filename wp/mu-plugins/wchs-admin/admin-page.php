@@ -589,8 +589,8 @@ class AdminPage {
 				'savings_pct' => 50,
 				'presets'     => [
 					[ 'paid_qty' => 1, 'free_qty' => 0, 'flag' => '' ],
-					[ 'paid_qty' => 2, 'free_qty' => 0, 'flag' => 'MOST POPULAR' ],
-					[ 'paid_qty' => 3, 'free_qty' => 0, 'flag' => 'BEST VALUE' ],
+					[ 'paid_qty' => 2, 'free_qty' => 1, 'flag' => 'MOST POPULAR' ],
+					[ 'paid_qty' => 3, 'free_qty' => 2, 'flag' => 'BEST VALUE' ],
 				],
 			],
 			'cross_sell'          => [
@@ -624,7 +624,13 @@ class AdminPage {
 		if ( ! is_array( $saved ) || empty( $saved ) ) {
 			return $defaults;
 		}
-		return wp_parse_args( $saved, $defaults );
+		$config = wp_parse_args( $saved, $defaults );
+		if ( function_exists( 'wchs_cro_bogo_repair_presets' ) && isset( $config['bundle_bogo']['presets'] ) ) {
+			$config['bundle_bogo']['presets'] = wchs_cro_bogo_repair_presets(
+				is_array( $config['bundle_bogo']['presets'] ) ? $config['bundle_bogo']['presets'] : []
+			);
+		}
+		return $config;
 	}
 
 	public static function get_shop_config(): array {

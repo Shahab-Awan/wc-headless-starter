@@ -81,12 +81,86 @@ function wchs_cro_bogo_normalize_preset_row( array $row ): ?array {
 		return null;
 	}
 	$has_explicit_free = array_key_exists( 'free_qty', $row );
-	$free              = $has_explicit_free ? max( 0, (int) $row['free_qty'] ) : 0;
+	$free              = $has_explicit_free ? max( 0, (int) $row['free_qty'] ) : $paid;
 	return [
 		'paid_qty' => $paid,
 		'free_qty' => $free,
 		'flag'     => sanitize_text_field( (string) ( $row['flag'] ?? '' ) ),
 	];
+}
+
+/**
+ * Buy 1 · 3-for-2 paid · 5-for-3 paid (extras above a tier at full price).
+ *
+ * @return list<array{paid_qty:int,free_qty:int,flag:string}>
+ */
+function wchs_cro_bogo_canonical_presets(): array {
+	return [
+		[ 'paid_qty' => 1, 'free_qty' => 0, 'flag' => '' ],
+		[ 'paid_qty' => 2, 'free_qty' => 1, 'flag' => 'MOST POPULAR' ],
+		[ 'paid_qty' => 3, 'free_qty' => 2, 'flag' => 'BEST VALUE' ],
+	];
+}
+
+/**
+ * Upgrade volume-discount presets (paid 1/2/3, all free_qty 0) to BOGO bundles.
+ *
+ * @param array<int, array<string, mixed>> $presets
+ * @return list<array{paid_qty:int,free_qty:int,flag:string}>
+ */
+function wchs_cro_bogo_repair_presets( array $presets ): array {
+	$canonical = wchs_cro_bogo_canonical_presets();
+	if ( empty( $presets ) ) {
+		return $canonical;
+	}
+
+	$normalized = [];
+	foreach ( $presets as $row ) {
+		if ( ! is_array( $row ) ) {
+			continue;
+		}
+		$norm = wchs_cro_bogo_normalize_preset_row( $row );
+		if ( $norm ) {
+			$normalized[] = $norm;
+		}
+	}
+	if ( empty( $normalized ) ) {
+		return $canonical;
+	}
+
+	usort(
+		$normalized,
+		static function ( array $a, array $b ): int {
+			return $a['paid_qty'] <=> $b['paid_qty'];
+		}
+	);
+
+	$has_bundle_free = false;
+	foreach ( $normalized as $row ) {
+		if ( (int) ( $row['free_qty'] ?? 0 ) > 0 ) {
+			$has_bundle_free = true;
+			break;
+		}
+	}
+
+	// Volume-% era stored paid 1/2/3 with free_qty 0 on every row.
+	if ( ! $has_bundle_free && count( $normalized ) >= 3 ) {
+		$paid_seq = array_map(
+			static fn( array $row ): int => (int) ( $row['paid_qty'] ?? 0 ),
+			array_slice( $normalized, 0, 3 )
+		);
+		if ( $paid_seq === [ 1, 2, 3 ] ) {
+			$out = $canonical;
+			foreach ( [ 1, 2 ] as $i ) {
+				if ( isset( $normalized[ $i ]['flag'] ) && (string) $normalized[ $i ]['flag'] !== '' ) {
+					$out[ $i ]['flag'] = sanitize_text_field( (string) $normalized[ $i ]['flag'] );
+				}
+			}
+			return $out;
+		}
+	}
+
+	return $normalized;
 }
 
 function wchs_cro_bogo_settings(): array {
@@ -96,24 +170,11 @@ function wchs_cro_bogo_settings(): array {
 		$bogo = is_array( $pdp['bundle_bogo'] ?? null ) ? $pdp['bundle_bogo'] : [];
 	}
 
-	$default_presets = [
-		[ 'paid_qty' => 1, 'free_qty' => 0, 'flag' => '' ],
-		[ 'paid_qty' => 2, 'free_qty' => 0, 'flag' => 'MOST POPULAR' ],
-		[ 'paid_qty' => 3, 'free_qty' => 0, 'flag' => 'BEST VALUE' ],
-	];
+	$default_presets = wchs_cro_bogo_canonical_presets();
 
 	$presets_out = [];
 	if ( ! empty( $bogo['presets'] ) && is_array( $bogo['presets'] ) ) {
-		foreach ( $bogo['presets'] as $row ) {
-			if ( ! is_array( $row ) ) {
-				continue;
-			}
-			$norm = wchs_cro_bogo_normalize_preset_row( $row );
-			if ( ! $norm ) {
-				continue;
-			}
-			$presets_out[] = $norm;
-		}
+		$presets_out = wchs_cro_bogo_repair_presets( $bogo['presets'] );
 	}
 	if ( empty( $presets_out ) ) {
 		foreach ( $default_presets as $row ) {
@@ -132,117 +193,6 @@ function wchs_cro_bogo_settings(): array {
 		'savings_pct' => (float) ( $bogo['savings_pct'] ?? 50 ),
 		'presets'     => $presets_out,
 	];
-}
-
-/**
- * Max vials that receive the site volume discount (additional vials are full price).
- */
-function wchs_cro_volume_discount_max_qty(): int {
-	return (int) apply_filters( 'wchs_volume_discount_max_qty', 10 );
-}
-
-/**
- * Max percentage off for site volume tiers (default 50%).
- */
-function wchs_cro_volume_discount_max_pct(): float {
-	$bogo = wchs_cro_bogo_settings();
-	$cap  = (float) ( $bogo['savings_pct'] ?? 50 );
-	return (float) apply_filters( 'wchs_volume_discount_max_pct', min( 50.0, max( 0.0, $cap ) ) );
-}
-
-/**
- * Per-line quantity → percent off regular price (site-wide bundle presets).
- *
- * @return array<int, float>
- */
-function wchs_cro_volume_discount_schedule(): array {
-	$max_qty = wchs_cro_volume_discount_max_qty();
-	$max_pct = wchs_cro_volume_discount_max_pct();
-
-	$schedule = [
-		1 => 0.0,
-		2 => 15.0,
-		3 => 30.0,
-	];
-
-	$pct = 35.0;
-	for ( $q = 4; $q <= $max_qty; $q++ ) {
-		$schedule[ $q ] = min( $max_pct, $pct );
-		if ( $pct < $max_pct ) {
-			$pct += 5.0;
-		}
-	}
-
-	return (array) apply_filters( 'wchs_volume_discount_schedule', $schedule );
-}
-
-function wchs_cro_volume_discount_pct_for_qty( int $qty ): float {
-	if ( $qty < 1 ) {
-		return 0.0;
-	}
-	$schedule = wchs_cro_volume_discount_schedule();
-	$max_qty  = wchs_cro_volume_discount_max_qty();
-	if ( $qty > $max_qty ) {
-		return wchs_cro_volume_discount_max_pct();
-	}
-	return (float) ( $schedule[ $qty ] ?? 0.0 );
-}
-
-/**
- * True when the product uses site volume % tiers (not native WC tier meta).
- */
-function wchs_cro_uses_site_volume_discount( \WC_Product $product ): bool {
-	if ( ! wchs_cro_bogo_settings()['enabled'] ) {
-		return false;
-	}
-	return empty( wchs_cro_get_native_tier_rules( $product )['rules'] );
-}
-
-/**
- * Line total for site volume discount: every unit in the line uses the same
- * tier % for qty ≤ max; above max only the first max units are discounted.
- */
-function wchs_cro_volume_discount_line_total_minor( \WC_Product $product, int $qty ): int {
-	$minor         = pow( 10, (int) wc_get_price_decimals() );
-	$regular_minor = (int) round( (float) $product->get_regular_price() * $minor );
-	if ( $qty < 1 || $regular_minor <= 0 ) {
-		return 0;
-	}
-
-	$max_qty = wchs_cro_volume_discount_max_qty();
-	$max_pct = wchs_cro_volume_discount_max_pct();
-
-	if ( $qty <= $max_qty ) {
-		$pct  = wchs_cro_volume_discount_pct_for_qty( $qty );
-		$unit = (int) round( $regular_minor * ( 1 - ( $pct / 100 ) ) );
-		return $unit * $qty;
-	}
-
-	$discounted_unit = (int) round( $regular_minor * ( 1 - ( $max_pct / 100 ) ) );
-	$full_units      = $qty - $max_qty;
-
-	return ( $max_qty * $discounted_unit ) + ( $full_units * $regular_minor );
-}
-
-/**
- * Per-product line total after tier rules (native % tiers or site volume tiers).
- */
-function wchs_cro_cart_line_total_minor( \WC_Product $product, int $qty, array $rules_data ): int {
-	$minor         = pow( 10, (int) wc_get_price_decimals() );
-	$regular_minor = (int) round( (float) $product->get_regular_price() * $minor );
-	if ( $qty < 1 || $regular_minor <= 0 ) {
-		return 0;
-	}
-
-	if ( wchs_cro_uses_site_volume_discount( $product ) ) {
-		return wchs_cro_volume_discount_line_total_minor( $product, $qty );
-	}
-
-	if ( empty( $rules_data['rules'] ) ) {
-		return $regular_minor * $qty;
-	}
-
-	return wchs_cro_unit_price_for_qty( $product, $qty, $rules_data ) * $qty;
 }
 
 /**
@@ -276,25 +226,30 @@ function wchs_cro_get_native_tier_rules( \WC_Product $product ): array {
 }
 
 /**
- * Resolve a product's tier rules. Falls back to site volume % tiers when the
- * product has no native tiers.
+ * Resolve a product's tier rules. Falls back to site bundle presets (percentage
+ * thresholds at paid+free qty) when the product has no native tiers.
  */
 function wchs_cro_get_tier_rules( \WC_Product $product ): array {
 	$native = wchs_cro_get_native_tier_rules( $product );
 	if ( ! empty( $native['rules'] ) ) {
 		return $native;
 	}
-	if ( ! wchs_cro_bogo_settings()['enabled'] ) {
+	$bogo = wchs_cro_bogo_settings();
+	if ( ! $bogo['enabled'] ) {
 		return [ 'type' => null, 'rules' => [] ];
 	}
 	$rules = [];
-	foreach ( wchs_cro_volume_discount_schedule() as $qty => $pct ) {
-		$qty = (int) $qty;
-		$pct = (float) $pct;
-		if ( $qty < 2 || $pct <= 0 ) {
+	foreach ( $bogo['presets'] as $preset ) {
+		$paid = (int) ( $preset['paid_qty'] ?? 0 );
+		$free = (int) ( $preset['free_qty'] ?? $paid );
+		if ( $paid < 1 || $free < 1 ) {
 			continue;
 		}
-		$rules[ $qty ] = $pct;
+		$total = $paid + $free;
+		if ( $total < 2 ) {
+			continue;
+		}
+		$rules[ $total ] = round( ( 100 * $free ) / $total, 4 );
 	}
 	if ( empty( $rules ) ) {
 		return [ 'type' => null, 'rules' => [] ];
@@ -307,25 +262,33 @@ function wchs_cro_get_tier_rules( \WC_Product $product ): array {
 }
 
 /**
- * PDP + Store API tier rows from site volume schedule (qty 1–max).
+ * PDP tier rows from bundle presets (pay paid_qty × regular, receive paid+free units).
  *
  * @return list<array<string, int|float>>
  */
 function wchs_cro_build_bogo_bundle_rows( int $regular_minor ): array {
-	if ( $regular_minor <= 0 || ! wchs_cro_bogo_settings()['enabled'] ) {
-		return [];
-	}
+	$bogo = wchs_cro_bogo_settings();
 	$rows = [];
-	foreach ( wchs_cro_volume_discount_schedule() as $qty => $pct ) {
-		$qty  = (int) $qty;
-		$pct  = (float) $pct;
-		$unit = (int) round( $regular_minor * ( 1 - ( $pct / 100 ) ) );
+	foreach ( $bogo['presets'] as $preset ) {
+		$paid = (int) $preset['paid_qty'];
+		if ( $paid < 1 ) {
+			continue;
+		}
+		$free = (int) ( $preset['free_qty'] ?? $paid );
+		if ( $free < 0 ) {
+			$free = 0;
+		}
+		$total      = $paid + $free;
+		$pct        = $free > 0 && $total > 0 ? min( 100, ( 100 * $free ) / $total ) : 0.0;
+		$unit_minor = $free > 0
+			? (int) round( $regular_minor * $paid / $total )
+			: $regular_minor;
 		$rows[] = [
-			'min_qty'               => $qty,
-			'unit_price'            => $unit,
-			'savings_per_unit'      => max( 0, $regular_minor - $unit ),
+			'min_qty'               => $total,
+			'unit_price'            => $unit_minor,
+			'savings_per_unit'      => max( 0, $regular_minor - $unit_minor ),
 			'savings_pct'           => round( $pct, 1 ),
-			'line_total_at_min_qty' => $unit * $qty,
+			'line_total_at_min_qty' => $paid * $regular_minor,
 		];
 	}
 	return $rows;
@@ -395,32 +358,28 @@ function wchs_cro_active_bundle_min_qty( int $qty, array $rules_data ): int {
  * Line total in minor units: bundle block at the matched tier + extras at regular.
  */
 function wchs_cro_line_total_minor_for_qty( \WC_Product $product, int $qty, array $rules_data ): int {
-	return wchs_cro_cart_line_total_minor( $product, $qty, $rules_data );
+	$minor          = pow( 10, (int) wc_get_price_decimals() );
+	$regular_minor  = (int) round( (float) $product->get_regular_price() * $minor );
+	if ( $qty < 1 || $regular_minor <= 0 || empty( $rules_data['rules'] ) ) {
+		return max( 0, $regular_minor * max( 0, $qty ) );
+	}
+
+	$anchor = wchs_cro_active_bundle_min_qty( $qty, $rules_data );
+	if ( $anchor < 1 ) {
+		return $regular_minor * $qty;
+	}
+
+	$bundle_unit_minor = wchs_cro_unit_price_for_qty( $product, $anchor, $rules_data );
+	$bundle_line       = $bundle_unit_minor * $anchor;
+	$overage           = max( 0, $qty - $anchor );
+
+	return $bundle_line + ( $overage * $regular_minor );
 }
 
 /**
  * Snap cart qty on +/- so partial steps between bundles resolve to the next/previous tier.
  */
 function wchs_cro_resolve_cart_qty_change( int $current_qty, int $proposed_qty, array $rules_data ): int {
-	if ( empty( $rules_data['rules'] ) ) {
-		return max( 1, $proposed_qty );
-	}
-
-	// Site volume tiers allow any cart qty; discount % follows line quantity.
-	if ( wchs_cro_bogo_settings()['enabled'] ) {
-		$schedule = wchs_cro_volume_discount_schedule();
-		$from_schedule = false;
-		foreach ( array_keys( $schedule ) as $q ) {
-			if ( isset( $rules_data['rules'][ (int) $q ] ) ) {
-				$from_schedule = true;
-				break;
-			}
-		}
-		if ( $from_schedule ) {
-			return max( 1, $proposed_qty );
-		}
-	}
-
 	$tiers = wchs_cro_tier_threshold_qtys( $rules_data );
 	if ( empty( $tiers ) ) {
 		return max( 1, $proposed_qty );
@@ -693,26 +652,45 @@ function wchs_cro_cart_item_bundle_label(
 		return '';
 	}
 
-	$pct = wchs_cro_volume_discount_pct_for_qty( $qty );
-	if ( $pct <= 0 ) {
-		return '';
-	}
-
-	$pct_label = rtrim( rtrim( number_format( $pct, 1, '.', '' ), '0' ), '.' ) . '% off';
-
+	$candidates = [];
 	foreach ( $presets as $preset ) {
 		if ( ! is_array( $preset ) ) {
 			continue;
 		}
 		$paid = (int) ( $preset['paid_qty'] ?? 0 );
-		if ( $paid !== $qty ) {
+		if ( $paid < 1 ) {
 			continue;
 		}
-		$flag = sanitize_text_field( (string) ( $preset['flag'] ?? '' ) );
-		return $flag !== '' ? $pct_label . ' · ' . $flag : $pct_label;
+		$free = array_key_exists( 'free_qty', $preset ) ? (int) $preset['free_qty'] : $paid;
+		if ( $free < 1 ) {
+			continue;
+		}
+		$total = $paid + $free;
+		if ( $qty < $total ) {
+			continue;
+		}
+		$candidates[] = [
+			'paid'  => $paid,
+			'free'  => $free,
+			'total' => $total,
+			'flag'  => sanitize_text_field( (string) ( $preset['flag'] ?? '' ) ),
+		];
 	}
-
-	return $pct_label;
+	if ( empty( $candidates ) ) {
+		return '';
+	}
+	usort(
+		$candidates,
+		static function ( array $a, array $b ): int {
+			return $b['total'] <=> $a['total'];
+		}
+	);
+	$best = $candidates[0];
+	$title = sprintf( 'Buy %d Get %d Free', $best['paid'], $best['free'] );
+	if ( $best['free'] < 1 ) {
+		return '';
+	}
+	return $best['flag'] !== '' ? $title . ' · ' . $best['flag'] : $title;
 }
 
 function wchs_cro_cart_item_data( $cart_item ) {
@@ -746,7 +724,10 @@ function wchs_cro_cart_item_data( $cart_item ) {
 
 	$native_rules = wchs_cro_get_native_tier_rules( $product );
 	$rules_data   = wchs_cro_get_tier_rules( $product );
-	$line_total_minor = wchs_cro_cart_line_total_minor( $product, $qty, $rules_data );
+	$uses_bogo_mixed = empty( $native_rules['rules'] ) && ! empty( $rules_data['rules'] );
+	$line_total_minor = $uses_bogo_mixed
+		? wchs_cro_line_total_minor_for_qty( $product, $qty, $rules_data )
+		: wchs_cro_unit_price_for_qty( $product, $qty, $rules_data ) * $qty;
 	$effective_unit_minor = $qty > 0 ? (int) round( $line_total_minor / $qty ) : $regular_unit_minor;
 
 	$savings_per_unit = max( 0, $regular_unit_minor - $effective_unit_minor );
@@ -787,9 +768,7 @@ function wchs_cro_cart_item_data( $cart_item ) {
 		'savings_pct'          => $savings_pct,
 		'next_tier'            => $next_tier,
 		'bundle_label'         => wchs_cro_cart_item_bundle_label( $qty, $savings_line, $native_rules, $rules_data ),
-		'tier_qty_thresholds'  => wchs_cro_uses_site_volume_discount( $product )
-			? []
-			: wchs_cro_tier_threshold_qtys( $rules_data ),
+		'tier_qty_thresholds'  => wchs_cro_tier_threshold_qtys( $rules_data ),
 		'active_bundle_min_qty' => wchs_cro_active_bundle_min_qty( $qty, $rules_data ),
 		'cross_sell_ids'       => wchs_cro_filter_cart_cross_sell_ids(
 			array_values( array_map( 'intval', (array) $product->get_cross_sell_ids() ) )
@@ -1566,7 +1545,7 @@ add_action(
 
 			$decimals        = max( 0, (int) wc_get_price_decimals() );
 			$minor           = pow( 10, $decimals );
-			$line_minor      = wchs_cro_cart_line_total_minor( $product, $qty, $rules );
+			$line_minor      = wchs_cro_line_total_minor_for_qty( $product, $qty, $rules );
 			$effective_major = $qty > 0
 				? (float) wc_format_decimal( ( $line_minor / $minor ) / $qty )
 				: 0.0;

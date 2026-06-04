@@ -21,120 +21,125 @@ export type BundleDisplayRow = WchsCroTierRow & {
 
 const DEFAULT_PRESETS: BogoBundlePreset[] = [
 	{ paid_qty: 1, free_qty: 0, flag: '' },
-	{ paid_qty: 2, free_qty: 0, flag: 'MOST POPULAR' },
-	{ paid_qty: 3, free_qty: 0, flag: 'BEST VALUE' },
+	{ paid_qty: 2, free_qty: 1, flag: 'MOST POPULAR' },
+	{ paid_qty: 3, free_qty: 2, flag: 'BEST VALUE' },
 ];
 
-export const VOLUME_DISCOUNT_MAX_QTY = 10;
+function bundleVialCount(paid: number, free: number): number {
+	return paid + Math.max(0, free);
+}
 
-/** Site volume schedule (qty → % off). Matches headless-cro-extension.php. */
-export function volumeDiscountSchedule(maxPct = 50): Record<number, number> {
-	const cap = Math.min(50, Math.max(0, maxPct));
-	const schedule: Record<number, number> = { 1: 0, 2: 15, 3: 30 };
-	let pct = 35;
-	for (let q = 4; q <= VOLUME_DISCOUNT_MAX_QTY; q++) {
-		schedule[q] = Math.min(cap, pct);
-		if (pct < cap) pct += 5;
+function bundleTitle(paid: number, free: number): string {
+	const safeFree = Math.max(0, free);
+	if (safeFree > 0) return `Buy ${paid} Get ${safeFree} Free`;
+	if (paid === 1) return 'Buy 1';
+	return `Buy ${paid}`;
+}
+
+function rowFromPreset(regularMinor: number, preset: BogoBundlePreset): BundleDisplayRow {
+	const paid = preset.paid_qty;
+	const free = preset.free_qty !== undefined ? preset.free_qty : paid;
+	const safeFree = Math.max(0, free);
+	const total = bundleVialCount(paid, safeFree);
+	const pct = safeFree > 0 && total > 0 ? (100 * safeFree) / total : 0;
+	const unitMinor =
+		safeFree > 0 ? Math.round((regularMinor * paid) / total) : regularMinor;
+	const lineTotal = paid * regularMinor;
+	const compareTotal = total * regularMinor;
+
+	return {
+		min_qty: total,
+		unit_price: unitMinor,
+		savings_per_unit: regularMinor - unitMinor,
+		savings_pct: Math.round(pct * 10) / 10,
+		line_total_at_min_qty: lineTotal,
+		paid_qty: paid,
+		flag: preset.flag ?? '',
+		title: bundleTitle(paid, safeFree),
+		compare_line_total: compareTotal,
+	};
+}
+
+/** Volume-% era stored paid 1/2/3 with free_qty 0 — upgrade to BOGO totals 1/3/5. */
+export function repairBundlePresets(presets: BogoBundlePreset[]): BogoBundlePreset[] {
+	if (!presets.length) return DEFAULT_PRESETS;
+
+	const normalized = presets
+		.filter((p) => p.paid_qty >= 1)
+		.map((p) => ({
+			paid_qty: p.paid_qty,
+			free_qty: p.free_qty ?? 0,
+			flag: p.flag ?? '',
+		}))
+		.sort((a, b) => a.paid_qty - b.paid_qty);
+
+	const hasBundleFree = normalized.some((p) => (p.free_qty ?? 0) > 0);
+	if (!hasBundleFree && normalized.length >= 3) {
+		const paidSeq = normalized.slice(0, 3).map((p) => p.paid_qty);
+		if (paidSeq[0] === 1 && paidSeq[1] === 2 && paidSeq[2] === 3) {
+			return DEFAULT_PRESETS.map((row, i) => ({
+				...row,
+				flag: normalized[i]?.flag || row.flag,
+			}));
+		}
 	}
-	return schedule;
-}
 
-export function volumeDiscountPct(qty: number, maxPct = 50): number {
-	if (qty < 1) return 0;
-	const schedule = volumeDiscountSchedule(maxPct);
-	if (qty > VOLUME_DISCOUNT_MAX_QTY) return Math.min(50, maxPct);
-	return schedule[qty] ?? 0;
-}
-
-/** Line total in minor units; caps discounted vials at maxQty (extras full price). */
-export function volumeLineTotalMinor(
-	regularMinor: number,
-	qty: number,
-	maxPct = 50,
-	maxQty = VOLUME_DISCOUNT_MAX_QTY
-): number {
-	if (regularMinor <= 0 || qty < 1) return 0;
-	const cap = Math.min(50, Math.max(0, maxPct));
-
-	if (qty <= maxQty) {
-		const pct = volumeDiscountPct(qty, cap);
-		const unit = Math.round(regularMinor * (1 - pct / 100));
-		return unit * qty;
-	}
-
-	const discUnit = Math.round(regularMinor * (1 - cap / 100));
-	return maxQty * discUnit + (qty - maxQty) * regularMinor;
-}
-
-function bundleTitle(paid: number, pct: number): string {
-	if (paid <= 1 || pct <= 0) return 'Buy 1';
-	const pctLabel = Number.isInteger(pct) ? `${pct}%` : `${pct.toFixed(1)}%`;
-	return `Buy ${paid} · ${pctLabel} off`;
+	return normalized.length ? normalized : DEFAULT_PRESETS;
 }
 
 export function buildBogoBundleRows(
 	regularMinor: number,
-	presets: BogoBundlePreset[] = DEFAULT_PRESETS,
-	maxPct = 50
+	presets: BogoBundlePreset[] = DEFAULT_PRESETS
 ): BundleDisplayRow[] {
 	if (regularMinor <= 0) return [];
 
-	return presets
+	return repairBundlePresets(presets)
 		.filter((preset) => preset.paid_qty >= 1)
-		.map((preset) => {
-			const paid = preset.paid_qty;
-			const pct = volumeDiscountPct(paid, maxPct);
-			const unitMinor = Math.round(regularMinor * (1 - pct / 100));
-			const lineTotal = volumeLineTotalMinor(regularMinor, paid, maxPct);
-
-			return {
-				min_qty: paid,
-				unit_price: unitMinor,
-				savings_per_unit: regularMinor - unitMinor,
-				savings_pct: Math.round(pct * 10) / 10,
-				line_total_at_min_qty: lineTotal,
-				paid_qty: paid,
-				flag: preset.flag ?? '',
-				title: bundleTitle(paid, pct),
-				compare_line_total: paid * regularMinor,
-			};
-		});
+		.map((preset) => rowFromPreset(regularMinor, preset));
 }
 
+/** Native WC tier rows on a product (not site-wide BOGO). */
 export function enrichTierRows(
 	tiers: WchsCroTierRow[],
 	regularMinor: number,
-	presets: BogoBundlePreset[] = DEFAULT_PRESETS,
-	maxPct = 50
+	presets: BogoBundlePreset[] = DEFAULT_PRESETS
 ): BundleDisplayRow[] {
-	const presetQtys = new Set(presets.map((p) => p.paid_qty));
-	const tierByQty = new Map(tiers.map((t) => [t.min_qty, t]));
+	const repaired = repairBundlePresets(presets);
 
-	return presets
-		.filter((p) => p.paid_qty >= 1)
-		.map((preset, i) => {
-			const paid = preset.paid_qty;
-			const tier = tierByQty.get(paid);
-			const pct = tier?.savings_pct ?? volumeDiscountPct(paid, maxPct);
-			const unitMinor =
-				tier?.unit_price ??
-				Math.round(regularMinor * (1 - pct / 100));
-			const lineTotal =
-				tier?.line_total_at_min_qty ??
-				volumeLineTotalMinor(regularMinor, paid, maxPct);
+	return tiers.map((tier, i) => {
+		const preset = repaired[i];
+		const paid =
+			preset?.paid_qty ??
+			(regularMinor > 0 ? Math.round(tier.line_total_at_min_qty / regularMinor) : 1);
+		const free =
+			preset?.free_qty !== undefined
+				? preset.free_qty
+				: preset
+					? paid
+					: Math.max(0, tier.min_qty - paid);
+		const safeFree = Math.max(0, free);
+		const total = bundleVialCount(paid, safeFree);
+		const compare =
+			regularMinor > 0 ? total * regularMinor : tier.min_qty * regularMinor;
 
-			return {
-				min_qty: paid,
-				unit_price: unitMinor,
-				savings_per_unit: tier?.savings_per_unit ?? regularMinor - unitMinor,
-				savings_pct: tier?.savings_pct ?? pct,
-				line_total_at_min_qty: lineTotal,
-				paid_qty: paid,
-				flag: preset.flag ?? (i === 1 ? 'MOST POPULAR' : i === 2 ? 'BEST VALUE' : ''),
-				title: bundleTitle(paid, pct),
-				compare_line_total: paid * regularMinor,
-			};
-		});
+		return {
+			...tier,
+			paid_qty: paid,
+			flag: preset?.flag ?? (i === 1 ? 'MOST POPULAR' : i === 2 ? 'BEST VALUE' : ''),
+			title: bundleTitle(paid, safeFree),
+			compare_line_total: compare,
+		};
+	});
+}
+
+function isSiteBogoApiTiers(tiers: WchsCroTierRow[]): boolean {
+	if (!tiers.length) return true;
+	const qtys = tiers.map((t) => t.min_qty).sort((a, b) => a - b);
+	// Site BOGO totals 1/3/5, or stale volume-era API rows 1/2/3.
+	return (
+		(qtys.length === 3 && qtys[0] === 1 && qtys[1] === 3 && qtys[2] === 5) ||
+		(qtys.length === 3 && qtys[0] === 1 && qtys[1] === 2 && qtys[2] === 3)
+	);
 }
 
 export function resolveBundleRows(
@@ -143,12 +148,17 @@ export function resolveBundleRows(
 	bogo?: BogoBundleConfig | null
 ): BundleDisplayRow[] {
 	const enabled = bogo?.enabled !== false;
-	const presets = bogo?.presets?.length ? bogo.presets : DEFAULT_PRESETS;
-	const maxPct = bogo?.savings_pct ?? 50;
+	const presets = repairBundlePresets(
+		bogo?.presets?.length ? bogo.presets : DEFAULT_PRESETS
+	);
 
-	if (apiTiers.length > 0) {
-		return enrichTierRows(apiTiers, regularMinor, presets, maxPct);
-	}
 	if (!enabled || regularMinor <= 0) return [];
-	return buildBogoBundleRows(regularMinor, presets, maxPct);
+
+	const bogoRows = buildBogoBundleRows(regularMinor, presets);
+
+	if (!apiTiers.length || isSiteBogoApiTiers(apiTiers)) {
+		return bogoRows;
+	}
+
+	return enrichTierRows(apiTiers, regularMinor, presets);
 }
