@@ -500,6 +500,7 @@ export type HomepageModule =
 	| (ModuleBase & { type: 'video'; config: VideoModuleConfig });
 
 export type HomepageConfig = {
+	fathers_day_mode?: boolean;
 	hero: HomepageHeroConfig;
 	modules: HomepageModule[];
 };
@@ -822,6 +823,7 @@ const DEFAULTS: SiteConfig = {
 	google_ads_conversion_id: '',
 	google_ads_conversion_label: '',
 	homepage: {
+		fathers_day_mode: true,
 		hero: {
 			headline: 'A leading grade provider of research peptides.',
 			content_mode: 'text',

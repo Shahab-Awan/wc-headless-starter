@@ -475,6 +475,11 @@ class AdminPage {
 		if ( function_exists( 'wchs_homepage_ensure_order_handling_module' ) ) {
 			$saved['modules'] = wchs_homepage_ensure_order_handling_module( $saved['modules'] );
 		}
+		if ( ! array_key_exists( 'fathers_day_mode', $saved ) ) {
+			$saved['fathers_day_mode'] = $defaults['fathers_day_mode'];
+		} else {
+			$saved['fathers_day_mode'] = ! empty( $saved['fathers_day_mode'] );
+		}
 		return $saved;
 	}
 
@@ -1116,6 +1121,7 @@ class AdminPage {
 
 	public static function homepage_defaults(): array {
 		return [
+			'fathers_day_mode' => true,
 			'hero' => [
 				'headline'               => 'A leading grade provider of research peptides.',
 				'content_mode'           => 'text',
@@ -1870,8 +1876,9 @@ class AdminPage {
 		$modules  = self::parse_modules_from_post( is_array( $raw_json ) ? $raw_json : [], 'homepage' );
 
 		update_option( self::HOMEPAGE_OPTION, [
-			'hero'    => $hero,
-			'modules' => $modules,
+			'fathers_day_mode' => ! empty( $_POST['fathers_day_mode'] ),
+			'hero'             => $hero,
+			'modules'          => $modules,
 		] );
 	}
 
@@ -2339,7 +2346,7 @@ class AdminPage {
 			<?php elseif ( 'pages' === $tab ) : ?>
 				<?php $this->render_pages_tab( $pages_cfg['pages'] ); ?>
 			<?php else : ?>
-				<?php $this->render_homepage_tab( $hero, $modules ); ?>
+				<?php $this->render_homepage_tab( $hero, $modules, ! empty( $homepage['fathers_day_mode'] ) ); ?>
 			<?php endif; ?>
 
 			<?php if ( $has_canvas ) : ?>
@@ -3961,7 +3968,7 @@ class AdminPage {
 	}
 
 
-	private function render_homepage_tab( array $hero, array $modules ): void {
+	private function render_homepage_tab( array $hero, array $modules, bool $fathers_day_mode = true ): void {
 		$categories = get_terms( [ 'taxonomy' => 'product_cat', 'hide_empty' => false ] );
 		$hero_content_mode = $hero['content_mode'] ?? 'text';
 		$hero_logo_source  = $hero['logo_source'] ?? 'site_logo';
@@ -3973,6 +3980,19 @@ class AdminPage {
 			<?php wp_nonce_field( 'wchs_save_settings', 'wchs_nonce' ); ?>
 			<input type="hidden" name="action" value="wchs_save_settings" />
 			<input type="hidden" name="wchs_tab" value="homepage" />
+
+			<div class="wchs-info" style="margin-bottom:20px;border-left:3px solid var(--wchs-accent,#14b8a6)">
+				<div class="wchs-field" style="margin:0">
+					<label class="wchs-toggle">
+						<input type="checkbox" name="fathers_day_mode" value="1" <?php checked( $fathers_day_mode ); ?> />
+						<span class="wchs-toggle__track"><span class="wchs-toggle__thumb"></span></span>
+						<span><strong>Father's Day mode</strong></span>
+					</label>
+					<p style="margin:10px 0 0;font-size:13px;opacity:0.85">
+						When on, the homepage hero shows Father's Day banner copy. Page structure and modules stay the same — only hero text changes. Turn off to restore your standard hero content.
+					</p>
+				</div>
+			</div>
 
 			<?php
 			$hero_layout    = $hero['layout'] ?? 'left';

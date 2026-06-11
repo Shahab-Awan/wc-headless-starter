@@ -1,10 +1,23 @@
 <script lang="ts">
 	import { config } from '$lib/config.svelte';
+	import { FATHERS_DAY_HERO_CONTENT } from '$lib/fathers-day-hero';
 
-	const items = $derived(config.data.announcement_bar_items ?? []);
+	const fathersDayMode = $derived(config.data.homepage.fathers_day_mode !== false);
+
+	const items = $derived.by(() => {
+		const base = config.data.announcement_bar_items ?? [];
+		if (!fathersDayMode) return base;
+		const fd = FATHERS_DAY_HERO_CONTENT.announcement;
+		if (base.includes(fd)) return base;
+		return [fd, ...base];
+	});
+
 	const enabled = $derived(
-		Boolean(config.data.announcement_bar_enabled) && items.length > 0
+		fathersDayMode
+			? true
+			: Boolean(config.data.announcement_bar_enabled) && items.length > 0
 	);
+
 	const loop = $derived([...items, ...items]);
 </script>
 

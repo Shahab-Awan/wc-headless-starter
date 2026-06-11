@@ -27,11 +27,17 @@
 		homepageModulesWithSplitValueAfterHero,
 		isHomepageModuleShown,
 	} from '$lib/config.svelte';
+	import { applyFathersDayHero } from '$lib/fathers-day-hero';
+
+	const fathersDayMode = $derived(config.data.homepage.fathers_day_mode !== false);
 
 	const hero = $derived.by(() => {
-		const h = config.data.homepage.hero;
+		let h = config.data.homepage.hero;
 		if (h.variant === 'research-motion') {
-			return { ...h, variant: 'webgl-variant-6' as const, layout: 'left' as const };
+			h = { ...h, variant: 'webgl-variant-6' as const, layout: 'left' as const };
+		}
+		if (fathersDayMode) {
+			h = applyFathersDayHero(h);
 		}
 		return h;
 	});
@@ -76,7 +82,7 @@
 />
 
 <AccessGate requires="products">
-<Hero hero={hero} />
+<Hero hero={hero} {fathersDayMode} />
 
 {#each modules as mod}
 	<div class="wchs-mod-wrap" data-module-type={mod.type} data-module-id={mod.id ?? ''} style="display: contents">

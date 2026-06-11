@@ -113,7 +113,11 @@
 	];
 </script>
 
-<section class="hero-rx" style={accentStyle} aria-label={brandName ? `${brandName} hero` : 'Hero'}>
+<section
+	class="hero-rx"
+	style={accentStyle}
+	aria-label={brandName ? `${brandName} hero` : 'Hero'}
+>
 	<div class="hero-rx__bg" aria-hidden="true">
 		<div class="hero-rx__bg-base"></div>
 		<div class="hero-rx__bg-glow"></div>

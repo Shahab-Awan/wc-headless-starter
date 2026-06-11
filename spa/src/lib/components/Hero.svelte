@@ -20,8 +20,9 @@
 	import { browser } from '$app/environment';
 	import { config, type ModuleResolved } from '$lib/config.svelte';
 	import { HERO_FONTS } from '$lib/hero-fonts';
+	import { FATHERS_DAY_HERO_CONTENT } from '$lib/fathers-day-hero';
 
-	let { hero, resolved, showEyebrow = true, showRating = true, showTrust = true, brandName } = $props<{
+	let { hero, resolved, showEyebrow = true, showRating = true, showTrust = true, brandName, fathersDayMode = false } = $props<{
 		hero: {
 			layout?: string;
 			image_desktop?: string;
@@ -59,6 +60,7 @@
 		showRating?: boolean;
 		showTrust?: boolean;
 		brandName?: string;
+		fathersDayMode?: boolean;
 	}>();
 
 	const layout = $derived(hero.layout || 'left');
@@ -116,6 +118,12 @@
 	);
 	const showVisibleHeadline = $derived(heroContentMode !== 'logo' || !resolvedHeroLogoUrl);
 
+	const fdLogoUrl = $derived(config.data.logo_full_url || config.data.logo_url || null);
+	const fdLogoDarkUrl = $derived(config.data.logo_dark_full_url || config.data.logo_dark_url || null);
+	const fdLogoAutoInvert = $derived(
+		!!fdLogoUrl && !fdLogoDarkUrl && !!config.data.logo_invert_on_dark
+	);
+
 	// Module-scoped accent override — applies var(--accent) only inside this
 	// hero's subtree, leaving the global accent untouched for sibling content.
 	const accentStyle = $derived(resolved?.accent_color ? `--accent: ${resolved.accent_color};` : '');
@@ -127,6 +135,17 @@
 	let heroImgEl = $state<HTMLImageElement | undefined>();
 	let heroImgNat = $state<{ w: number; h: number }>({ w: 0, h: 0 });
 	let heroIsMobile = $state(false);
+
+	$effect(() => {
+		if (typeof document === 'undefined' || !fathersDayMode) return;
+		const id = 'wchs-fd-playfair';
+		if (document.getElementById(id)) return;
+		const link = document.createElement('link');
+		link.id = id;
+		link.rel = 'stylesheet';
+		link.href = 'https://fonts.bunny.net/css?family=playfair-display:400,500,600,700,400i,500i,600i&display=swap';
+		document.head.appendChild(link);
+	});
 
 	$effect(() => {
 		if (typeof window === 'undefined') return;
@@ -202,7 +221,8 @@
 {:else}
 <section
 	class="hero hero--{layout}"
-	class:hero--logo={heroContentMode === 'logo'}
+	class:hero--logo={heroContentMode === 'logo' && !fathersDayMode}
+	class:hero--fathers-day={fathersDayMode}
 	style="--hero-mobile-pad: {430 + ((hero.image_position_mobile_y ?? 50) - 50) * 2}px;{heroTextColor ? ` --hero-text: ${heroTextColor};` : ''}{accentStyle}"
 >
 	{#if hero.image_desktop}
@@ -251,6 +271,89 @@
 		{/await}
 	{/if}
 	<div class="hero__inner">
+		{#if fathersDayMode}
+			<div class="hero__fd-stack">
+				{#if fdLogoUrl}
+					<div class="hero__fd-logo">
+						<img
+							class="hero__fd-logo-img hero__fd-logo-img--light"
+							class:hero__fd-logo-img--has-dark={!!fdLogoDarkUrl}
+							class:hero__fd-logo-img--auto-invert={fdLogoAutoInvert}
+							src={fdLogoUrl}
+							alt={displayBrandName}
+						/>
+						{#if fdLogoDarkUrl}
+							<img
+								class="hero__fd-logo-img hero__fd-logo-img--dark"
+								src={fdLogoDarkUrl}
+								alt=""
+								aria-hidden="true"
+							/>
+						{/if}
+					</div>
+				{/if}
+
+				<div class="hero__fd-tagline-row">
+					<span class="hero__fd-tagline-line" aria-hidden="true"></span>
+					<svg class="hero__fd-tagline-gift" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M20 12v10H4V12" />
+						<path d="M2 7h20v5H2z" />
+						<path d="M12 22V7" />
+						<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+						<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+					</svg>
+					<span class="hero__fd-tagline-text">{FATHERS_DAY_HERO_CONTENT.tagline}</span>
+					<span class="hero__fd-tagline-line" aria-hidden="true"></span>
+				</div>
+
+				<h1 class="hero__title--sr">
+					{FATHERS_DAY_HERO_CONTENT.headlinePrimary} {FATHERS_DAY_HERO_CONTENT.headlineSecondary}
+				</h1>
+				<div class="hero__fd-headline" style="font-family: {headlineFontFamily};">
+					<span class="hero__fd-headline-main">{FATHERS_DAY_HERO_CONTENT.headlinePrimary}</span>
+					<span class="hero__fd-sale-row">
+						<span class="hero__fd-headline-sale">{FATHERS_DAY_HERO_CONTENT.headlineSecondary}</span>
+						<svg class="hero__fd-heart" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+							<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+						</svg>
+					</span>
+				</div>
+
+				<div class="hero__fd-ribbon" role="note">
+					<span class="hero__fd-ribbon-text">
+						<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+							<line x1="7" y1="7" x2="7.01" y2="7" />
+						</svg>
+						{FATHERS_DAY_HERO_CONTENT.ribbon}
+					</span>
+				</div>
+
+				<p class="hero__fd-kicker">{FATHERS_DAY_HERO_CONTENT.kicker}</p>
+				<p class="hero__lede hero__lede--fd" style="font-size: {subFontSize};">{FATHERS_DAY_HERO_CONTENT.subheadline}</p>
+
+				{#if hero.show_cta !== false && hero.cta_text}
+					<div class="hero__cta hero__cta--fd">
+						<a href={hero.cta_link || '#'} class="hero__cta-primary" class:hero__cta-primary--neutral={!hero.cta_accent}>{hero.cta_text}</a>
+					</div>
+				{/if}
+
+				<p class="hero__fd-limited">{FATHERS_DAY_HERO_CONTENT.limitedTime}</p>
+
+				<div class="hero__fd-trust">
+					{#each FATHERS_DAY_HERO_CONTENT.trustItems as ti}
+						<div class="hero__fd-trust-item">
+							{#if trustIcons[ti.icon]}
+								<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<path d={trustIcons[ti.icon]} />
+								</svg>
+							{/if}
+							<span>{ti.text}</span>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{:else}
 		{#if showRating && hero.show_rating && hero.rating_text}
 			<div class="hero__rating">
 				<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" stroke="none"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>
@@ -306,6 +409,7 @@
 					{/each}
 				</div>
 			</div>
+		{/if}
 		{/if}
 	</div>
 </section>
@@ -536,6 +640,277 @@
 		opacity: 0.4;
 	}
 
+	.hero--fathers-day {
+		--fd-navy: color-mix(in srgb, var(--fg) 88%, var(--accent) 12%);
+		--hero-fd-copy-inset: clamp(48px, 8vw, 88px);
+		--hero-fd-block-width: min(460px, 100%);
+		align-items: flex-start;
+		justify-content: flex-start;
+		padding-top: max(calc(var(--wchs-header-stack-height, 108px) - 64px), 44px);
+		padding-bottom: 48px;
+	}
+
+	.hero--fathers-day .hero__inner {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		max-width: min(540px, 46vw);
+		padding-left: var(--hero-fd-copy-inset);
+		padding-right: 12px;
+		margin-left: clamp(16px, 3vw, 44px);
+	}
+
+	.hero--fathers-day .hero__fd-stack {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		width: var(--hero-fd-block-width);
+		max-width: 100%;
+	}
+
+	.hero--fathers-day .hero__fd-logo {
+		position: relative;
+		width: min(100%, 180px);
+		margin: 0 0 6px;
+		align-self: center;
+	}
+
+	.hero--fathers-day .hero__fd-logo-img {
+		display: block;
+		width: 100%;
+		height: auto;
+		margin: 0;
+	}
+
+	.hero--fathers-day .hero__fd-logo-img--dark {
+		display: none;
+	}
+
+	:global([data-theme='dark']) .hero--fathers-day .hero__fd-logo-img--has-dark {
+		display: none;
+	}
+
+	:global([data-theme='dark']) .hero--fathers-day .hero__fd-logo-img--dark {
+		display: block;
+	}
+
+	:global([data-theme='dark']) .hero--fathers-day .hero__fd-logo-img--auto-invert {
+		display: block;
+		filter: invert(1) brightness(1.04);
+	}
+
+	.hero--fathers-day .hero__fd-tagline-row {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 10px;
+		width: 100%;
+		margin: 0 0 16px;
+	}
+
+	.hero--fathers-day .hero__fd-tagline-line {
+		flex: 1;
+		height: 1px;
+		background: color-mix(in srgb, var(--accent) 35%, transparent);
+		min-width: 24px;
+	}
+
+	.hero--fathers-day .hero__fd-tagline-gift {
+		flex-shrink: 0;
+		color: var(--accent);
+	}
+
+	.hero--fathers-day .hero__fd-tagline-text {
+		flex-shrink: 0;
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.18em;
+		color: color-mix(in srgb, var(--hero-text, var(--fg)) 72%, var(--accent) 28%);
+		white-space: nowrap;
+	}
+
+	.hero--fathers-day .hero__fd-headline {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		align-items: baseline;
+		justify-content: center;
+		gap: 0.28em 0.42em;
+		margin: 0 0 14px;
+		line-height: 1.05;
+		width: 100%;
+		max-width: 100%;
+		white-space: nowrap;
+	}
+
+	.hero--fathers-day .hero__fd-headline-main {
+		display: inline;
+		font-size: clamp(2.35rem, 5.8vw, 3.85rem);
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: -0.025em;
+		color: var(--hero-text, var(--fg));
+		white-space: nowrap;
+	}
+
+	.hero--fathers-day .hero__fd-sale-row {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin: 0;
+		white-space: nowrap;
+	}
+
+	.hero--fathers-day .hero__fd-headline-sale {
+		font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+		font-size: clamp(2.65rem, 6.5vw, 4.15rem);
+		font-weight: 500;
+		font-style: italic;
+		line-height: 1;
+		letter-spacing: -0.01em;
+		color: var(--accent);
+	}
+
+	.hero--fathers-day .hero__fd-heart {
+		color: var(--accent);
+		opacity: 0.85;
+		margin-top: 0.1em;
+		flex-shrink: 0;
+	}
+
+	.hero--fathers-day .hero__fd-ribbon {
+		display: inline-flex;
+		align-items: stretch;
+		justify-content: center;
+		margin: 0 0 12px;
+		filter: drop-shadow(0 3px 10px color-mix(in srgb, var(--fd-navy) 22%, transparent));
+	}
+
+	.hero--fathers-day .hero__fd-ribbon-text {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 9px 22px;
+		background: var(--fd-navy);
+		color: #fff;
+		font-size: 10px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.11em;
+		white-space: nowrap;
+	}
+
+	.hero--fathers-day .hero__fd-ribbon-text svg {
+		flex-shrink: 0;
+		opacity: 0.95;
+	}
+
+	.hero--fathers-day .hero__fd-ribbon-text::before,
+	.hero--fathers-day .hero__fd-ribbon-text::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		width: 14px;
+		height: 100%;
+		background: var(--fd-navy);
+	}
+
+	.hero--fathers-day .hero__fd-ribbon-text::before {
+		left: -13px;
+		clip-path: polygon(100% 0, 100% 100%, 0 100%, 35% 50%, 0 0);
+	}
+
+	.hero--fathers-day .hero__fd-ribbon-text::after {
+		right: -13px;
+		clip-path: polygon(0 0, 100% 0, 65% 50%, 100% 100%, 0 100%);
+	}
+
+	.hero--fathers-day .hero__fd-limited {
+		display: inline-flex;
+		align-items: center;
+		margin: 0 0 14px;
+		padding: 7px 14px;
+		font-size: 9px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.14em;
+		color: color-mix(in srgb, var(--fd-navy) 82%, white 18%);
+		background: color-mix(in srgb, var(--accent) 16%, var(--bg) 84%);
+		border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+		border-radius: 999px;
+		box-shadow: 0 2px 12px color-mix(in srgb, var(--accent) 12%, transparent);
+	}
+
+	.hero--fathers-day .hero__fd-kicker {
+		margin: 0 0 12px;
+		font-size: 11px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.15em;
+		color: var(--accent);
+		width: 100%;
+	}
+
+	.hero--fathers-day .hero__lede--fd {
+		margin: 0 auto 16px;
+		padding: 0;
+		max-width: 34ch;
+		opacity: 0.76;
+		line-height: 1.55;
+		text-align: center;
+		align-self: center;
+	}
+
+	.hero--fathers-day .hero__fd-trust {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 10px 12px;
+		width: 100%;
+		margin: 0;
+		justify-items: center;
+	}
+
+	.hero--fathers-day .hero__fd-trust-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 7px;
+		text-align: center;
+		color: var(--hero-text, var(--fg));
+		opacity: 0.85;
+	}
+
+	.hero--fathers-day .hero__fd-trust-item svg {
+		flex-shrink: 0;
+		color: color-mix(in srgb, var(--hero-text, var(--fg)) 88%, var(--accent) 12%);
+	}
+
+	.hero--fathers-day .hero__fd-trust-item span {
+		font-size: 8px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.07em;
+		line-height: 1.35;
+	}
+
+	.hero--fathers-day .hero__cta--fd {
+		margin: 0 0 14px;
+		justify-content: center;
+		align-self: center;
+		width: 100%;
+		padding: 0;
+	}
+
+	.hero--fathers-day .hero__cta--fd .hero__cta-primary {
+		min-width: min(100%, 220px);
+		justify-content: center;
+		margin-inline: auto;
+	}
+
 	/* Logo lockup heroes: top-align with safe insets so copy + CTA are not clipped. */
 	@media (min-width: 640px) {
 		.hero--left.hero--logo {
@@ -603,6 +978,12 @@
 		.hero__rating,
 		.hero__eyebrow,
 		.hero__title,
+		.hero__fd-tagline-row,
+		.hero__fd-headline,
+		.hero__fd-kicker,
+		.hero__fd-limited,
+		.hero__fd-ribbon,
+		.hero__fd-trust,
 		.hero__lede,
 		.hero__cta,
 		.hero__trust,
@@ -666,6 +1047,85 @@
 		.hero__trust-dot {
 			margin: 0 4px;
 		}
+		.hero--fathers-day {
+			align-items: flex-start;
+			justify-content: flex-start;
+			min-height: max(880px, calc(100svh - 45px));
+			padding-top: calc(var(--wchs-header-stack-height, 108px) + 16px);
+			padding-bottom: var(--hero-mobile-pad, 530px);
+			padding-left: 24px;
+			padding-right: 24px;
+		}
+		.hero--fathers-day .hero__inner {
+			align-items: center;
+			max-width: 100%;
+			padding-left: clamp(20px, 5vw, 32px);
+			margin-left: 0;
+		}
+		.hero--fathers-day .hero__fd-stack {
+			align-items: center;
+			text-align: center;
+			width: min(100%, 420px);
+		}
+		.hero--fathers-day .hero__fd-logo {
+			display: none;
+		}
+		.hero--fathers-day .hero__fd-tagline-row {
+			margin-top: 4px;
+		}
+		.hero--fathers-day .hero__fd-headline {
+			justify-content: center;
+			flex-wrap: nowrap;
+			white-space: nowrap;
+		}
+		.hero--fathers-day .hero__fd-headline-main {
+			font-size: clamp(1.55rem, 6.2vw, 2.35rem);
+			white-space: nowrap;
+		}
+		.hero--fathers-day .hero__fd-headline-sale {
+			font-size: clamp(1.75rem, 6.8vw, 2.55rem);
+			white-space: nowrap;
+		}
+		.hero--fathers-day .hero__fd-heart {
+			width: 16px;
+			height: 16px;
+		}
+		.hero--fathers-day .hero__fd-tagline-text {
+			font-size: 9px;
+			letter-spacing: 0.14em;
+		}
+		.hero--fathers-day .hero__fd-trust {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			max-width: 100%;
+			gap: 16px 12px;
+		}
+		.hero--fathers-day .hero__lede--fd {
+			max-width: 34ch;
+			margin-left: auto;
+			margin-right: auto;
+			padding: 0;
+			text-align: center;
+		}
+		.hero--fathers-day .hero__cta--fd {
+			padding: 0;
+			align-self: center;
+			justify-content: center;
+		}
+		.hero--fathers-day .hero__cta--fd .hero__cta-primary {
+			margin-inline: auto;
+		}
+		.hero--fathers-day .hero__fd-tagline-row,
+		.hero--fathers-day .hero__fd-headline,
+		.hero--fathers-day .hero__fd-kicker,
+		.hero--fathers-day .hero__fd-limited,
+		.hero--fathers-day .hero__fd-ribbon,
+		.hero--fathers-day .hero__lede--fd,
+		.hero--fathers-day .hero__fd-trust,
+		.hero--fathers-day .hero__cta--fd {
+			width: 100%;
+			text-align: center;
+			justify-content: center;
+		}
 		.hero__image {
 			display: block;
 		}
@@ -679,7 +1139,7 @@
 				transparent 85%
 			);
 		}
-		.hero:not(.hero--logo) {
+		.hero:not(.hero--logo):not(.hero--fathers-day) {
 			background: var(--bg);
 			min-height: max(1010px, calc(100svh - 45px));
 			padding-bottom: var(--hero-mobile-pad, 530px);

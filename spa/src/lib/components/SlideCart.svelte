@@ -16,6 +16,7 @@
 	import CartCrossSellStrip from './CartCrossSellStrip.svelte';
 	import { formatPrice } from '$lib/utils/format';
 	import { config } from '$lib/config.svelte';
+	import { FATHERS_DAY_HERO_CONTENT } from '$lib/fathers-day-hero';
 	import type { StoreApiCartItem } from '$lib/wc/cart.svelte';
 	import {
 		shippingProtectionFeeMajor,
@@ -198,6 +199,11 @@
 	const cartTotalSavings = $derived.by(() => {
 		return displayCartItems.reduce((sum, item) => sum + lineSavingsMinor(item), 0);
 	});
+
+	const fathersDayMode = $derived(config.data.homepage.fathers_day_mode !== false);
+	const cartSavingsLabel = $derived(
+		fathersDayMode ? FATHERS_DAY_HERO_CONTENT.cartSavingsLabel : 'You saved'
+	);
 
 	const visibleItemCount = $derived(
 		displayCartItems.reduce((n, i) => n + i.quantity, 0)
@@ -483,7 +489,7 @@
 			{#if cartTotalSavings > 0}
 				<dl class="fkcart-summary tabular-nums">
 					<div class="fkcart-summary__row fkcart-summary__row--savings">
-						<dt>You saved</dt>
+						<dt>{cartSavingsLabel}</dt>
 						{#key cartTotalSavings}
 							<dd class="fkcart-summary__value fkcart-summary__value--savings">
 								{formatMoneyInt(cartTotalSavings)}

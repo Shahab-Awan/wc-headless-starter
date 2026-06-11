@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { config } from '$lib/config.svelte';
+	import { FATHERS_DAY_HERO_CONTENT } from '$lib/fathers-day-hero';
 	import PdpCoaSection from '$lib/components/pdp/PdpCoaSection.svelte';
 	import { resolveBundleRows, type BundleDisplayRow } from '$lib/pdp/bogo-bundles';
 	import type { StoreProduct, StoreProductVariation, WchsCroProduct } from '$lib/wc/products';
@@ -73,6 +74,7 @@
 	} = $props();
 
 	const pdpUi = $derived(config.data.pdp);
+	const fathersDayMode = $derived(config.data.homepage.fathers_day_mode !== false);
 	const features = $derived(pdpUi?.features?.length ? pdpUi.features : []);
 	const trustBadges = $derived(
 		(pdpUi?.trust_badges ?? []).map((b) => ({
@@ -232,9 +234,16 @@
 
 	<div class="pdp-buy__panel">
 		{#if pdpUi?.show_ships_banner !== false}
-			<div class="pdp-buy__ships">
+			<div class="pdp-buy__ships" class:pdp-buy__ships--fathers-day={fathersDayMode}>
 				<span class="pdp-buy__ships-dot" aria-hidden="true"></span>
-				<span>Order within <strong>{shipsCountdown}</strong> — Ships Today</span>
+				{#if fathersDayMode}
+					<span
+						>{FATHERS_DAY_HERO_CONTENT.pdpShipsTimerBefore}<strong>{shipsCountdown}</strong
+						>{FATHERS_DAY_HERO_CONTENT.pdpShipsTimerAfter}</span
+					>
+				{:else}
+					<span>Order within <strong>{shipsCountdown}</strong> — Ships Today</span>
+				{/if}
 			</div>
 		{/if}
 
