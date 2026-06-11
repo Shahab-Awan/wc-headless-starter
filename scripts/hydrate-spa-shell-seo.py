@@ -14,8 +14,10 @@ import html
 import json
 import mimetypes
 import re
+import shutil
 from pathlib import Path
 from urllib.parse import urljoin
+from urllib.request import urlopen
 
 
 START = "<!-- STATIC_SEO_START -->"
@@ -63,7 +65,12 @@ def derive_payload(config: dict, domain: str) -> dict:
         absolute_url(config.get("logo_full_url"), origin)
         or absolute_url(config.get("logo_url"), origin)
     )
-    image = absolute_url(hero.get("image_desktop"), origin) or logo
+    image = (
+        absolute_url(config.get("static_seo_image_url"), origin)
+        or absolute_url(hero.get("image_desktop"), origin)
+        or logo
+    )
+    favicon_source = absolute_url(config.get("favicon_url"), origin)
 
     return {
         "origin": origin,
@@ -72,6 +79,7 @@ def derive_payload(config: dict, domain: str) -> dict:
         "description": description,
         "logo": logo,
         "image": image,
+        "favicon_source": favicon_source,
     }
 
 
@@ -82,6 +90,7 @@ def build_seo_block(payload: dict) -> str:
     image = payload["image"]
     logo = payload["logo"]
     site_name = payload["brand"]
+    has_favicon = bool(payload.get("favicon_source"))
 
     lines = [
         START,
@@ -104,8 +113,13 @@ def build_seo_block(payload: dict) -> str:
             f'<meta data-static-seo="og:image" property="og:image" content="{esc(image)}" />',
             f'<meta data-static-seo="twitter:image" name="twitter:image" content="{esc(image)}" />',
         ])
-    if logo:
-        lines.append(f'<link data-static-seo="icon" rel="icon" href="{esc(logo)}" type="{esc(icon_type(logo))}" />')
+
+    if has_favicon:
+        lines.extend([
+            '<link data-static-seo="icon" rel="icon" href="/favicon.ico" sizes="any" />',
+            '<link data-static-seo="icon" rel="icon" type="image/png" href="/favicon.png" />',
+            '<link data-static-seo="icon" rel="apple-touch-icon" href="/apple-touch-icon.png" />',
+        ])
 
     schema = {
         "@context": "https://schema.org",
@@ -124,6 +138,34 @@ def build_seo_block(payload: dict) -> str:
     return "\n\t\t".join(lines)
 
 
+def sync_favicon_links(source: str, has_favicon: bool) -> str:
+    if not has_favicon:
+        return source
+
+    icon_block = (
+        '\t\t<link rel="icon" href="/favicon.ico" sizes="any" />\n'
+        '\t\t<link rel="icon" type="image/png" href="/favicon.png" />\n'
+        '\t\t<link rel="apple-touch-icon" href="/apple-touch-icon.png" />'
+    )
+    source = re.sub(r'\s*<link rel="icon" href="/favicon\.ico"[^>]*>\n?', "\n", source)
+    source = re.sub(r'\s*<link rel="icon" type="image/png" href="/favicon\.png"[^>]*>\n?', "\n", source)
+    source = re.sub(r'\s*<link rel="apple-touch-icon" href="/apple-touch-icon\.png"[^>]*>\n?', "\n", source)
+    return source.replace("</head>", icon_block + "\n\t</head>", 1)
+
+
+def download_favicon_assets(source_url: str, build_dir: Path) -> None:
+    with urlopen(source_url, timeout=30) as response:
+        data = response.read()
+    if not data:
+        raise RuntimeError(f"empty favicon response from {source_url}")
+
+    build_dir.mkdir(parents=True, exist_ok=True)
+    png_path = build_dir / "favicon.png"
+    png_path.write_bytes(data)
+    shutil.copyfile(png_path, build_dir / "apple-touch-icon.png")
+    shutil.copyfile(png_path, build_dir / "favicon.ico")
+
+
 def hydrate_index(index_path: Path, payload: dict) -> None:
     source = index_path.read_text(encoding="utf-8")
     block = build_seo_block(payload)
@@ -133,11 +175,7 @@ def hydrate_index(index_path: Path, payload: dict) -> None:
     else:
         source = source.replace("</head>", f"\t\t{block}\n\t</head>", 1)
 
-    if payload["logo"]:
-        icon = f'<link rel="icon" href="{esc(payload["logo"])}" type="{esc(icon_type(payload["logo"]))}" />'
-        source = re.sub(r'\s*<link rel="icon" href="/favicon\.ico"[^>]*>\n?', "\n\t\t" + icon + "\n", source, count=1)
-        source = re.sub(r'\s*<link rel="icon" type="image/png" href="/favicon\.png"[^>]*>\n?', "\n", source, count=1)
-
+    source = sync_favicon_links(source, bool(payload.get("favicon_source")))
     index_path.write_text(source, encoding="utf-8")
 
 
@@ -150,7 +188,12 @@ def write_manifest(manifest_path: Path, payload: dict, accent: str) -> None:
         "theme_color": accent or "#111111",
         "background_color": "#ffffff",
     }
-    if payload["logo"]:
+    if payload.get("favicon_source"):
+        manifest["icons"] = [
+            {"src": "/favicon.png", "sizes": "192x192", "type": "image/png"},
+            {"src": "/apple-touch-icon.png", "sizes": "512x512", "type": "image/png"},
+        ]
+    elif payload["logo"]:
         manifest["icons"] = [
             {
                 "src": payload["logo"],
@@ -171,9 +214,19 @@ def main() -> int:
 
     config = json.loads(args.config.read_text(encoding="utf-8"))
     payload = derive_payload(config, args.domain)
+
+    if payload.get("favicon_source"):
+        download_favicon_assets(payload["favicon_source"], args.index.parent)
+
     hydrate_index(args.index, payload)
     write_manifest(args.manifest, payload, plain(config.get("accent_color")))
-    print(f"Hydrated SPA SEO shell: title={payload['title']!r} description={payload['description']!r}")
+    print(
+        "Hydrated SPA SEO shell:"
+        f" title={payload['title']!r}"
+        f" description={payload['description']!r}"
+        f" image={payload['image']!r}"
+        f" favicon={payload.get('favicon_source') or '(none)'!r}"
+    )
     return 0
 
 

@@ -666,6 +666,8 @@ export type SiteConfig = {
 	brand_name: string;
 	static_seo_title: string;
 	static_seo_description: string;
+	static_seo_image_url: string | null;
+	favicon_url: string | null;
 	logo_url: string | null;
 	logo_dark_url: string | null;
 	logo_full_url: string | null;
@@ -798,8 +800,11 @@ const DEFAULTS: SiteConfig = {
 	},
 	spa_origin: 'http://localhost:5175',
 	brand_name: 'Online Store',
-	static_seo_title: '',
-	static_seo_description: '',
+	static_seo_title: 'Alyve Peptides',
+	static_seo_description:
+		'Shop research-grade peptides with third-party COAs, verified purity, and fast US fulfillment. For in-vitro laboratory research only.',
+	static_seo_image_url: null,
+	favicon_url: null,
 	logo_url: null,
 	logo_dark_url: null,
 	logo_full_url: null,

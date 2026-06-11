@@ -3249,6 +3249,53 @@
 		}
 	});
 
+	// ── Attachment ID pickers (Search & social, dark logo, etc.) ──
+	document.addEventListener('click', function (e) {
+		var attachmentChoose = e.target.closest('.wchs-attachment-choose');
+		if (attachmentChoose) {
+			if (typeof wp === 'undefined' || !wp.media) return;
+			var picker = attachmentChoose.closest('.wchs-attachment-picker');
+			if (!picker) return;
+			var idInput = picker.querySelector('.wchs-attachment-id');
+			var preview = picker.querySelector('.wchs-attachment-preview');
+			var removeBtn = picker.querySelector('.wchs-attachment-remove');
+			if (!idInput || !preview) return;
+			var title = picker.getAttribute('data-title') || 'Select image';
+			var frame = wp.media({
+				title: title,
+				button: { text: 'Use this image' },
+				library: { type: 'image' },
+				multiple: false,
+			});
+			frame.on('select', function () {
+				var att = frame.state().get('selection').first().toJSON();
+				idInput.value = att.id;
+				var url = (att.sizes && att.sizes.medium && att.sizes.medium.url) ? att.sizes.medium.url : att.url;
+				preview.src = url;
+				preview.style.display = '';
+				if (removeBtn) removeBtn.style.display = '';
+				attachmentChoose.textContent = 'Change';
+			});
+			frame.open();
+			return;
+		}
+
+		var attachmentRemove = e.target.closest('.wchs-attachment-remove');
+		if (attachmentRemove) {
+			var pickerRm = attachmentRemove.closest('.wchs-attachment-picker');
+			if (!pickerRm) return;
+			var idInputRm = pickerRm.querySelector('.wchs-attachment-id');
+			var previewRm = pickerRm.querySelector('.wchs-attachment-preview');
+			var chooseBtnRm = pickerRm.querySelector('.wchs-attachment-choose');
+			if (!idInputRm || !previewRm || !chooseBtnRm) return;
+			idInputRm.value = '0';
+			previewRm.src = '';
+			previewRm.style.display = 'none';
+			attachmentRemove.style.display = 'none';
+			chooseBtnRm.textContent = 'Upload / choose';
+		}
+	});
+
 	// ── Media library picker ──────────────────────────────────
 	function mediaPickerScope(btn) {
 		return btn.closest('.wchs-media-field') || btn.closest('.wchs-field');

@@ -154,9 +154,6 @@ jobs:
             --exclude='robots.txt' \
             --exclude='config/' \
             --exclude='setup-fresh-site.sh' \
-            --exclude='favicon.ico' \
-            --exclude='favicon.png' \
-            --exclude='apple-touch-icon.png' \
             --exclude='app/' \
             spa/build/ \
             "sg-target:~/www/${SG_DOMAIN}/public_html/"

@@ -1025,6 +1025,13 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 	$dark_logo_id  = (int) ( $site_settings['logo_dark_id'] ?? 0 );
 	$dark_logo_url = $dark_logo_id ? wp_get_attachment_image_url( $dark_logo_id, 'medium' ) : null;
 	$dark_logo_full_url = $dark_logo_id ? wp_get_attachment_image_url( $dark_logo_id, 'full' ) : null;
+
+	$seo_image_id = (int) ( $site_settings['static_seo_image_id'] ?? 0 );
+	$static_seo_image_url = $seo_image_id ? wp_get_attachment_image_url( $seo_image_id, 'full' ) : null;
+
+	$favicon_id  = (int) ( $site_settings['favicon_id'] ?? 0 );
+	$favicon_url = $favicon_id ? wp_get_attachment_image_url( $favicon_id, 'full' ) : null;
+
 	$homepage       = \WCHS\Admin\AdminPage::get_homepage_config();
 
 	// Migrate legacy edge_to_edge → spacing_h on modules
@@ -1165,6 +1172,8 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 		'brand_name'              => $brand_name,
 		'static_seo_title'        => $site_settings['static_seo_title'] ?? '',
 		'static_seo_description'  => $site_settings['static_seo_description'] ?? '',
+		'static_seo_image_url'    => $static_seo_image_url,
+		'favicon_url'             => $favicon_url,
 		'logo_url'                => $logo_url,
 		'logo_dark_url'           => $dark_logo_url,
 		'logo_full_url'           => $logo_full_url,

@@ -266,7 +266,7 @@ class AdminPage {
 		wp_enqueue_style( 'wchs-devices', WCHS_ADMIN_URL . '/assets/devices.min.css', [], '1.0.0' );
 		wp_enqueue_style( 'wchs-admin', WCHS_ADMIN_URL . '/assets/admin.css', [ 'wchs-devices' ], $css_ver );
 		wp_enqueue_script( 'wchs-panzoom', WCHS_ADMIN_URL . '/assets/panzoom.min.js', [], '4.5.1', true );
-		wp_enqueue_script( 'wchs-admin', WCHS_ADMIN_URL . '/assets/admin.js', [ 'jquery', 'editor', 'wchs-panzoom' ], $js_ver, true );
+		wp_enqueue_script( 'wchs-admin', WCHS_ADMIN_URL . '/assets/admin.js', [ 'jquery', 'editor', 'media-upload', 'wchs-panzoom' ], $js_ver, true );
 
 		// Resolve SPA origin for the live preview iframe.
 		$spa_origin = \function_exists( 'wchs_spa_origin' ) ? \wchs_spa_origin() : untrailingslashit( home_url( '/' ) );
@@ -314,6 +314,10 @@ class AdminPage {
 			'custom_allowed_origins'      => [],
 			'custom_return_origins'       => [],
 			'bump_variation_id'           => 0,
+			'static_seo_title'            => 'Alyve Peptides',
+			'static_seo_description'      => 'Shop research-grade peptides with third-party COAs, verified purity, and fast US fulfillment. For in-vitro laboratory research only.',
+			'static_seo_image_id'         => 0,
+			'favicon_id'                  => 0,
 			'use_wchs_checkout'           => false,
 			'funnelkit_checkout_path'     => 'checkouts/checkout-page',
 			'use_funnelkit_cart'          => false,
@@ -442,6 +446,12 @@ class AdminPage {
 		}
 		if ( empty( $result['use_wchs_checkout'] ) && trim( (string) ( $result['funnelkit_checkout_path'] ?? '' ), '/' ) === '' ) {
 			$result['funnelkit_checkout_path'] = $defaults['funnelkit_checkout_path'];
+		}
+		if ( trim( (string) ( $result['static_seo_title'] ?? '' ) ) === '' ) {
+			$result['static_seo_title'] = $defaults['static_seo_title'];
+		}
+		if ( trim( (string) ( $result['static_seo_description'] ?? '' ) ) === '' ) {
+			$result['static_seo_description'] = $defaults['static_seo_description'];
 		}
 		return $result;
 	}
@@ -1431,6 +1441,10 @@ class AdminPage {
 		$s['theme_default']       = $theme_default;
 		$s['logo_invert_on_dark'] = ! empty( $_POST['logo_invert_on_dark'] );
 		$s['logo_dark_id']        = absint( $_POST['logo_dark_id'] ?? 0 );
+		$s['static_seo_title']       = sanitize_text_field( wp_unslash( $_POST['static_seo_title'] ?? '' ) );
+		$s['static_seo_description'] = sanitize_textarea_field( wp_unslash( $_POST['static_seo_description'] ?? '' ) );
+		$s['static_seo_image_id']    = absint( $_POST['static_seo_image_id'] ?? 0 );
+		$s['favicon_id']             = absint( $_POST['favicon_id'] ?? 0 );
 		$logo_size = sanitize_text_field( wp_unslash( $_POST['logo_size'] ?? 'standard' ) );
 		if ( ! in_array( $logo_size, [ 'compact', 'standard', 'prominent', 'xl' ], true ) ) {
 			$logo_size = 'standard';
@@ -2558,63 +2572,15 @@ class AdminPage {
 				</label>
 			</div>
 			<?php
-			$dark_logo_id  = (int) ( $settings['logo_dark_id'] ?? 0 );
-			$dark_logo_url = $dark_logo_id ? wp_get_attachment_image_url( $dark_logo_id, 'medium' ) : '';
+			self::render_attachment_picker(
+				'logo_dark_id',
+				'wchs-logo-dark',
+				'Dark-mode logo (optional)',
+				'Upload a separate logo asset to render in dark mode. When set, the auto-invert filter above is skipped. Leave blank to keep using the primary logo (optionally with auto-invert).',
+				(int) ( $settings['logo_dark_id'] ?? 0 ),
+				'#0c0c0c'
+			);
 			?>
-			<div class="wchs-field" style="margin-bottom:16px">
-				<label>Dark-mode logo (optional) <?php echo self::hint_icon('Upload a separate logo asset to render in dark mode. When set, the auto-invert filter above is skipped. Leave blank to keep using the primary logo (optionally with auto-invert).'); ?></label>
-				<div id="wchs-logo-dark-picker" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px">
-					<img id="wchs-logo-dark-preview"
-						src="<?php echo esc_url( $dark_logo_url ); ?>"
-						alt=""
-						style="max-height:48px;max-width:180px;border:1px solid #ddd;border-radius:4px;padding:4px;background:#0c0c0c;<?php echo $dark_logo_url ? '' : 'display:none;'; ?>" />
-					<button type="button" class="wchs-btn wchs-btn--secondary" id="wchs-logo-dark-choose">
-						<?php echo $dark_logo_url ? 'Change' : 'Upload / choose'; ?>
-					</button>
-					<button type="button" class="wchs-btn wchs-btn--secondary" id="wchs-logo-dark-remove" style="color:#a00;<?php echo $dark_logo_url ? '' : 'display:none;'; ?>">Remove</button>
-					<input type="hidden" name="logo_dark_id" id="wchs-logo-dark-id" value="<?php echo (int) $dark_logo_id; ?>" />
-				</div>
-			</div>
-			<script>
-			(function(){
-				var chooseBtn = document.getElementById('wchs-logo-dark-choose');
-				var removeBtn = document.getElementById('wchs-logo-dark-remove');
-				var preview   = document.getElementById('wchs-logo-dark-preview');
-				var idInput   = document.getElementById('wchs-logo-dark-id');
-				if (!chooseBtn || !removeBtn || !preview || !idInput) return;
-				if (typeof wp === 'undefined' || !wp.media) return;
-				var frame = null;
-				chooseBtn.addEventListener('click', function(e){
-					e.preventDefault();
-					if (!frame) {
-						frame = wp.media({
-							title: 'Select dark-mode logo',
-							button: { text: 'Use this image' },
-							library: { type: 'image' },
-							multiple: false
-						});
-						frame.on('select', function(){
-							var att = frame.state().get('selection').first().toJSON();
-							idInput.value = att.id;
-							var url = (att.sizes && att.sizes.medium && att.sizes.medium.url) ? att.sizes.medium.url : att.url;
-							preview.src = url;
-							preview.style.display = '';
-							removeBtn.style.display = '';
-							chooseBtn.textContent = 'Change';
-						});
-					}
-					frame.open();
-				});
-				removeBtn.addEventListener('click', function(e){
-					e.preventDefault();
-					idInput.value = '0';
-					preview.src = '';
-					preview.style.display = 'none';
-					removeBtn.style.display = 'none';
-					chooseBtn.textContent = 'Upload / choose';
-				});
-			})();
-			</script>
 			<?php $logo_size = $settings['logo_size'] ?? 'standard'; ?>
 			<div class="wchs-field" style="margin-bottom:16px">
 				<label>Logo size (desktop)</label>
@@ -2694,6 +2660,41 @@ class AdminPage {
 				</div>
 			</div>
 			</div></div><!-- /Typography -->
+
+			<div class="wchs-section wchs-section--collapsed">
+			<h2 class="wchs-section__toggle">On page (SEO related) <?php echo self::hint_icon('Controls how the homepage appears in Google search, link previews (iMessage, Slack, Facebook), and the browser tab icon. Redeploy the SPA after saving.'); ?></h2>
+			<div class="wchs-section__body">
+			<?php
+			$seo_title       = (string) ( $settings['static_seo_title'] ?? '' );
+			$seo_description = (string) ( $settings['static_seo_description'] ?? '' );
+			$seo_image_id    = (int) ( $settings['static_seo_image_id'] ?? 0 );
+			$favicon_id      = (int) ( $settings['favicon_id'] ?? 0 );
+			?>
+			<div class="wchs-field">
+				<label for="static_seo_title">Search title</label>
+				<input type="text" name="static_seo_title" id="static_seo_title" value="<?php echo esc_attr( $seo_title ); ?>" placeholder="Alyve Peptides" style="width:100%;max-width:480px" />
+			</div>
+			<div class="wchs-field">
+				<label for="static_seo_description">Meta description <?php echo self::hint_icon('~155 characters. Shown in Google results and social previews when no page-specific description exists.'); ?></label>
+				<textarea name="static_seo_description" id="static_seo_description" rows="3" style="width:100%;max-width:640px"><?php echo esc_textarea( $seo_description ); ?></textarea>
+			</div>
+			<?php
+			self::render_attachment_picker(
+				'static_seo_image_id',
+				'wchs-seo-image',
+				'Share image (Open Graph)',
+				'1200×630 recommended. Used for Google/social link previews on the homepage.',
+				$seo_image_id
+			);
+			self::render_attachment_picker(
+				'favicon_id',
+				'wchs-favicon',
+				'Google / browser icon',
+				'Square PNG, at least 48×48 (512×512 ideal). Must be square — do not use the wide header logo here.',
+				$favicon_id
+			);
+			?>
+			</div></div><!-- /On page (SEO related) -->
 
 			<?php
 			$pc = array_merge(
@@ -4712,6 +4713,43 @@ class AdminPage {
 	// Rendered once, hidden. JS clones the appropriate template into
 	// the modal body when editing a module. Fields use data-field
 	// attributes instead of name attributes.
+
+	/**
+	 * WordPress media-library picker for a single attachment ID field.
+	 */
+	public static function render_attachment_picker(
+		string $field_name,
+		string $base_id,
+		string $label,
+		string $hint,
+		int $attachment_id,
+		string $preview_bg = '#fff'
+	): void {
+		$preview_url = $attachment_id ? wp_get_attachment_image_url( $attachment_id, 'medium' ) : '';
+		?>
+		<div class="wchs-field" style="margin-bottom:16px">
+			<label><?php echo esc_html( $label ); ?> <?php echo self::hint_icon( $hint ); ?></label>
+			<div
+				id="<?php echo esc_attr( $base_id ); ?>-picker"
+				class="wchs-attachment-picker"
+				data-title="<?php echo esc_attr( $label ); ?>"
+				style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px"
+			>
+				<img
+					class="wchs-attachment-preview"
+					src="<?php echo esc_url( (string) $preview_url ); ?>"
+					alt=""
+					style="max-height:64px;max-width:180px;border:1px solid #ddd;border-radius:4px;padding:4px;background:<?php echo esc_attr( $preview_bg ); ?>;<?php echo $preview_url ? '' : 'display:none;'; ?>"
+				/>
+				<button type="button" class="wchs-btn wchs-btn--secondary wchs-attachment-choose">
+					<?php echo $preview_url ? 'Change' : 'Upload / choose'; ?>
+				</button>
+				<button type="button" class="wchs-btn wchs-btn--secondary wchs-attachment-remove" style="color:#a00;<?php echo $preview_url ? '' : 'display:none;'; ?>">Remove</button>
+				<input type="hidden" class="wchs-attachment-id" name="<?php echo esc_attr( $field_name ); ?>" id="<?php echo esc_attr( $base_id ); ?>-id" value="<?php echo (int) $attachment_id; ?>" />
+			</div>
+		</div>
+		<?php
+	}
 
 	/**
 	 * Render a hover-revealed hint icon. Replaces the .wchs-info boxes

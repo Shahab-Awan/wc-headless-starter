@@ -53,7 +53,7 @@
 <SEO
 	title={config.data.static_seo_title || config.data.brand_name}
 	description={config.data.static_seo_description || hero.subheadline || hero.headline || `${config.data.brand_name} online store.`}
-	image={hero.image_desktop || config.data.logo_full_url || config.data.logo_url || ''}
+	image={config.data.static_seo_image_url || hero.image_desktop || config.data.logo_full_url || config.data.logo_url || ''}
 	type="website"
 	schema={[
 		{
