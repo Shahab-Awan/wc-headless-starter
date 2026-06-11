@@ -787,8 +787,8 @@ export type ActiveScript = {
 
 const DEFAULTS: SiteConfig = {
 	wp_origin: 'http://localhost:8099',
-	checkout_handoff_path: '/checkout',
-	use_wchs_checkout: true,
+	checkout_handoff_path: '/checkouts/checkout-page',
+	use_wchs_checkout: false,
 	funnelkit_cart: {
 		enabled: false,
 		shell_url: '',

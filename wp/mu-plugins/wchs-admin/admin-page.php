@@ -314,8 +314,8 @@ class AdminPage {
 			'custom_allowed_origins'      => [],
 			'custom_return_origins'       => [],
 			'bump_variation_id'           => 0,
-			'use_wchs_checkout'           => true,
-			'funnelkit_checkout_path'     => '',
+			'use_wchs_checkout'           => false,
+			'funnelkit_checkout_path'     => 'checkouts/checkout-page',
 			'use_funnelkit_cart'          => false,
 			'upsell_enabled'              => false,
 			'bump_product_id'             => 0,
@@ -439,6 +439,9 @@ class AdminPage {
 			if ( ! is_array( $result['cutover_checklist']['items'] ?? null ) ) {
 				$result['cutover_checklist']['items'] = [];
 			}
+		}
+		if ( empty( $result['use_wchs_checkout'] ) && trim( (string) ( $result['funnelkit_checkout_path'] ?? '' ), '/' ) === '' ) {
+			$result['funnelkit_checkout_path'] = $defaults['funnelkit_checkout_path'];
 		}
 		return $result;
 	}
@@ -3027,7 +3030,7 @@ class AdminPage {
 					name="funnelkit_checkout_path"
 					id="funnelkit_checkout_path"
 					class="regular-text"
-					placeholder="e.g. checkouts/alyve-checkout"
+					placeholder="e.g. checkouts/checkout-page"
 					value="<?php echo esc_attr( $fk_path_override ); ?>"
 				/>
 				<p class="description">Path only, no domain. Leave blank to use the active FunnelKit store checkout URL.</p>

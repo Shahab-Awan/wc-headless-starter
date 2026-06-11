@@ -41,6 +41,7 @@ export default defineConfig({
 			'/wp-content': wpProxyOpts,
 			'/my-account': wpProxyOpts,
 			'/checkout': wpProxyOpts,
+			'/checkouts': wpProxyOpts,
 		},
 	},
 });
