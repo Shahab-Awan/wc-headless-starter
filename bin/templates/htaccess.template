@@ -10,6 +10,27 @@ RewriteBase /
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+# 1b. Landing domain — ONLY the Why Alyve page on alyveresearch.com.
+#     Same SiteGround public_html as alyvepeptides.com (parked domain). No GoDaddy forwarding.
+#     - alyveresearch.com/  → alyveresearch.com/why-alyve (URL stays on this domain)
+#     - /shop, /, etc. on this domain → alyvepeptides.com (main store unchanged)
+RewriteCond %{HTTP_HOST} ^www\.alyveresearch\.com$ [NC]
+RewriteRule ^ https://alyveresearch.com%{REQUEST_URI} [R=301,L]
+RewriteCond %{HTTP_HOST} ^alyveresearch\.com$ [NC]
+RewriteRule ^$ /why-alyve [R=301,L]
+RewriteCond %{HTTP_HOST} ^alyveresearch\.com$ [NC]
+RewriteCond %{REQUEST_URI} !^/why-alyve/?$ [NC]
+RewriteCond %{REQUEST_URI} !^/wp-json/ [NC]
+RewriteCond %{REQUEST_URI} !^/wp-content/ [NC]
+RewriteCond %{REQUEST_URI} !^/_app/ [NC]
+RewriteCond %{REQUEST_URI} !^/favicon\.ico$ [NC]
+RewriteCond %{REQUEST_URI} !^/favicon\.png$ [NC]
+RewriteCond %{REQUEST_URI} !^/apple-touch-icon\.png$ [NC]
+RewriteCond %{REQUEST_URI} !^/site\.webmanifest$ [NC]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ https://alyvepeptides.com%{REQUEST_URI} [R=301,L]
+
 # 2. Bare /wp-admin or /wp-admin/ → /wp-admin/index.php so PHP handles it.
 RewriteRule ^wp-admin/?$ /wp-admin/index.php [L]
 
