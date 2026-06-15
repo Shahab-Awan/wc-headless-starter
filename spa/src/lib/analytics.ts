@@ -858,6 +858,26 @@ export function trackCustomerLabsProductsListViewed(listName: string): void {
 	});
 }
 
+export const BRIDGE_PAGE_PATH = '/why-alyve';
+
+export function isBridgePagePath(path: string): boolean {
+	return path.replace(/\/$/, '') === BRIDGE_PAGE_PATH;
+}
+
+/** Why Alyve bridge landing — fires once per view of /why-alyve (incl. alyveresearch.com). */
+export function trackCustomerLabsBridgePageView(title?: string): void {
+	if (typeof window === 'undefined') return;
+	whenCustomerLabsReady(() => {
+		window._cl?.pageview?.('Bridge page view', {
+			customProperties: {
+				page_url: clPageUrl(),
+				page_title: clStr(title || document.title || 'Why Alyve'),
+				page_slug: clStr('why-alyve'),
+			},
+		});
+	});
+}
+
 export function trackCustomerLabsProductViewed(product: {
 	id: number;
 	name: string;

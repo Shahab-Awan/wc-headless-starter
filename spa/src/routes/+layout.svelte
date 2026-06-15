@@ -24,6 +24,7 @@
 		initOmnisend, trackOmnisendPageViewed,
 		initKlaviyo, initMetaPixel, initTikTokPixel, initPinterestTag,
 		initClarity, initHotjar, initGoogleAds,
+		isBridgePagePath, trackCustomerLabsBridgePageView,
 	} from '$lib/analytics';
 	import { loadFont, HERO_FONTS } from '$lib/hero-fonts';
 	import type { HeroFontKey } from '$lib/config.svelte';
@@ -412,6 +413,9 @@
 		if (to?.url) {
 			trackPageView(to.url.pathname);
 			trackOmnisendPageViewed();
+			if (isBridgePagePath(to.url.pathname)) {
+				trackCustomerLabsBridgePageView();
+			}
 			consumeOpenCartIntent(to.url);
 		}
 		drawerOpen = false;
