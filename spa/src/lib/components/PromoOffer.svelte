@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { ModuleResolved, PromoOfferModuleConfig, SpacingPreset } from '$lib/config.svelte';
+	import { bridgeAwareHref } from '$lib/bridge-domain';
 
 	let {
 		config,
@@ -113,7 +114,7 @@
 					{/if}
 
 					{#if config.cta_label?.trim() && config.cta_href?.trim()}
-						<a class="promo-offer__cta" href={config.cta_href.trim()}>
+						<a class="promo-offer__cta" href={bridgeAwareHref(config.cta_href.trim())}>
 							{config.cta_label.trim()}
 							<span aria-hidden="true">→</span>
 						</a>

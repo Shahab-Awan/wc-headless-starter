@@ -16,6 +16,7 @@
 import { config } from '$lib/config.svelte';
 import type { StoreApiCart } from '$lib/wc/cart.svelte';
 import type { StoreOrder } from '$lib/wc/orders';
+export { isBridgePagePath } from '$lib/bridge-domain';
 import { priceAsNumber, type CurrencyMeta } from '$lib/utils/format';
 
 declare global {
@@ -856,12 +857,6 @@ export function trackCustomerLabsProductsListViewed(listName: string): void {
 			category_name: clStr(listName),
 		},
 	});
-}
-
-export const BRIDGE_PAGE_PATH = '/why-alyve';
-
-export function isBridgePagePath(path: string): boolean {
-	return path.replace(/\/$/, '') === BRIDGE_PAGE_PATH;
 }
 
 /** Why Alyve bridge landing — fires once per view of /why-alyve (incl. alyveresearch.com). */

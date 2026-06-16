@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { config } from '$lib/config.svelte';
+	import { bridgeAwareHref } from '$lib/bridge-domain';
 
 	const columns = $derived(config.data.footer?.columns ?? []);
 	const tagline = $derived((config.data.footer as any)?.tagline ?? '');
@@ -93,7 +94,7 @@
 										{#if link.url.startsWith('http') || link.url.startsWith('mailto:') || link.url.startsWith('tel:')}
 											<a href={link.url} target={link.url.startsWith('http') ? '_blank' : undefined} rel={link.url.startsWith('http') ? 'noopener noreferrer' : undefined}>{link.label}</a>
 										{:else}
-											<a href={link.url}>{link.label}</a>
+											<a href={bridgeAwareHref(link.url)}>{link.label}</a>
 										{/if}
 									</li>
 								{/each}

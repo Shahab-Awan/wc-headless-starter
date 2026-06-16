@@ -24,8 +24,13 @@
 		initOmnisend, trackOmnisendPageViewed,
 		initKlaviyo, initMetaPixel, initTikTokPixel, initPinterestTag,
 		initClarity, initHotjar, initGoogleAds,
-		isBridgePagePath, trackCustomerLabsBridgePageView,
+		trackCustomerLabsBridgePageView,
 	} from '$lib/analytics';
+	import {
+		bridgeAwareHref,
+		isBridgePagePath,
+		shouldHandOffBridgeNavigation,
+	} from '$lib/bridge-domain';
 	import { loadFont, HERO_FONTS } from '$lib/hero-fonts';
 	import type { HeroFontKey } from '$lib/config.svelte';
 	import { applyProductCardTokens } from '$lib/product-card-tokens';
@@ -175,11 +180,18 @@
 	});
 
 	onMount(() => {
-		// Safety sync — NOT the primary theme setter. The blocking <script>
-		// in app.html already set data-theme before first paint. This call
-		// syncs the reactive Svelte store with the DOM attribute so toggle
-		// and cross-tab listeners work. See: theme flash prevention rules.
 		theme.init('light');
+
+		const onBridgeLinkClick = (e: MouseEvent) => {
+			const anchor = (e.target as Element | null)?.closest?.('a');
+			if (!anchor) return;
+			const dest = shouldHandOffBridgeNavigation(anchor.getAttribute('href') ?? '');
+			if (!dest) return;
+			e.preventDefault();
+			e.stopPropagation();
+			window.location.href = dest;
+		};
+		document.addEventListener('click', onBridgeLinkClick, true);
 
 		// Async init — fire and forget. Every step is resilient:
 		// config.load() has its own try/catch (always sets ready=true).
@@ -377,6 +389,7 @@
 		document.addEventListener('keydown', onDrawerKey);
 
 		return () => {
+			document.removeEventListener('click', onBridgeLinkClick, true);
 			document.body.removeEventListener('added_to_cart', bumpCart);
 			document.body.removeEventListener('removed_from_cart', bumpCart);
 			document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -490,7 +503,7 @@
 			class:site-header--borderless={config.data.header_borderless}
 			class:site-header--logo-only={logoOnlyHeader}
 		>
-		<a class="site-header__brand" href="/">
+		<a class="site-header__brand" href={bridgeAwareHref('/')}>
 			{#if config.data.logo_url}
 				<img
 					class="site-header__logo site-header__logo--size-{config.data.logo_size ?? 'standard'}"
@@ -521,7 +534,7 @@
 				<div class="site-header__nav-menu">
 					{#each config.data.header_links as link}
 						{#if link.display === 'text'}
-							<a href={link.url} class="site-header__nav-link" class:is-accent={link.accent}>{link.label}</a>
+							<a href={bridgeAwareHref(link.url)} class="site-header__nav-link" class:is-accent={link.accent}>{link.label}</a>
 						{/if}
 					{/each}
 				</div>
@@ -529,7 +542,7 @@
 					<HeaderSearch />
 					{#each config.data.header_links as link}
 						{#if link.display === 'icon' || link.display === 'both'}
-							<a href={link.url} class="site-header__icon-link" class:is-accent={link.accent} aria-label={link.label}>
+							<a href={bridgeAwareHref(link.url)} class="site-header__icon-link" class:is-accent={link.accent} aria-label={link.label}>
 								{#if link.icon && icons[link.icon]}
 									<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">{@html icons[link.icon]}</svg>
 								{/if}
@@ -567,7 +580,7 @@
 					{#each pinnedItems as entry}
 						{#if entry.kind === 'link'}
 							{#if entry.link.display === 'icon' || entry.link.display === 'both'}
-								<a href={entry.link.url} class="site-header__icon-link" class:is-accent={entry.link.accent} aria-label={entry.link.label}>
+								<a href={bridgeAwareHref(entry.link.url)} class="site-header__icon-link" class:is-accent={entry.link.accent} aria-label={entry.link.label}>
 									{#if entry.link.icon && icons[entry.link.icon]}
 										<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">{@html icons[entry.link.icon]}</svg>
 									{/if}
@@ -576,7 +589,7 @@
 									{/if}
 								</a>
 							{:else}
-								<a href={entry.link.url} class="site-header__nav-link" class:is-accent={entry.link.accent}>{entry.link.label}</a>
+								<a href={bridgeAwareHref(entry.link.url)} class="site-header__nav-link" class:is-accent={entry.link.accent}>{entry.link.label}</a>
 							{/if}
 						{:else if entry.kind === 'toggle'}
 							<span class:is-accent-toggle={config.data.header_toggle_accent}>
@@ -637,7 +650,7 @@
 					<a
 						class="site-header-drawer__item"
 						class:is-accent={entry.link.accent}
-						href={entry.link.url}
+						href={bridgeAwareHref(entry.link.url)}
 						onclick={() => (drawerOpen = false)}
 					>
 						{#if entry.link.icon && icons[entry.link.icon]}

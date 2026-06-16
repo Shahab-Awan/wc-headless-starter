@@ -5,6 +5,7 @@
 		ModuleResolved,
 		SpacingPreset,
 	} from '$lib/config.svelte';
+	import { bridgeAwareHref } from '$lib/bridge-domain';
 
 	let {
 		config,
@@ -133,7 +134,7 @@
 									{/if}
 									{#if showCta}
 										<p class="listicle__cta-wrap">
-											<a href={config.cta_href!.trim()} class="listicle__cta">{config.cta_label!.trim()}</a>
+											<a href={bridgeAwareHref(config.cta_href!.trim())} class="listicle__cta">{config.cta_label!.trim()}</a>
 										</p>
 									{/if}
 								</div>
