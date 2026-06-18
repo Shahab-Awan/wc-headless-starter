@@ -110,24 +110,24 @@
 		return resolveCartLineQty(thresholds, item.quantity, proposed);
 	}
 
-	async function decrement(key: string, current: number) {
+	function decrement(key: string, current: number) {
 		const item = displayCartItems.find((i) => i.key === key);
 		if (!item) return;
 		const next = resolvedQty(item, current - 1);
 		if (next <= 0 || (current <= 1 && next <= 1)) {
-			await cart.removeItem(key);
+			void cart.removeItem(key);
 		} else {
 			flashKey(key);
-			await cart.updateItem(key, next);
+			void cart.updateItem(key, next);
 		}
 	}
 
-	async function increment(key: string, current: number) {
+	function increment(key: string, current: number) {
 		const item = displayCartItems.find((i) => i.key === key);
 		if (!item) return;
 		const next = resolvedQty(item, current + 1);
 		flashKey(key);
-		await cart.updateItem(key, next);
+		void cart.updateItem(key, next);
 	}
 
 	function flashKey(key: string) {

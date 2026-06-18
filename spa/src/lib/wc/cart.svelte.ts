@@ -152,6 +152,14 @@ class CartStore {
 	private mutationChain: Promise<unknown> = Promise.resolve();
 	private pruningProtection = false;
 
+	/** Coalesce rapid qty clicks on the same line into one Store API write. */
+	private qtyPending = new Map<
+		string,
+		{ quantity: number; waiters: Array<{ resolve: () => void; reject: (reason?: unknown) => void }> }
+	>();
+	/** In-flight qty update was superseded (e.g. line removed) — skip applying its response. */
+	private qtySuperseded = new Set<string>();
+
 	itemCount = $derived.by(() => this.countVisibleItems());
 	subtotal = $derived(this.cart?.totals.total_items ?? '0');
 	currencyMinorUnit = $derived(this.cart?.totals.currency_minor_unit ?? 2);
@@ -327,6 +335,106 @@ class CartStore {
 		})();
 	}
 
+	private lineTotalMinor(item: StoreApiCartItem): number {
+		return item.extensions?.wchs_cro?.line_total_minor ?? Number(item.totals.line_total);
+	}
+
+	private applyOptimisticQty(key: string, quantity: number): void {
+		if (!this.cart) return;
+		let qtyDelta = 0;
+		const items = this.cart.items.map((item) => {
+			if (item.key !== key) return item;
+			qtyDelta = quantity - item.quantity;
+			const cro = item.extensions?.wchs_cro;
+			const unitMinor = cro?.effective_unit_price ?? Number(item.prices.price);
+			const regularUnit = cro?.regular_unit_price ?? Number(item.prices.regular_price);
+			const lineTotal = String(unitMinor * quantity);
+			const nextCro = cro
+				? {
+						...cro,
+						line_total_minor: unitMinor * quantity,
+						compare_line_minor: regularUnit * quantity,
+						savings_line_total: Math.max(0, (regularUnit - unitMinor) * quantity),
+					}
+				: undefined;
+			return {
+				...item,
+				quantity,
+				totals: {
+					...item.totals,
+					line_subtotal: lineTotal,
+					line_total: lineTotal,
+				},
+				extensions: nextCro ? { wchs_cro: nextCro } : item.extensions,
+			};
+		});
+		const items_count = Math.max(0, this.cart.items_count + qtyDelta);
+		const totalItemsMinor = items.reduce((sum, item) => sum + this.lineTotalMinor(item), 0);
+		this.cart = {
+			...this.cart,
+			items,
+			items_count,
+			totals: {
+				...this.cart.totals,
+				total_items: String(totalItemsMinor),
+			},
+		};
+	}
+
+	private applyOptimisticRemove(key: string): void {
+		if (!this.cart) return;
+		const target = this.cart.items.find((item) => item.key === key);
+		if (!target) return;
+		const items = this.cart.items.filter((item) => item.key !== key);
+		const items_count = Math.max(0, this.cart.items_count - target.quantity);
+		const totalItemsMinor = items.reduce((sum, item) => sum + this.lineTotalMinor(item), 0);
+		this.cart = {
+			...this.cart,
+			items,
+			items_count,
+			totals: {
+				...this.cart.totals,
+				total_items: String(totalItemsMinor),
+			},
+		};
+	}
+
+	private scheduleQtyFlush(key: string): void {
+		this.mutationChain = this.mutationChain.catch(() => {}).then(() => this.flushQtyUpdates(key));
+	}
+
+	private async flushQtyUpdates(key: string): Promise<void> {
+		while (true) {
+			const pending = this.qtyPending.get(key);
+			if (!pending) return;
+			const { quantity, waiters } = pending;
+			this.qtyPending.delete(key);
+
+			try {
+				await this.mutate(
+					() =>
+						request<StoreApiCart>('/cart/update-item', {
+							method: 'POST',
+							body: { key, quantity },
+						}),
+					{ shouldApply: () => !this.qtySuperseded.has(key) },
+				);
+				if (this.qtySuperseded.has(key)) {
+					waiters.forEach((w) => w.resolve());
+					return;
+				}
+				dispatch('fkcart_quantity_updated', { key, quantity });
+				waiters.forEach((w) => w.resolve());
+			} catch (e) {
+				await this.fetch().catch(() => {});
+				waiters.forEach((w) => w.reject(e));
+				return;
+			}
+
+			if (!this.qtyPending.has(key)) return;
+		}
+	}
+
 	/**
 	 * Guarded mutation runner. Serializes mutations via a promise chain
 	 * so concurrent add/update/remove calls execute one at a time
@@ -334,7 +442,10 @@ class CartStore {
 	 * already include the cart; a background GET /cart converges totals
 	 * and extension fields without blocking the UI.
 	 */
-	private mutate(op: () => Promise<StoreApiCart>): Promise<void> {
+	private mutate(
+		op: () => Promise<StoreApiCart>,
+		opts?: { shouldApply?: (next: StoreApiCart) => boolean },
+	): Promise<void> {
 		const gen = ++this.generation;
 
 		const run = async () => {
@@ -344,7 +455,7 @@ class CartStore {
 			try {
 				const next = await op();
 				// Still the latest?
-				if (gen === this.generation) {
+				if (gen === this.generation && (!opts?.shouldApply || opts.shouldApply(next))) {
 					this.cart = next;
 					this.syncShadow();
 				}
@@ -432,19 +543,44 @@ class CartStore {
 		}
 	}
 
-	async updateItem(key: string, quantity: number) {
-		await this.mutate(() =>
-			request<StoreApiCart>('/cart/update-item', { method: 'POST', body: { key, quantity } })
-		);
-		dispatch('fkcart_quantity_updated', { key, quantity });
+	updateItem(key: string, quantity: number): Promise<void> {
+		this.qtySuperseded.delete(key);
+		this.applyOptimisticQty(key, quantity);
+
+		let pending = this.qtyPending.get(key);
+		if (pending) {
+			pending.quantity = quantity;
+		} else {
+			pending = { quantity, waiters: [] };
+			this.qtyPending.set(key, pending);
+			this.scheduleQtyFlush(key);
+		}
+
+		return new Promise((resolve, reject) => {
+			pending!.waiters.push({ resolve, reject });
+		});
 	}
 
 	async removeItem(key: string) {
-		await this.mutate(() =>
-			request<StoreApiCart>('/cart/remove-item', { method: 'POST', body: { key } })
-		);
-		if (this.cart && this.cart.items_count === 0) clearShadow();
-		dispatch('removed_from_cart', { key });
+		this.qtySuperseded.add(key);
+		const pending = this.qtyPending.get(key);
+		if (pending) {
+			pending.waiters.forEach((w) => w.resolve());
+			this.qtyPending.delete(key);
+		}
+		this.applyOptimisticRemove(key);
+		try {
+			await this.mutate(() =>
+				request<StoreApiCart>('/cart/remove-item', { method: 'POST', body: { key } })
+			);
+			if (this.cart && this.cart.items_count === 0) clearShadow();
+			dispatch('removed_from_cart', { key });
+		} catch (e) {
+			await this.fetch().catch(() => {});
+			throw e;
+		} finally {
+			this.qtySuperseded.delete(key);
+		}
 	}
 
 	async applyCoupon(code: string) {
