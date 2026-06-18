@@ -32,6 +32,10 @@ class Assets {
 			&& function_exists( 'wchs_funnelkit_is_checkout_request' )
 			&& wchs_funnelkit_is_checkout_request();
 
+		if ( apply_filters( 'wchs_design_system_skip_wc_overrides', false ) ) {
+			$skip_wc_overrides = true;
+		}
+
 		if ( ! $skip_wc_overrides ) {
 			$this->dequeue_wc_styles();
 		}

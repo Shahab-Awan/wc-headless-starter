@@ -560,7 +560,6 @@
 					<button
 						type="button"
 						class="site-header__cart"
-						class:fkcart-mini-open={config.data.funnelkit_cart?.enabled}
 						class:is-accent={config.data.header_cart_accent}
 						class:is-bumping={cartBumping}
 						onclick={() => cart.toggle()}
@@ -599,7 +598,6 @@
 							<button
 								type="button"
 								class="site-header__cart"
-								class:fkcart-mini-open={config.data.funnelkit_cart?.enabled}
 								class:is-accent={config.data.header_cart_accent}
 								class:is-bumping={cartBumping}
 								onclick={() => cart.toggle()}
@@ -688,7 +686,9 @@
 	{#if config.data.funnelkit_cart?.enabled}
 		<FunnelKitCartShell />
 	{/if}
-	<SlideCart />
+	{#if !config.data.funnelkit_cart?.enabled || cart.slideCartFallback}
+		<SlideCart />
+	{/if}
 	<SiteGate />
 	<BackToTop />
 {/if}

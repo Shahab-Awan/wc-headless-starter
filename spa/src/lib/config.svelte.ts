@@ -656,6 +656,9 @@ export type SiteConfig = {
 	use_wchs_checkout?: boolean;
 	/** FunnelKit Cart drawer on SPA (replaces SlideCart when enabled). */
 	funnelkit_cart?: {
+		/** Admin toggle — user asked for FunnelKit cart. */
+		requested?: boolean;
+		/** Runtime: requested + FunnelKit Cart plugin active. */
 		enabled: boolean;
 		shell_url: string;
 		sync_url: string;
@@ -792,6 +795,7 @@ const DEFAULTS: SiteConfig = {
 	checkout_handoff_path: '/checkouts/checkout-page',
 	use_wchs_checkout: false,
 	funnelkit_cart: {
+		requested: false,
 		enabled: false,
 		shell_url: '',
 		sync_url: '',

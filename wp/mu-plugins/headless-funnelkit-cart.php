@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Headless FunnelKit Cart
  * Description: Optional FunnelKit Cart slide drawer on the SPA via classic-cart sync and a WP-hosted shell iframe.
- * Version:     0.1.0
+ * Version:     0.2.0
  * Author:      WCHS Contributors
  */
 
@@ -30,12 +30,25 @@ function wchs_use_funnelkit_cart(): bool {
  * FunnelKit Cart plugin (cart-for-woocommerce) is present and booted.
  */
 function wchs_funnelkit_cart_plugin_active(): bool {
-	return defined( 'FKCART_VERSION' )
+	if (
+		defined( 'FKCART_VERSION' )
 		|| defined( 'FKCART_FILE' )
 		|| defined( 'FKCART_PLUGIN_FILE' )
 		|| function_exists( 'fkcart' )
 		|| class_exists( 'FKCart\Main' )
-		|| class_exists( 'FKCart\Plugin' );
+		|| class_exists( 'FKCart\Plugin' )
+		|| class_exists( 'FKCart\Includes\Front' )
+	) {
+		return true;
+	}
+
+	if ( ! function_exists( 'is_plugin_active' ) ) {
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+	}
+
+	return is_plugin_active( 'cart-for-woocommerce/cart-for-woocommerce.php' )
+		|| is_plugin_active( 'cart-for-woocommerce/plugin.php' )
+		|| file_exists( WP_PLUGIN_DIR . '/cart-for-woocommerce/cart-for-woocommerce.php' );
 }
 
 /**
@@ -44,16 +57,19 @@ function wchs_funnelkit_cart_plugin_active(): bool {
  * @return array<string, mixed>
  */
 function wchs_build_funnelkit_cart_config(): array {
-	$enabled = wchs_use_funnelkit_cart() && wchs_funnelkit_cart_plugin_active();
-	$shell   = wchs_funnelkit_cart_shell_url();
+	$requested = wchs_use_funnelkit_cart();
+	$plugin    = wchs_funnelkit_cart_plugin_active();
+	$enabled   = $requested && $plugin;
+	$shell     = wchs_funnelkit_cart_shell_url();
 
 	return [
+		'requested'     => $requested,
 		'enabled'       => $enabled,
 		'shell_url'     => $enabled ? $shell : '',
 		'sync_url'      => $enabled ? rest_url( 'wchs/v1/cart/sync-classic' ) : '',
 		'open_class'    => 'fkcart-mini-open',
 		'cart_selector' => '.site-header__cart',
-		'plugin_active' => wchs_funnelkit_cart_plugin_active(),
+		'plugin_active' => $plugin,
 	];
 }
 
@@ -72,6 +88,29 @@ function wchs_funnelkit_cart_shell_url(): string {
 }
 
 /**
+ * Prepare WooCommerce + session so FunnelKit Cart assets render on the shell page.
+ */
+function wchs_funnelkit_cart_bootstrap_shell(): void {
+	if ( ! function_exists( 'wc' ) ) {
+		return;
+	}
+
+	if ( null === WC()->cart ) {
+		wc_load_cart();
+	}
+
+	if ( WC()->session && ! WC()->session->has_session() ) {
+		WC()->session->set_customer_session_cookie( true );
+	}
+
+	if ( WC()->cart ) {
+		WC()->cart->get_cart();
+	}
+
+	add_filter( 'woocommerce_is_cart', '__return_true', 9999 );
+}
+
+/**
  * Minimal WP page that only runs wp_head/wp_footer so FunnelKit Cart can render in an iframe.
  */
 add_action(
@@ -85,9 +124,17 @@ add_action(
 			exit;
 		}
 
+		wchs_funnelkit_cart_bootstrap_shell();
+
 		status_header( 200 );
 		nocache_headers();
 		header( 'X-Robots-Tag: noindex, nofollow', true );
+
+		$spa_origin = isset( $_GET['spa_origin'] ) ? esc_url_raw( wp_unslash( (string) $_GET['spa_origin'] ) ) : '';
+		if ( $spa_origin === '' && function_exists( 'wchs_spa_origin' ) ) {
+			$spa_origin = wchs_spa_origin();
+		}
+		$spa_origin = untrailingslashit( $spa_origin );
 
 		?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>
@@ -96,7 +143,7 @@ add_action(
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <?php wp_head(); ?>
 <style>
-	html, body { margin: 0; padding: 0; background: transparent; }
+	html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
 </style>
 </head>
 <body>
@@ -104,26 +151,30 @@ add_action(
 <script>
 (function () {
 	var wpOrigin = <?php echo wp_json_encode( untrailingslashit( home_url() ) ); ?>;
-	var spaOrigin = <?php
-		$spa_q = isset( $_GET['spa_origin'] ) ? esc_url_raw( wp_unslash( (string) $_GET['spa_origin'] ) ) : '';
-		if ( $spa_q === '' && function_exists( 'wchs_spa_origin' ) ) {
-			$spa_q = wchs_spa_origin();
-		}
-		echo wp_json_encode( untrailingslashit( $spa_q ) );
-	?>;
+	var spaOrigin = <?php echo wp_json_encode( $spa_origin ); ?>;
 	var allowed = [wpOrigin, spaOrigin].filter(function (o, i, a) { return o && a.indexOf(o) === i; });
 
 	function isAllowedOrigin(origin) {
 		return allowed.indexOf(origin) !== -1;
 	}
 
-	function notifyParent(type) {
+	function notifyParent(type, detail) {
 		if (window.parent === window) return;
-		window.parent.postMessage({ type: type }, '*');
+		window.parent.postMessage(Object.assign({ type: type }, detail || {}), '*');
+	}
+
+	function refreshSideCart() {
+		if (!window.jQuery) return false;
+		try {
+			window.jQuery(document.body).trigger('fkcart_update_side_cart', [true]);
+			return true;
+		} catch (err) {
+			return false;
+		}
 	}
 
 	function openCart() {
-		var opened = false;
+		var opened = refreshSideCart();
 		if (window.jQuery) {
 			try {
 				window.jQuery(document.body).trigger('fkcart_open');
@@ -142,15 +193,44 @@ add_action(
 				opened = true;
 			} catch (err3) {}
 		}
+		notifyIfOpen();
 		return opened;
 	}
 
+	function isCartOpen() {
+		if (document.body.classList.contains('fkcart-trigger-open')) return true;
+		var modal = document.querySelector('#fkcart-modal, .fkcart-modal, .fkcart-drawer, [data-fkcart-modal]');
+		if (!modal) return false;
+		if (modal.classList.contains('fkcart-show') || modal.classList.contains('is-open')) return true;
+		if (modal.getAttribute('aria-hidden') === 'false') return true;
+		var style = window.getComputedStyle(modal);
+		return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+	}
+
+	function notifyIfOpen() {
+		if (isCartOpen()) notifyParent('wchs-fk-cart-opened');
+	}
+
 	window.addEventListener('message', function (e) {
-		if (!e.data || e.data.type !== 'wchs-fk-cart-open') return;
-		if (!isAllowedOrigin(e.origin)) return;
+		if (!e.data || !isAllowedOrigin(e.origin)) return;
+		if (e.data.type === 'wchs-fk-cart-synced') {
+			refreshSideCart();
+			return;
+		}
+		if (e.data.type !== 'wchs-fk-cart-open') return;
 		openCart();
-		setTimeout(openCart, 200);
-		setTimeout(openCart, 700);
+		setTimeout(openCart, 150);
+		setTimeout(openCart, 600);
+		var polls = 0;
+		var pollId = setInterval(function () {
+			polls++;
+			if (isCartOpen()) {
+				notifyParent('wchs-fk-cart-opened');
+				clearInterval(pollId);
+				return;
+			}
+			if (polls >= 25) clearInterval(pollId);
+		}, 200);
 	});
 
 	function bindFkEvents() {
@@ -161,15 +241,18 @@ add_action(
 				notifyParent('wchs-fk-cart-opened');
 			});
 		window.jQuery(document.body)
-			.off('fkcart_close.wchs fkcart_close_slider.wchs')
-			.on('fkcart_close.wchs fkcart_close_slider.wchs', function () {
+			.off('fkcart_close.wchs fkcart_close_slider.wchs fkcart_closed.wchs')
+			.on('fkcart_close.wchs fkcart_close_slider.wchs fkcart_closed.wchs', function () {
 				notifyParent('wchs-fk-cart-closed');
 			});
 	}
 
 	function signalReady() {
 		bindFkEvents();
-		notifyParent('wchs-fk-cart-ready');
+		notifyParent('wchs-fk-cart-ready', {
+			hasJquery: !!window.jQuery,
+			hasFkModal: !!document.querySelector('#fkcart-modal, .fkcart-modal, [data-fkcart-modal]')
+		});
 	}
 
 	if (document.readyState === 'complete') {
@@ -185,6 +268,19 @@ add_action(
 		exit;
 	},
 	0
+);
+
+/**
+ * Skip WCHS WC overrides on the FK shell — they can interfere with FunnelKit cart CSS.
+ */
+add_filter(
+	'wchs_design_system_skip_wc_overrides',
+	function ( $skip ) {
+		if ( ! empty( $_GET['wchs_fk_cart_shell'] ) && wchs_use_funnelkit_cart() ) {
+			return true;
+		}
+		return $skip;
+	}
 );
 
 /**

@@ -16,6 +16,10 @@ export function funnelkitCartEnabled(): boolean {
 	return Boolean(config.data.funnelkit_cart?.enabled);
 }
 
+export function funnelkitCartRequested(): boolean {
+	return Boolean(config.data.funnelkit_cart?.requested ?? config.data.funnelkit_cart?.enabled);
+}
+
 function wpOrigin(): string {
 	return config.data.wp_origin.replace(/\/$/, '');
 }
@@ -51,7 +55,7 @@ function onShellMessage(event: MessageEvent) {
 	}
 }
 
-function waitForShellReady(timeoutMs = 15000): Promise<void> {
+function waitForShellReady(timeoutMs = 10000): Promise<void> {
 	if (shellReady) return Promise.resolve();
 	return new Promise((resolve, reject) => {
 		const t = setTimeout(() => reject(new Error('FunnelKit cart shell timed out')), timeoutMs);
@@ -135,6 +139,12 @@ export async function openFunnelKitCart(itemCount = 0): Promise<boolean> {
 
 	closeFunnelKitCartShell();
 
+	try {
+		await waitForShellReady();
+	} catch {
+		return false;
+	}
+
 	if (itemCount > 0) {
 		let synced = await syncClassicCart().catch(() => false);
 		if (!synced) {
@@ -143,12 +153,7 @@ export async function openFunnelKitCart(itemCount = 0): Promise<boolean> {
 			synced = await syncClassicCart().catch(() => false);
 		}
 		if (!synced) return false;
-	}
-
-	try {
-		await waitForShellReady();
-	} catch {
-		return false;
+		frame.contentWindow.postMessage({ type: 'wchs-fk-cart-synced' }, wpOrigin());
 	}
 
 	const openedPromise = waitForCartOpened();
