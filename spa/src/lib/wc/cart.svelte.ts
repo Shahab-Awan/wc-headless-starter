@@ -379,18 +379,12 @@ class CartStore {
 		variation: { attribute: string; value: string }[] = [],
 		analytics?: { clicked_from?: string },
 	) {
+		const beforeQuantities = new Map((this.cart?.items ?? []).map((item) => [item.key, item.quantity]));
+		await this.mutate(() =>
+			request<StoreApiCart>('/cart/add-item', { method: 'POST', body: { id, quantity, variation } })
+		);
 		if (!config.data.funnelkit_cart?.enabled) {
 			this.open = true;
-		}
-		const beforeQuantities = new Map((this.cart?.items ?? []).map((item) => [item.key, item.quantity]));
-		const pendingAdd = this.visibleItemCount() === 0;
-		if (pendingAdd) this.loading = true;
-		try {
-			await this.mutate(() =>
-				request<StoreApiCart>('/cart/add-item', { method: 'POST', body: { id, quantity, variation } })
-			);
-		} finally {
-			if (pendingAdd) this.loading = false;
 		}
 		dispatch('added_to_cart', { id, quantity });
 		// GA4 + Omnisend + Klaviyo + Meta + TikTok + Pinterest ecommerce

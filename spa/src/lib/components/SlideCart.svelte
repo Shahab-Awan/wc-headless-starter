@@ -344,7 +344,7 @@
 	</header>
 
 	<div class="fkcart-body" class:has-zero-state={visibleItemCount === 0}>
-		{#if cart.loading && (!cart.cart || visibleItemCount === 0)}
+		{#if cart.loading && !cart.cart}
 			<p class="fkcart-state">Loading…</p>
 		{:else if visibleItemCount === 0}
 			<div class="fkcart-empty">
