@@ -28,7 +28,7 @@ function onShellMessage(event: MessageEvent) {
 	}
 }
 
-function waitForShellReady(timeoutMs = 8000): Promise<void> {
+function waitForShellReady(timeoutMs = 12000): Promise<void> {
 	if (shellReady) return Promise.resolve();
 	return new Promise((resolve, reject) => {
 		const t = setTimeout(() => reject(new Error('FunnelKit cart shell timed out')), timeoutMs);
@@ -48,12 +48,16 @@ export function ensureFunnelKitCartShell(): HTMLIFrameElement | null {
 
 	window.addEventListener('message', onShellMessage);
 
+	shellReady = false;
 	shellFrame = document.createElement('iframe');
 	shellFrame.src = shellUrl;
 	shellFrame.title = 'Cart';
 	shellFrame.setAttribute('aria-hidden', 'true');
 	shellFrame.dataset.wchsFkCartShell = '1';
 	shellFrame.className = 'wchs-fk-cart-shell';
+	shellFrame.addEventListener('load', () => {
+		shellReady = false;
+	});
 	document.body.appendChild(shellFrame);
 	return shellFrame;
 }
@@ -91,22 +95,22 @@ export async function syncClassicCart(): Promise<boolean> {
 export async function openFunnelKitCart(itemCount = 0): Promise<void> {
 	if (!funnelkitCartEnabled()) return;
 
-	if (itemCount > 0) {
-		await syncClassicCart().catch(() => false);
-	}
-
 	const frame = ensureFunnelKitCartShell();
 	if (!frame?.contentWindow) return;
 
 	frame.classList.add('wchs-fk-cart-shell--active');
 
+	const syncPromise =
+		itemCount > 0 ? syncClassicCart().catch(() => false) : Promise.resolve(true);
+
 	try {
-		await waitForShellReady();
+		await Promise.all([syncPromise, waitForShellReady()]);
 	} catch {
+		frame.classList.remove('wchs-fk-cart-shell--active');
 		return;
 	}
 
-	frame.contentWindow.postMessage({ type: 'wchs-fk-cart-open' }, wpOrigin());
+	frame.contentWindow?.postMessage({ type: 'wchs-fk-cart-open' }, wpOrigin());
 }
 
 export function closeFunnelKitCartShell(): void {

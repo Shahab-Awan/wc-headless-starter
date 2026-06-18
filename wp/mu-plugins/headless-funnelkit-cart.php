@@ -106,6 +106,18 @@ add_action(
 				window.jQuery(document.body).trigger('fkcart_open_slider');
 				opened = true;
 			} catch (err) {}
+			if (!opened) {
+				try {
+					window.jQuery(document.body).trigger('fkcart_open');
+					opened = true;
+				} catch (err2) {}
+			}
+		}
+		if (!opened && typeof window.fkcart_open === 'function') {
+			try {
+				window.fkcart_open();
+				opened = true;
+			} catch (err3) {}
 		}
 		if (!opened) {
 			var el = document.querySelector('.fkcart-mini-open, [data-fkcart-trigger], .fkcart-cart-open');

@@ -383,9 +383,7 @@ class CartStore {
 		await this.mutate(() =>
 			request<StoreApiCart>('/cart/add-item', { method: 'POST', body: { id, quantity, variation } })
 		);
-		if (!config.data.funnelkit_cart?.enabled) {
-			this.open = true;
-		}
+		await this.openCartDrawer();
 		dispatch('added_to_cart', { id, quantity });
 		// GA4 + Omnisend + Klaviyo + Meta + TikTok + Pinterest ecommerce
 		// tracking — find the item in the cart to get name/price. Every
@@ -449,14 +447,22 @@ class CartStore {
 
 	async toggle(force?: boolean) {
 		if (config.data.funnelkit_cart?.enabled) {
-			const { openFunnelKitCart } = await import('$lib/funnelkit-cart');
 			if (force === false) return;
-			await openFunnelKitCart(this.itemCount);
-			dispatch('fkcart_cart_open', {});
+			await this.openCartDrawer();
 			return;
 		}
 		this.open = force ?? !this.open;
 		dispatch(this.open ? 'fkcart_cart_open' : 'fkcart_cart_closed', {});
+	}
+
+	private async openCartDrawer(): Promise<void> {
+		if (config.data.funnelkit_cart?.enabled) {
+			const { openFunnelKitCart } = await import('$lib/funnelkit-cart');
+			await openFunnelKitCart(this.itemCount);
+			dispatch('fkcart_cart_open', {});
+			return;
+		}
+		this.open = true;
 	}
 
 	async beginCheckout(): Promise<string> {
@@ -475,7 +481,7 @@ class CartStore {
 		}
 
 		if (this.visibleItemCount() < 1) {
-			this.open = true;
+			await this.openCartDrawer();
 			return this.cartEntryUrl();
 		}
 

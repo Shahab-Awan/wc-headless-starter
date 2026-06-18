@@ -82,7 +82,7 @@ add_action(
 	function () {
 		$req  = $_SERVER['REQUEST_URI'] ?? '/';
 		$path = wp_parse_url( $req, PHP_URL_PATH ) ?? '/';
-		if ( preg_match( '#^/cart/?$#', $path ) ) {
+		if ( preg_match( '#^/cart/?$#', $path ) && empty( $_GET['wchs_fk_cart_shell'] ) ) {
 			wp_redirect( add_query_arg( 'open_cart', '1', wchs_spa_url() . '/shop' ), 302 );
 			exit;
 		}
