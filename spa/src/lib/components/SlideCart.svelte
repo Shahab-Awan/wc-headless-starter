@@ -110,24 +110,24 @@
 		return resolveCartLineQty(thresholds, item.quantity, proposed);
 	}
 
-	function decrement(key: string, current: number) {
+	async function decrement(key: string, current: number) {
 		const item = displayCartItems.find((i) => i.key === key);
 		if (!item) return;
 		const next = resolvedQty(item, current - 1);
 		if (next <= 0 || (current <= 1 && next <= 1)) {
-			void cart.removeItem(key);
+			await cart.removeItem(key);
 		} else {
 			flashKey(key);
-			void cart.updateItem(key, next);
+			await cart.updateItem(key, next);
 		}
 	}
 
-	function increment(key: string, current: number) {
+	async function increment(key: string, current: number) {
 		const item = displayCartItems.find((i) => i.key === key);
 		if (!item) return;
 		const next = resolvedQty(item, current + 1);
 		flashKey(key);
-		void cart.updateItem(key, next);
+		await cart.updateItem(key, next);
 	}
 
 	function flashKey(key: string) {
@@ -344,9 +344,9 @@
 	</header>
 
 	<div class="fkcart-body" class:has-zero-state={visibleItemCount === 0}>
-		{#if cart.loading && !cart.cart}
+		{#if cart.loading && (!cart.cart || visibleItemCount === 0)}
 			<p class="fkcart-state">Loading…</p>
-		{:else if visibleItemCount === 0 && !cart.addingItem}
+		{:else if visibleItemCount === 0}
 			<div class="fkcart-empty">
 				<p class="fkcart-empty__msg">Your cart is empty</p>
 				<button type="button" class="fkcart-empty__cta" onclick={close}>
@@ -448,15 +448,6 @@
 					</li>
 				{/each}
 			</ul>
-		{/if}
-
-		{#if cart.addingItem}
-			<div class="fkcart-body__overlay" aria-live="polite" aria-busy="true">
-				<div class="fkcart-body__overlay-inner">
-					<div class="fkcart-body__spinner" aria-hidden="true"></div>
-					<p class="fkcart-body__overlay-label">Adding to cart…</p>
-				</div>
-			</div>
 		{/if}
 	</div>
 
@@ -805,50 +796,11 @@
 		overflow-x: hidden;
 		-webkit-overflow-scrolling: touch;
 		padding: 8px 0 0;
-		position: relative;
 	}
 	.fkcart-body.has-zero-state {
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
-	}
-	.fkcart-body__overlay {
-		position: absolute;
-		inset: 0;
-		z-index: 2;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: color-mix(in srgb, var(--bg) 55%, transparent);
-		backdrop-filter: blur(2px);
-		-webkit-backdrop-filter: blur(2px);
-	}
-	.fkcart-body__overlay-inner {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 14px;
-		padding: 24px;
-	}
-	.fkcart-body__spinner {
-		width: 32px;
-		height: 32px;
-		border-radius: 50%;
-		border: 2px solid color-mix(in srgb, var(--fg-muted) 28%, transparent);
-		border-top-color: var(--accent);
-		animation: fkcart-spin 0.7s linear infinite;
-	}
-	.fkcart-body__overlay-label {
-		margin: 0;
-		font-size: 13px;
-		font-weight: 500;
-		color: var(--fg-muted);
-		letter-spacing: 0.02em;
-	}
-	@keyframes fkcart-spin {
-		to {
-			transform: rotate(360deg);
-		}
 	}
 	.fkcart-state {
 		color: var(--fg-muted);
