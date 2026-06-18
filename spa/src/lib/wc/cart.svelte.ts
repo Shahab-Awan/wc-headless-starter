@@ -19,6 +19,7 @@ import {
 	type ShadowItem
 } from './shadow-cart';
 import { config } from '../config.svelte';
+import { resolveCartBundleLabel } from '../cart/bundle-label';
 
 /**
  * Shape of the wchs_cro extension injected by the headless-cro-extension
@@ -319,7 +320,11 @@ class CartStore {
 	 * mutation commits, we converge via a GET /cart so our view matches
 	 * the server.
 	 */
-	private mutate(op: () => Promise<StoreApiCart>): Promise<void> {
+	private mutate(
+		op: () => Promise<StoreApiCart>,
+		options?: { converge?: boolean }
+	): Promise<void> {
+		const converge = options?.converge !== false;
 		const gen = ++this.generation;
 
 		const run = async () => {
@@ -335,20 +340,23 @@ class CartStore {
 			} catch (e) {
 				if (gen === this.generation) {
 					this.error = e instanceof Error ? e.message : String(e);
+					await this.fetch().catch(() => {});
 				}
 				throw e;
 			} finally {
 				if (gen === this.generation) {
 					if (showLoading) this.loading = false;
-					try {
-						const fresh = await request<StoreApiCart>('/cart');
-						if (gen === this.generation) {
-							this.cart = fresh;
-							await this.pruneOrphanShippingProtection();
-							this.syncShadow();
+					if (converge) {
+						try {
+							const fresh = await request<StoreApiCart>('/cart');
+							if (gen === this.generation) {
+								this.cart = fresh;
+								await this.pruneOrphanShippingProtection();
+								this.syncShadow();
+							}
+						} catch {
+							// best-effort convergence; swallow
 						}
-					} catch {
-						// best-effort convergence; swallow
 					}
 				}
 			}
@@ -423,9 +431,40 @@ class CartStore {
 		}
 	}
 
+	private patchItemQuantity(key: string, quantity: number): void {
+		if (!this.cart) return;
+		const bogo = config.data.pdp?.bundle_bogo;
+		this.cart = {
+			...this.cart,
+			items: this.cart.items.map((item) => {
+				if (item.key !== key) return item;
+				const cro = item.extensions?.wchs_cro;
+				if (!cro) return { ...item, quantity };
+				const thresholds = cro.tier_qty_thresholds ?? [];
+				const bundle_label = resolveCartBundleLabel(quantity, thresholds, bogo);
+				return {
+					...item,
+					quantity,
+					extensions: {
+						...item.extensions,
+						wchs_cro: {
+							...cro,
+							bundle_label,
+							active_bundle_min_qty: thresholds.includes(quantity)
+								? quantity
+								: thresholds.filter((t) => t <= quantity).pop() ?? 0
+						}
+					}
+				};
+			})
+		};
+	}
+
 	async updateItem(key: string, quantity: number) {
-		await this.mutate(() =>
-			request<StoreApiCart>('/cart/update-item', { method: 'POST', body: { key, quantity } })
+		this.patchItemQuantity(key, quantity);
+		await this.mutate(
+			() => request<StoreApiCart>('/cart/update-item', { method: 'POST', body: { key, quantity } }),
+			{ converge: false }
 		);
 		dispatch('fkcart_quantity_updated', { key, quantity });
 	}

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Headless Cart Bridge
  * Description: Import a Store API cart (identified by ?cart=<JWT>) into the classic WC session on /checkout so the native checkout page renders the SPA cart.
- * Version:     0.5.0
+ * Version:     0.5.1
  * Author:      WCHS Contributors
 *
  * Security posture (v0.4.0):
@@ -15,11 +15,10 @@
  *   - Deserialized session data is validated against a key allowlist
  *     before any value is touched — no unbounded maybe_unserialize output
  *     reaches active code paths.
- *   - Logged-in users only honor numeric checkout tokens that belong to
- *     the current WP user id. Guest / other-user tokens are refused even
- *     if the classic cart is empty, preventing the WC#55653 cart-overwrite
- *     attack via a phished ?cart= link while still allowing legitimate
- *     same-user SPA -> checkout handoff.
+ *   - Logged-in users: numeric tokens must match the current WP user id.
+ *     Guest tokens (t_*) are allowed — the SPA often keeps a guest Store
+ *     API session after login until WC merge runs; checkout handoff must
+ *     still import that cart. Other users' numeric tokens are refused.
  *   - All debug logging is gated behind WP_DEBUG. Zero token material
  *     reaches error_log.
  *
@@ -202,10 +201,6 @@ function wchs_read_store_api_session( string $customer_id ): ?array {
 }
 
 /**
- * Import allowlisted session data into the active classic session and
- * force WC to recalculate totals.
- */
-/**
  * Import a Store API cart JWT into the active classic session.
  *
  * @return true|\WP_Error
@@ -218,10 +213,9 @@ function wchs_import_store_cart_from_token( string $token ) {
 
 	$customer_id = (string) $payload['user_id'];
 
-	if ( is_user_logged_in() ) {
+	if ( is_user_logged_in() && ctype_digit( $customer_id ) ) {
 		$current_user_id = get_current_user_id();
-		$token_user_id     = $customer_id;
-		if ( ! ctype_digit( $token_user_id ) || (int) $token_user_id !== $current_user_id ) {
+		if ( (int) $customer_id !== $current_user_id ) {
 			return new \WP_Error( 'wchs_cart_token_user_mismatch', 'Cart token does not match the logged-in customer.', [ 'status' => 403 ] );
 		}
 	}
@@ -241,6 +235,10 @@ function wchs_import_store_cart_from_token( string $token ) {
 	return true;
 }
 
+/**
+ * Import allowlisted session data into the active classic session and
+ * force WC to recalculate totals.
+ */
 function wchs_import_cart_into_classic_session( array $safe_data ): void {
 	if ( ! function_exists( 'WC' ) || ! WC()->session ) {
 		return;
@@ -271,12 +269,11 @@ function wchs_import_cart_into_classic_session( array $safe_data ): void {
  * session but no checkout template has started rendering.
  *
  * Hard guards:
- *   - Must be the /checkout page (not any URL with ?cart=<JWT>).
+ *   - Must be the checkout handoff path (not order-pay / thank-you).
  *   - Must NOT be admin / ajax / REST context.
- *   - Must NOT have a logged-in user with an existing cart — that
- *     scenario is the WC#55653 cart-overwrite attack surface.
- *   - Token must validate, must be unexpired, must have the expected
- *     user_id shape.
+ *   - Logged-in + numeric token: token user_id must match current user.
+ *     Guest (t_*) tokens are always imported — SPA checkout handoff.
+ *   - Token must validate, must be unexpired, cart must be non-empty.
  */
 add_action(
 	'wp_loaded',

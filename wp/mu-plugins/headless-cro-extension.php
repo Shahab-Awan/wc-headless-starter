@@ -648,26 +648,22 @@ function wchs_cro_cart_item_bundle_label(
 	array $native_rules,
 	array $rules_data
 ): string {
-	if ( $savings_line <= 0 ) {
-		return '';
-	}
+	unset( $savings_line );
 	if ( ! empty( $native_rules['rules'] ) ) {
 		return '';
 	}
 	if ( empty( $rules_data['rules'] ) ) {
 		return '';
 	}
+	$thresholds = wchs_cro_tier_threshold_qtys( $rules_data );
+	if ( ! in_array( $qty, $thresholds, true ) ) {
+		return '';
+	}
 	$bogo = wchs_cro_bogo_settings();
 	if ( empty( $bogo['enabled'] ) ) {
 		return '';
 	}
-	$presets = $bogo['presets'] ?? [];
-	if ( empty( $presets ) ) {
-		return '';
-	}
-
-	$candidates = [];
-	foreach ( $presets as $preset ) {
+	foreach ( $bogo['presets'] ?? [] as $preset ) {
 		if ( ! is_array( $preset ) ) {
 			continue;
 		}
@@ -675,36 +671,17 @@ function wchs_cro_cart_item_bundle_label(
 		if ( $paid < 1 ) {
 			continue;
 		}
-		$free = array_key_exists( 'free_qty', $preset ) ? (int) $preset['free_qty'] : $paid;
+		$free  = array_key_exists( 'free_qty', $preset ) ? (int) $preset['free_qty'] : $paid;
+		$total = $paid + max( 0, $free );
+		if ( $total !== $qty ) {
+			continue;
+		}
 		if ( $free < 1 ) {
-			continue;
+			return '';
 		}
-		$total = $paid + $free;
-		if ( $qty < $total ) {
-			continue;
-		}
-		$candidates[] = [
-			'paid'  => $paid,
-			'free'  => $free,
-			'total' => $total,
-			'flag'  => sanitize_text_field( (string) ( $preset['flag'] ?? '' ) ),
-		];
+		return sprintf( 'Buy %d Get %d Free', $paid, $free );
 	}
-	if ( empty( $candidates ) ) {
-		return '';
-	}
-	usort(
-		$candidates,
-		static function ( array $a, array $b ): int {
-			return $b['total'] <=> $a['total'];
-		}
-	);
-	$best = $candidates[0];
-	$title = sprintf( 'Buy %d Get %d Free', $best['paid'], $best['free'] );
-	if ( $best['free'] < 1 ) {
-		return '';
-	}
-	return $best['flag'] !== '' ? $title . ' · ' . $best['flag'] : $title;
+	return '';
 }
 
 function wchs_cro_cart_item_data( $cart_item ) {
