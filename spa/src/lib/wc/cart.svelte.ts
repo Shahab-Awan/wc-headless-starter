@@ -312,18 +312,34 @@ class CartStore {
 		}
 	}
 
+	/** Best-effort GET /cart after a mutation — does not block the caller. */
+	private convergeAfterMutation(gen: number): void {
+		void (async () => {
+			try {
+				const fresh = await request<StoreApiCart>('/cart');
+				if (gen !== this.generation) return;
+				this.cart = fresh;
+				await this.pruneOrphanShippingProtection();
+				this.syncShadow();
+			} catch {
+				// best-effort convergence; swallow
+			}
+		})();
+	}
+
 	/**
 	 * Guarded mutation runner. Serializes mutations via a promise chain
 	 * so concurrent add/update/remove calls execute one at a time
-	 * (avoiding the Store API's per-session write race). After each
-	 * mutation commits, we converge via a GET /cart so our view matches
-	 * the server.
+	 * (avoiding the Store API's per-session write race). POST responses
+	 * already include the cart; a background GET /cart converges totals
+	 * and extension fields without blocking the UI.
 	 */
 	private mutate(op: () => Promise<StoreApiCart>): Promise<void> {
 		const gen = ++this.generation;
 
 		const run = async () => {
-			this.loading = true;
+			const showLoading = !this.cart;
+			if (showLoading) this.loading = true;
 			this.error = null;
 			try {
 				const next = await op();
@@ -339,17 +355,8 @@ class CartStore {
 				throw e;
 			} finally {
 				if (gen === this.generation) {
-					this.loading = false;
-					try {
-						const fresh = await request<StoreApiCart>('/cart');
-						if (gen === this.generation) {
-							this.cart = fresh;
-							await this.pruneOrphanShippingProtection();
-							this.syncShadow();
-						}
-					} catch {
-						// best-effort convergence; swallow
-					}
+					if (showLoading) this.loading = false;
+					this.convergeAfterMutation(gen);
 				}
 			}
 		};
@@ -379,11 +386,13 @@ class CartStore {
 		variation: { attribute: string; value: string }[] = [],
 		analytics?: { clicked_from?: string },
 	) {
+		if (!config.data.funnelkit_cart?.enabled) {
+			this.open = true;
+		}
 		const beforeQuantities = new Map((this.cart?.items ?? []).map((item) => [item.key, item.quantity]));
 		await this.mutate(() =>
 			request<StoreApiCart>('/cart/add-item', { method: 'POST', body: { id, quantity, variation } })
 		);
-		this.open = true;
 		dispatch('added_to_cart', { id, quantity });
 		// GA4 + Omnisend + Klaviyo + Meta + TikTok + Pinterest ecommerce
 		// tracking — find the item in the cart to get name/price. Every
