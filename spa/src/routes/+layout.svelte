@@ -687,9 +687,8 @@
 	<Footer />
 	{#if config.data.funnelkit_cart?.enabled}
 		<FunnelKitCartShell />
-	{:else}
-		<SlideCart />
 	{/if}
+	<SlideCart />
 	<SiteGate />
 	<BackToTop />
 {/if}

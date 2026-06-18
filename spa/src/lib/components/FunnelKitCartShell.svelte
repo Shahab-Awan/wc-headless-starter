@@ -11,10 +11,15 @@
 </script>
 
 <style>
+	/*
+	 * Right-aligned strip only — never block the full viewport.
+	 * pointer-events stay off until FunnelKit confirms the drawer opened.
+	 */
 	:global(.wchs-fk-cart-shell) {
 		position: fixed;
-		inset: 0;
-		width: 100%;
+		top: 0;
+		right: 0;
+		width: min(100vw, 480px);
 		height: 100%;
 		border: 0;
 		z-index: 9998;
@@ -22,7 +27,7 @@
 		background: transparent;
 	}
 
-	:global(.wchs-fk-cart-shell--active) {
+	:global(.wchs-fk-cart-shell--interactive) {
 		pointer-events: auto;
 	}
 </style>

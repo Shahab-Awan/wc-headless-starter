@@ -458,11 +458,14 @@ class CartStore {
 	private async openCartDrawer(): Promise<void> {
 		if (config.data.funnelkit_cart?.enabled) {
 			const { openFunnelKitCart } = await import('$lib/funnelkit-cart');
-			await openFunnelKitCart(this.itemCount);
-			dispatch('fkcart_cart_open', {});
-			return;
+			const opened = await openFunnelKitCart(this.itemCount);
+			if (opened) {
+				dispatch('fkcart_cart_open', {});
+				return;
+			}
 		}
 		this.open = true;
+		dispatch('fkcart_cart_open', {});
 	}
 
 	async beginCheckout(): Promise<string> {
