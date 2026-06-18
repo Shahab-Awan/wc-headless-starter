@@ -130,7 +130,7 @@ export async function syncClassicCart(): Promise<boolean> {
 	return syncInFlight;
 }
 
-/** Returns true when FunnelKit drawer confirmed open; false → caller should use WCHS SlideCart. */
+/** Opens FunnelKit drawer in the shell iframe (Store API cart synced first when non-empty). */
 export async function openFunnelKitCart(itemCount = 0): Promise<boolean> {
 	if (!funnelkitCartEnabled()) return false;
 

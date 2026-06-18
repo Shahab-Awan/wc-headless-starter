@@ -11,7 +11,6 @@
  */
 
 import { request, currentCartToken, primeSession } from './store-api';
-import { tick } from 'svelte';
 import {
 	readShadow,
 	writeShadow,
@@ -131,8 +130,6 @@ class CartStore {
 	loading = $state(false);
 	error = $state<string | null>(null);
 	open = $state(false);
-	/** WCHS SlideCart is used only when FunnelKit mode is on but the FK drawer failed to open. */
-	slideCartFallback = $state(false);
 	restored = $state(false); // true if shadow replay fired on last fetch
 
 	/**
@@ -461,14 +458,9 @@ class CartStore {
 	private async openCartDrawer(): Promise<void> {
 		if (config.data.funnelkit_cart?.enabled) {
 			const { openFunnelKitCart } = await import('$lib/funnelkit-cart');
-			const opened = await openFunnelKitCart(this.itemCount);
-			if (opened) {
-				this.slideCartFallback = false;
-				dispatch('fkcart_cart_open', {});
-				return;
-			}
-			this.slideCartFallback = true;
-			await tick();
+			await openFunnelKitCart(this.itemCount);
+			dispatch('fkcart_cart_open', {});
+			return;
 		}
 		this.open = true;
 		dispatch('fkcart_cart_open', {});

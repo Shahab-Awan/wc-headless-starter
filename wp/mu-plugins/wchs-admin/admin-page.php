@@ -3047,7 +3047,7 @@ class AdminPage {
 				})();
 			</script>
 
-			<h2>Slide cart <?php echo self::hint_icon( 'Replace the WCHS slide cart drawer with FunnelKit Cart on the SPA. The header cart button syncs Store API items into the classic session, then opens FunnelKit in a same-origin shell. Requires the FunnelKit Cart plugin.' ); ?></h2>
+			<h2>Slide cart <?php echo self::hint_icon( 'Replace the WCHS slide cart with FunnelKit Cart on the SPA. The shell page embeds the [fk_cart_menu] shortcode; add-to-cart syncs Store API items into the classic session, then opens FunnelKit. Requires the FunnelKit Cart plugin with Cart menu enabled.' ); ?></h2>
 			<div class="wchs-field">
 				<label class="wchs-toggle">
 					<input type="checkbox" name="use_funnelkit_cart" value="1" <?php checked( $use_funnelkit_cart ); ?> />
@@ -3062,8 +3062,9 @@ class AdminPage {
 				</p>
 			<?php elseif ( $use_funnelkit_cart ) : ?>
 				<p style="margin:0 0 12px;color:#555;font-size:13px">
-					In FunnelKit Cart → <strong>Cart menu</strong>, set the trigger to
-					<strong>Use CSS selector</strong> and enter <code>.site-header__cart</code> (optional — the SPA also opens the drawer after sync).
+					In FunnelKit Cart → <strong>Cart menu</strong>, enable the cart menu and set visibility to
+					<strong>Embed shortcode</strong> (WCHS renders <code>[fk_cart_menu]</code> in the shell automatically — do not paste the shortcode into the SPA).
+					Turn on <strong>Ajax add to cart</strong> and <strong>Auto open side cart</strong> in FunnelKit Cart settings.
 					Checkout inside FunnelKit Cart uses the handoff path above (<code><?php echo esc_html( $handoff_preview ); ?></code>).
 				</p>
 			<?php endif; ?>

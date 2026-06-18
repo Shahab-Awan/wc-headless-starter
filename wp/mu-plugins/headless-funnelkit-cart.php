@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Headless FunnelKit Cart
  * Description: Optional FunnelKit Cart slide drawer on the SPA via classic-cart sync and a WP-hosted shell iframe.
- * Version:     0.2.0
+ * Version:     0.3.0
  * Author:      WCHS Contributors
  */
 
@@ -144,9 +144,38 @@ add_action(
 <?php wp_head(); ?>
 <style>
 	html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+	/* Shortcode icon lives in the shell for FK init; SPA header is the visible trigger. */
+	.wchs-fk-cart-shell-mount {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		opacity: 0;
+		z-index: -1;
+	}
+	#wchs-fk-remote-trigger {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		border: 0;
+		opacity: 0;
+	}
 </style>
 </head>
 <body>
+<div class="wchs-fk-cart-shell-mount" aria-hidden="true">
+<?php
+if ( shortcode_exists( 'fk_cart_menu' ) ) {
+	echo do_shortcode( '[fk_cart_menu]' );
+}
+?>
+</div>
+<button type="button" id="wchs-fk-remote-trigger" class="fkcart-mini-open" aria-hidden="true" tabindex="-1"></button>
 <?php wp_footer(); ?>
 <script>
 (function () {
@@ -173,28 +202,39 @@ add_action(
 		}
 	}
 
+	function clickFkTriggers() {
+		var clicked = false;
+		var remote = document.getElementById('wchs-fk-remote-trigger');
+		if (remote) {
+			remote.click();
+			clicked = true;
+		}
+		var icon = document.querySelector('.fkcart-shortcode-icon-wrap, .fkcart-shortcode-icon-wrap a, .fkcart-shortcode-icon');
+		if (icon) {
+			icon.click();
+			clicked = true;
+		}
+		return clicked;
+	}
+
 	function openCart() {
-		var opened = refreshSideCart();
+		refreshSideCart();
+		clickFkTriggers();
 		if (window.jQuery) {
 			try {
 				window.jQuery(document.body).trigger('fkcart_open');
-				opened = true;
 			} catch (err) {}
-			if (!opened) {
-				try {
-					window.jQuery(document.body).trigger('fkcart_open_slider');
-					opened = true;
-				} catch (err2) {}
-			}
+			try {
+				window.jQuery(document.body).trigger('fkcart_open_slider');
+			} catch (err2) {}
 		}
-		if (!opened && typeof window.fkcart_open === 'function') {
+		if (typeof window.fkcart_open === 'function') {
 			try {
 				window.fkcart_open();
-				opened = true;
 			} catch (err3) {}
 		}
 		notifyIfOpen();
-		return opened;
+		return true;
 	}
 
 	function isCartOpen() {
