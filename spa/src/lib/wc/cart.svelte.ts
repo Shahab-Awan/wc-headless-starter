@@ -128,6 +128,7 @@ export type StoreApiCart = {
 class CartStore {
 	cart = $state<StoreApiCart | null>(null);
 	loading = $state(false);
+	addingItem = $state(false);
 	error = $state<string | null>(null);
 	open = $state(false);
 	restored = $state(false); // true if shadow replay fired on last fetch
@@ -501,9 +502,14 @@ class CartStore {
 			this.open = true;
 		}
 		const beforeQuantities = new Map((this.cart?.items ?? []).map((item) => [item.key, item.quantity]));
-		await this.mutate(() =>
-			request<StoreApiCart>('/cart/add-item', { method: 'POST', body: { id, quantity, variation } })
-		);
+		this.addingItem = true;
+		try {
+			await this.mutate(() =>
+				request<StoreApiCart>('/cart/add-item', { method: 'POST', body: { id, quantity, variation } })
+			);
+		} finally {
+			this.addingItem = false;
+		}
 		dispatch('added_to_cart', { id, quantity });
 		// GA4 + Omnisend + Klaviyo + Meta + TikTok + Pinterest ecommerce
 		// tracking — find the item in the cart to get name/price. Every
