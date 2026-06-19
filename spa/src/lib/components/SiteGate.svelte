@@ -11,11 +11,14 @@
 	 * When `strict` is true: no close button, no click-outside, no Escape.
 	 * The user MUST click Confirm or Decline.
 	 */
+	import { page } from '$app/state';
 	import { config } from '$lib/config.svelte';
 	import { gate } from '$lib/gate.svelte';
+	import { shouldSuppressLandingPopups } from '$lib/bridge-domain';
 
 	let modalEl: HTMLDivElement | undefined;
-	const show = $derived(gate.open && gate.checked);
+	const suppressPopups = $derived(shouldSuppressLandingPopups(page.url.pathname));
+	const show = $derived(!suppressPopups && gate.open && gate.checked);
 	const gateConfig = $derived(config.data.gate_modal);
 
 	function confirm() {

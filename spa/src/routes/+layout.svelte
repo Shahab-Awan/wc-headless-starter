@@ -17,7 +17,6 @@
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import MaintenanceScreen from '$lib/components/MaintenanceScreen.svelte';
 	import SiteGate from '$lib/components/SiteGate.svelte';
-	import { gate } from '$lib/gate.svelte';
 	import { icons } from '$lib/icons';
 	import {
 		initGTM, trackPageView,
@@ -30,7 +29,13 @@
 		bridgeAwareHref,
 		isBridgePagePath,
 		shouldHandOffBridgeNavigation,
+		shouldSuppressLandingPopups,
 	} from '$lib/bridge-domain';
+	import { getWhyAlyveCta } from '$lib/why-alyve-cta';
+	import {
+		applyLandingPopupSuppression,
+		shouldSkipLandingPopupScript,
+	} from '$lib/landing-popup-suppression';
 	import { loadFont, HERO_FONTS } from '$lib/hero-fonts';
 	import type { HeroFontKey } from '$lib/config.svelte';
 	import { applyProductCardTokens } from '$lib/product-card-tokens';
@@ -56,6 +61,8 @@
 	const logoOnlyHeader = $derived(
 		page.url.pathname.replace(/\/$/, '') === '/why-alyve'
 	);
+
+	const whyAlyveCta = $derived(logoOnlyHeader ? getWhyAlyveCta(config.data.pages) : null);
 
 	type DrawerEntry =
 		| { kind: 'link'; link: import('$lib/config.svelte').HeaderLink }
@@ -201,6 +208,11 @@
 			await config.load();
 			config.initPreviewMode();
 
+			const suppressLandingPopups = shouldSuppressLandingPopups(window.location.pathname);
+			if (typeof document !== 'undefined') {
+				document.documentElement.toggleAttribute('data-wchs-suppress-popups', suppressLandingPopups);
+			}
+
 			const darkOn = Boolean(
 				config.data.features?.dark_mode && config.data.header_show_toggle
 			);
@@ -214,8 +226,12 @@
 			// (may create window.dataLayer used by Google Ads), then the
 			// rest in dashboard-tab order.
 			if (config.data.gtm_id) initGTM(config.data.gtm_id);
-			if (config.data.omnisend_brand_id) initOmnisend(config.data.omnisend_brand_id);
-			if (config.data.klaviyo_public_key) initKlaviyo(config.data.klaviyo_public_key);
+			if (config.data.omnisend_brand_id && !suppressLandingPopups) {
+				initOmnisend(config.data.omnisend_brand_id);
+			}
+			if (config.data.klaviyo_public_key && !suppressLandingPopups) {
+				initKlaviyo(config.data.klaviyo_public_key);
+			}
 			if (config.data.meta_pixel_id) initMetaPixel(config.data.meta_pixel_id);
 			if (config.data.tiktok_pixel_id) initTikTokPixel(config.data.tiktok_pixel_id);
 			if (config.data.pinterest_tag_id) initPinterestTag(config.data.pinterest_tag_id);
@@ -306,6 +322,7 @@
 			// inject, idempotent by data-wchs-id.
 			for (const s of config.data.active_scripts ?? []) {
 				if (!s.surfaces?.includes('spa')) continue;
+				if (suppressLandingPopups && shouldSkipLandingPopupScript(s.id)) continue;
 				const target = s.placement === 'body_end' ? document.body : document.head;
 				const bootId = `${s.id}__boot`;
 				if (s.inline && !document.querySelector(`script[data-wchs-id="${bootId}"]`)) {
@@ -328,8 +345,11 @@
 			// which is in the always_open list, so it works in all access modes.
 			await auth.refresh();
 
-			// Site gate check (needs both config + auth resolved)
-			gate.check(config.data.gate_modal, auth.isAdmin);
+			applyLandingPopupSuppression(
+				window.location.pathname,
+				config.data.gate_modal,
+				auth.isAdmin
+			);
 
 			// Cart session — can fail in maintenance mode (503 from gated
 			// endpoints) or on network error. Non-critical: SPA still renders,
@@ -424,9 +444,15 @@
 	// Also closes the mobile drawer when the user navigates.
 	afterNavigate(({ to }) => {
 		if (to?.url) {
-			trackPageView(to.url.pathname);
-			trackOmnisendPageViewed();
-			if (isBridgePagePath(to.url.pathname)) {
+			const pathname = to.url.pathname;
+			if (config.ready) {
+				applyLandingPopupSuppression(pathname, config.data.gate_modal, auth.isAdmin);
+			}
+			trackPageView(pathname);
+			if (!shouldSuppressLandingPopups(pathname)) {
+				trackOmnisendPageViewed();
+			}
+			if (isBridgePagePath(pathname)) {
 				trackCustomerLabsBridgePageView();
 			}
 			consumeOpenCartIntent(to.url);
@@ -524,6 +550,12 @@
 				{config.data.brand_name}
 			{/if}
 		</a>
+
+		{#if whyAlyveCta}
+			<a class="site-header__landing-cta" href={bridgeAwareHref(whyAlyveCta.href)}>
+				{whyAlyveCta.label}
+			</a>
+		{/if}
 
 		{#if !logoOnlyHeader}
 		<nav class="site-header__nav">
@@ -783,6 +815,22 @@
 	}
 	@keyframes loading-fade-in {
 		to { opacity: 1; }
+	}
+
+	/* Why Alyve landing — hide third-party form/consent overlays if already injected. */
+	:global(html[data-wchs-suppress-popups] #omnisend-forms-wrapper),
+	:global(html[data-wchs-suppress-popups] #omnisend-form-wrapper),
+	:global(html[data-wchs-suppress-popups] div[id*='omnisend']),
+	:global(html[data-wchs-suppress-popups] .omnisend-form),
+	:global(html[data-wchs-suppress-popups] div[class*='klaviyo']),
+	:global(html[data-wchs-suppress-popups] .needsclick.klaviyo-form),
+	:global(html[data-wchs-suppress-popups] #CybotCookiebotDialog),
+	:global(html[data-wchs-suppress-popups] #CybotCookiebotDialogBodyUnderlay),
+	:global(html[data-wchs-suppress-popups] #cookiebot) {
+		display: none !important;
+		visibility: hidden !important;
+		pointer-events: none !important;
+		opacity: 0 !important;
 	}
 
 	:global(body.has-admin-bar) {

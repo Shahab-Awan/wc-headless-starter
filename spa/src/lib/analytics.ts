@@ -14,6 +14,7 @@
  */
 
 import { config } from '$lib/config.svelte';
+import { shouldSuppressLandingPopups } from '$lib/bridge-domain';
 import type { StoreApiCart } from '$lib/wc/cart.svelte';
 import type { StoreOrder } from '$lib/wc/orders';
 export { isBridgePagePath } from '$lib/bridge-domain';
@@ -129,6 +130,7 @@ export function initOmnisend(brandId: string): void {
  */
 export function trackOmnisendPageViewed(): void {
 	if (typeof window === 'undefined' || !config.data.omnisend_brand_id) return;
+	if (shouldSuppressLandingPopups(window.location.pathname)) return;
 	pushOmnisend(['track', '$pageViewed']);
 }
 

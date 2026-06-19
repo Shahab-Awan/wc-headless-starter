@@ -5193,7 +5193,7 @@ class AdminPage {
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Feature</label>
 							<input type="text" data-field="tb_row_heading" placeholder="🧬 Endotoxin Testing" />
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Alyve</label>
-							<input type="text" data-field="tb_row_brand" placeholder="LAL tested every batch…" />
+							<input type="text" data-field="tb_row_brand" placeholder="LAB tested every batch…" />
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Competitor 1</label>
 							<input type="text" data-field="tb_row_competitor" placeholder="Skipped entirely" />
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Competitor 2</label>

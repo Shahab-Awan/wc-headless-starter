@@ -25,7 +25,9 @@
 	import PromoOffer from '$lib/components/PromoOffer.svelte';
 	import ReviewsListicle from '$lib/components/ReviewsListicle.svelte';
 	import ListicleFaqs from '$lib/components/ListicleFaqs.svelte';
+	import WhyAlyveStickyCta from '$lib/components/WhyAlyveStickyCta.svelte';
 	import SEO from '$lib/components/SEO.svelte';
+	import { getWhyAlyveCta } from '$lib/why-alyve-cta';
 
 	const pageData = $derived(
 		config.data.pages?.find(p => p.slug === (page.params.slug ?? '')) ?? null
@@ -34,6 +36,10 @@
 	const hidePageTitle = $derived(
 		(pageData?.modules?.filter(isModuleVisibleNow) ?? [])[0]?.type === 'listicle'
 	);
+
+	const isWhyAlyvePage = $derived((page.params.slug ?? '').replace(/\/$/, '') === 'why-alyve');
+
+	const whyAlyveStickyCta = $derived(isWhyAlyvePage ? getWhyAlyveCta(config.data.pages) : null);
 
 	// Derive a description from the first text/gallery/trust module if
 	// available; fall back to generic.
@@ -114,7 +120,7 @@
 
 <AccessGate requires="products">
 {#if pageData}
-	<article class="content-page" class:content-page--listicle={hidePageTitle}>
+	<article class="content-page" class:content-page--listicle={hidePageTitle} class:content-page--why-alyve={isWhyAlyvePage}>
 		{#if !hidePageTitle}
 			<h1 class="content-page__title">{pageData.title}</h1>
 		{/if}
@@ -169,6 +175,9 @@
 			</div>
 		{/each}
 	</article>
+	{#if whyAlyveStickyCta}
+		<WhyAlyveStickyCta label={whyAlyveStickyCta.label} href={whyAlyveStickyCta.href} />
+	{/if}
 {:else if config.ready}
 	<div class="content-page content-page--404">
 		<h1 class="content-page__title">Page not found</h1>
@@ -245,6 +254,15 @@
 		.content-page--listicle {
 			--wchs-page-section-half: 24px;
 			--wchs-page-section-bottom: 48px;
+		}
+	}
+
+	.content-page--why-alyve {
+		padding-bottom: var(--wchs-page-section-bottom, 72px);
+	}
+	@media (max-width: 639px) {
+		.content-page--why-alyve {
+			padding-bottom: calc(var(--wchs-page-section-bottom, 48px) + 84px);
 		}
 	}
 	.content-page__title {

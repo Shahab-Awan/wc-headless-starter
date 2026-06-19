@@ -58,6 +58,11 @@ export function isBridgePagePath(path: string): boolean {
 	return path.replace(/\/$/, '') === BRIDGE_PAGE_PATH;
 }
 
+/** Marketing / consent overlays are disabled on the Why Alyve landing page. */
+export function shouldSuppressLandingPopups(path: string): boolean {
+	return isBridgePagePath(path);
+}
+
 export function shouldHandOffBridgeNavigation(href: string): string | null {
 	if (!browser || !isBridgeDomain()) return null;
 	if (!href || href === '#' || href.startsWith('mailto:') || href.startsWith('tel:')) return null;

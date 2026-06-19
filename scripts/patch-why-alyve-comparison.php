@@ -19,7 +19,7 @@ $compare_config = [
 	'comparison_rows'   => [
 		[
 			'heading'      => '🧬 Endotoxin Testing',
-			'brand'        => 'LAL tested every batch, pharma-grade low',
+			'brand'        => 'LAB tested every batch, pharma-grade low',
 			'competitor'   => 'Skipped entirely',
 			'competitor_2' => 'Unknown, never tested',
 		],
