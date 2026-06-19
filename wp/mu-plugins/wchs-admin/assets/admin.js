@@ -326,8 +326,15 @@
 		if (type === 'listicle') {
 			return {
 				section_eyebrow: '',
-				headline: '8 Reasons Researchers Choose Verified Peptide Suppliers Over Gray-Market Listings',
-				intro: '<p>Many labs still source peptides from unverified sellers because the price looks right and the listing looks legitimate.</p><p>That shortcut often means missing batch documentation, inconsistent purity claims, and no traceable COA before you commit budget to a run.</p>',
+				hero_layout: 'editorial',
+				headline: '8 Reasons Researchers Choose Alyve For their Research Compounds',
+				persona_name: 'Jessica H, Biotech CEO',
+				persona_image: '',
+				persona_image_alt: '',
+				persona_badge: 'Verified',
+				persona_updated: 'UPDATED 2 DAYS AGO',
+				hero_callout: 'READ THIS BEFORE YOU BUY RESEARCH COMPOUNDS FROM ANY OTHER COMPANY',
+				intro: '',
 				items_headline: 'Here is why more research teams standardize on documented, batch-tested supply:',
 				closing: '<p>So why have more research teams switched to Alyve Peptides? Because documented purity, published COAs, and predictable domestic fulfillment are not extras—they are the baseline.</p>',
 				items: [
@@ -488,11 +495,37 @@
 				title: '',
 				headline: '',
 				content: '',
-				brand_name: '',
-				competitor_name: 'Unverified Sellers',
+				brand_name: 'Alyve',
+				competitor_name: 'Generic Peptide Sites',
+				competitor_name_2: 'Overseas / Grey-Market',
 				brand_logo: '',
 				competitor_logo: '',
-				comparison_rows: [],
+				comparison_rows: [
+					{
+						heading: '🧬 Endotoxin Testing',
+						brand: 'LAL tested every batch, pharma-grade low',
+						competitor: 'Skipped entirely',
+						competitor_2: 'Unknown, never tested',
+					},
+					{
+						heading: '🧪 Purity',
+						brand: '99%+ HPLC-verified at manufacture',
+						competitor: 'Estimated, not proven',
+						competitor_2: 'Label claim only',
+					},
+					{
+						heading: '📄 Third-Party Verification',
+						brand: "Accredited labs, COA per batch, test it yourself and we'll reimburse",
+						competitor: 'In-house claims only',
+						competitor_2: 'Redacted or none',
+					},
+					{
+						heading: '🚚 Shipping',
+						brand: 'Same-day, tracked, discreet, 2–3 days',
+						competitor: 'Slow, sometimes tracked',
+						competitor_2: '2–6 weeks, customs risk',
+					},
+				],
 			};
 		}
 		if (type === 'category_grid') {
@@ -1162,7 +1195,14 @@
 				break;
 			case 'listicle':
 				setVal(container, '[data-field="lc_section_eyebrow"]', cfg.section_eyebrow || '');
+				setVal(container, '[data-field="lc_hero_layout"]', cfg.hero_layout || 'editorial');
 				setVal(container, '[data-field="lc_headline"]', cfg.headline || '');
+				setVal(container, '[data-field="lc_persona_name"]', cfg.persona_name || '');
+				setVal(container, '[data-field="lc_persona_image"]', cfg.persona_image || '');
+				setVal(container, '[data-field="lc_persona_image_alt"]', cfg.persona_image_alt || '');
+				setVal(container, '[data-field="lc_persona_badge"]', cfg.persona_badge || '');
+				setVal(container, '[data-field="lc_persona_updated"]', cfg.persona_updated || '');
+				setVal(container, '[data-field="lc_hero_callout"]', cfg.hero_callout || '');
 				setVal(container, '[data-field="lc_hero_image"]', cfg.hero_image || '');
 				setVal(container, '[data-field="lc_hero_image_alt"]', cfg.hero_image_alt || '');
 				setVal(container, '[data-field="lc_intro"]', cfg.intro || '');
@@ -1171,6 +1211,7 @@
 				setVal(container, '[data-field="lc_cta_label"]', cfg.cta_label || '');
 				setVal(container, '[data-field="lc_cta_href"]', cfg.cta_href || '');
 				syncListicleHeroMedia(container);
+				syncListiclePersonaMedia(container);
 				populateRepeaterItems(container, '.wchs-listicle-items', listicleItemsForAdmin(cfg), function (item, el) {
 					setVal(el, '[data-field="lc_item_number"]', item.number || '');
 					syncListicleItemIcon(el, item.icon || '');
@@ -1246,6 +1287,7 @@
 				setVal(container, '[data-field="content"]', cfg.content || '');
 				setVal(container, '[data-field="tb_brand_name"]', cfg.brand_name || '');
 				setVal(container, '[data-field="tb_competitor_name"]', cfg.competitor_name || '');
+				setVal(container, '[data-field="tb_competitor_name_2"]', cfg.competitor_name_2 || '');
 				setVal(container, '[data-field="tb_brand_logo"]', cfg.brand_logo || '');
 				setVal(container, '[data-field="tb_competitor_logo"]', cfg.competitor_logo || '');
 				populateTbCompareRows(container, cfg.comparison_rows || []);
@@ -1504,7 +1546,14 @@
 				break;
 			case 'listicle':
 				cfg.section_eyebrow = getVal(container, '[data-field="lc_section_eyebrow"]') || '';
+				cfg.hero_layout = getVal(container, '[data-field="lc_hero_layout"]') || 'editorial';
 				cfg.headline = getVal(container, '[data-field="lc_headline"]') || '';
+				cfg.persona_name = getVal(container, '[data-field="lc_persona_name"]') || '';
+				cfg.persona_image = getVal(container, '[data-field="lc_persona_image"]') || '';
+				cfg.persona_image_alt = getVal(container, '[data-field="lc_persona_image_alt"]') || '';
+				cfg.persona_badge = getVal(container, '[data-field="lc_persona_badge"]') || '';
+				cfg.persona_updated = getVal(container, '[data-field="lc_persona_updated"]') || '';
+				cfg.hero_callout = getVal(container, '[data-field="lc_hero_callout"]') || '';
 				cfg.hero_image = getVal(container, '[data-field="lc_hero_image"]') || '';
 				cfg.hero_image_alt = getVal(container, '[data-field="lc_hero_image_alt"]') || '';
 				cfg.intro = getVal(container, '[data-field="lc_intro"]') || '';
@@ -1560,6 +1609,7 @@
 				cfg.content = getVal(container, '[data-field="content"]') || '';
 				cfg.brand_name = getVal(container, '[data-field="tb_brand_name"]') || '';
 				cfg.competitor_name = getVal(container, '[data-field="tb_competitor_name"]') || '';
+				cfg.competitor_name_2 = getVal(container, '[data-field="tb_competitor_name_2"]') || '';
 				cfg.brand_logo = getVal(container, '[data-field="tb_brand_logo"]') || '';
 				cfg.competitor_logo = getVal(container, '[data-field="tb_competitor_logo"]') || '';
 				cfg.comparison_rows = readTbCompareRows(container);
@@ -1923,7 +1973,15 @@
 	}
 
 	function syncListicleHeroMedia(ctx) {
-		var input = ctx.querySelector('[data-field="lc_hero_image"]');
+		syncListicleMediaField(ctx, '[data-field="lc_hero_image"]');
+	}
+
+	function syncListiclePersonaMedia(ctx) {
+		syncListicleMediaField(ctx, '[data-field="lc_persona_image"]');
+	}
+
+	function syncListicleMediaField(ctx, selector) {
+		var input = ctx.querySelector(selector);
 		if (!input) return;
 		var field = input.closest('.wchs-field');
 		var preview = field && field.querySelector('.wchs-media-preview');
@@ -2157,12 +2215,14 @@
 		if (!tpl) return;
 		var tplHtml = tpl.outerHTML;
 		container.innerHTML = '';
-		(rows.length ? rows : [ { heading: '' } ]).forEach(function (item) {
+		(rows.length ? rows : [ { heading: '', brand: '', competitor: '', competitor_2: '' } ]).forEach(function (item) {
 			var div = document.createElement('div');
 			div.innerHTML = tplHtml;
 			var el = div.firstElementChild;
-			var inp = el.querySelector('input[type="text"]');
-			if (inp) inp.value = item.heading || '';
+			setVal(el, '[data-field="tb_row_heading"]', item.heading || '');
+			setVal(el, '[data-field="tb_row_brand"]', item.brand || '');
+			setVal(el, '[data-field="tb_row_competitor"]', item.competitor || '');
+			setVal(el, '[data-field="tb_row_competitor_2"]', item.competitor_2 || '');
 			container.appendChild(el);
 		});
 	}
@@ -2172,9 +2232,14 @@
 		if (!container) return [];
 		var out = [];
 		container.querySelectorAll('.wchs-accordion-item').forEach(function (el) {
-			var inp = el.querySelector('input[type="text"]');
-			var h = inp ? inp.value.trim() : '';
-			if (h) out.push({ heading: h });
+			var h = getVal(el, '[data-field="tb_row_heading"]').trim();
+			if (!h) return;
+			out.push({
+				heading: h,
+				brand: getVal(el, '[data-field="tb_row_brand"]'),
+				competitor: getVal(el, '[data-field="tb_row_competitor"]'),
+				competitor_2: getVal(el, '[data-field="tb_row_competitor_2"]'),
+			});
 		});
 		return out;
 	}
@@ -2702,8 +2767,7 @@
 			var tbDiv = document.createElement('div');
 			tbDiv.innerHTML = tbTpl.outerHTML;
 			var tbEl = tbDiv.firstElementChild;
-			var tbInp = tbEl.querySelector('input[type="text"]');
-			if (tbInp) tbInp.value = '';
+			tbEl.querySelectorAll('input[type="text"]').forEach(function (inp) { inp.value = ''; });
 			tbWrap.appendChild(tbEl);
 		}
 		var addSplitModal = e.target.closest('.wchs-add-splitfeature-item-modal');

@@ -1,5 +1,9 @@
 <script lang="ts">
 	import type { ModuleResolved, SpacingPreset } from '$lib/config.svelte';
+	import {
+		comparisonRowsHaveText,
+		type BrandComparisonRow,
+	} from '$lib/brand-comparison';
 
 	let {
 		spacing_v = 'normal',
@@ -12,6 +16,7 @@
 		subtitleHtml = '',
 		brandName,
 		competitorName,
+		competitorName2 = '',
 		brandLogo = '',
 		competitorLogo = '',
 		compareRows,
@@ -26,13 +31,19 @@
 		subtitleHtml?: string;
 		brandName: string;
 		competitorName: string;
+		competitorName2?: string;
 		brandLogo?: string;
 		competitorLogo?: string;
-		compareRows: string[];
+		compareRows: BrandComparisonRow[];
 	} = $props();
 
 	const accentStyle = $derived(
 		resolved?.accent_color ? `--compare-accent: ${resolved.accent_color};` : ''
+	);
+
+	const textMode = $derived(comparisonRowsHaveText(compareRows));
+	const rivalTwoName = $derived(
+		competitorName2?.trim() || 'Overseas / Grey-Market'
 	);
 
 	const vialUid = Math.random().toString(36).slice(2, 11);
@@ -42,6 +53,7 @@
 
 <section
 	class="compare"
+	class:is-text-mode={textMode}
 	class:is-v-compact={spacing_v === 'compact'}
 	class:is-v-spacious={spacing_v === 'spacious'}
 	class:is-h-compact={spacing_h === 'compact'}
@@ -67,7 +79,11 @@
 			<table class="compare__table">
 				<thead>
 					<tr>
-						<th class="compare__th compare__th--corner" scope="col"></th>
+						<th class="compare__th compare__th--corner" scope="col">
+							{#if textMode}
+								<span class="compare__corner-label">Feature</span>
+							{/if}
+						</th>
 						<th class="compare__th compare__th--brand" scope="col">
 							<div class="compare__brand-cap">
 								{#if brandLogo}
@@ -123,41 +139,67 @@
 								<span class="compare__rival-title">{competitorName}</span>
 							</div>
 						</th>
+						{#if textMode}
+							<th class="compare__th compare__th--rival compare__th--rival-2" scope="col">
+								<div class="compare__rival-cap">
+									<svg class="compare__vial compare__vial--rival" viewBox="0 0 64 100" aria-hidden="true">
+										<g class="compare__vial-silhouette">
+											<rect x="22" y="6" width="20" height="14" rx="4" />
+											<rect x="26" y="20" width="12" height="16" rx="2" />
+											<path d="M22 38h20l8 52a7 7 0 0 1-7 7H21a7 7 0 0 1-7-7l8-52Z" />
+										</g>
+									</svg>
+									<span class="compare__rival-title">{rivalTwoName}</span>
+								</div>
+							</th>
+						{/if}
 					</tr>
 				</thead>
 				<tbody>
-					{#each compareRows as label}
+					{#each compareRows as row}
 						<tr class="compare__row">
-							<th class="compare__feature" scope="row">{label}</th>
-							<td class="compare__cell compare__cell--brand">
-								<span class="compare__mark compare__mark--yes" aria-label="Yes">
-									<svg viewBox="0 0 24 24" width="22" height="22">
-										<circle cx="12" cy="12" r="10.5" fill="white" />
-										<path
-											d="M8 12.5 11 15.5 17 9"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-										/>
-									</svg>
-								</span>
-							</td>
-							<td class="compare__cell compare__cell--rival">
-								<span class="compare__mark compare__mark--no" aria-label="No">
-									<svg viewBox="0 0 24 24" width="22" height="22">
-										<circle cx="12" cy="12" r="10.5" fill="color-mix(in srgb, var(--fg-muted) 14%, var(--bg) 86%)" />
-										<path
-											d="M9 9 15 15M15 9l-6 6"
-											fill="none"
-											stroke="color-mix(in srgb, var(--fg-muted) 72%, var(--fg) 28%)"
-											stroke-width="2"
-											stroke-linecap="round"
-										/>
-									</svg>
-								</span>
-							</td>
+							<th class="compare__feature" scope="row">{row.feature}</th>
+							{#if textMode}
+								<td class="compare__cell compare__cell--brand compare__cell--text">
+									{row.brand ?? ''}
+								</td>
+								<td class="compare__cell compare__cell--rival compare__cell--text">
+									{row.competitor ?? ''}
+								</td>
+								<td class="compare__cell compare__cell--rival compare__cell--text compare__cell--rival-2">
+									{row.competitor_2 ?? ''}
+								</td>
+							{:else}
+								<td class="compare__cell compare__cell--brand">
+									<span class="compare__mark compare__mark--yes" aria-label="Yes">
+										<svg viewBox="0 0 24 24" width="22" height="22">
+											<circle cx="12" cy="12" r="10.5" fill="white" />
+											<path
+												d="M8 12.5 11 15.5 17 9"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											/>
+										</svg>
+									</span>
+								</td>
+								<td class="compare__cell compare__cell--rival">
+									<span class="compare__mark compare__mark--no" aria-label="No">
+										<svg viewBox="0 0 24 24" width="22" height="22">
+											<circle cx="12" cy="12" r="10.5" fill="color-mix(in srgb, var(--fg-muted) 14%, var(--bg) 86%)" />
+											<path
+												d="M9 9 15 15M15 9l-6 6"
+												fill="none"
+												stroke="color-mix(in srgb, var(--fg-muted) 72%, var(--fg) 28%)"
+												stroke-width="2"
+												stroke-linecap="round"
+											/>
+										</svg>
+									</span>
+								</td>
+							{/if}
 						</tr>
 					{/each}
 				</tbody>
@@ -178,6 +220,9 @@
 		max-width: var(--mod-max-w);
 		margin: 0 auto;
 		padding: var(--mod-pt) var(--mod-px) var(--mod-pb);
+	}
+	.compare.is-text-mode {
+		--mod-max-w: min(1280px, 100%);
 	}
 	.compare.is-v-compact {
 		--compare-row-py: 18px;
@@ -280,6 +325,9 @@
 		box-shadow: 0 16px 40px color-mix(in srgb, black 6%, transparent);
 		overflow: hidden;
 	}
+	.compare.is-text-mode .compare__shell {
+		min-width: min(100%, 720px);
+	}
 
 	.compare__table {
 		width: 100%;
@@ -297,21 +345,39 @@
 	}
 
 	.compare__th--corner {
-		width: 32%;
+		width: 22%;
 		background: color-mix(in srgb, var(--bg) 96%, var(--fg-muted) 4%);
+	}
+	.compare.is-text-mode .compare__th--corner {
+		width: 24%;
+	}
+
+	.compare__corner-label {
+		font-size: 12px;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: color-mix(in srgb, var(--fg) 58%, transparent);
 	}
 
 	.compare__th--brand {
-		width: 34%;
+		width: 26%;
 		background: var(--compare-accent);
 		color: white;
 		border-bottom-color: color-mix(in srgb, var(--compare-accent) 65%, black 35%);
 		box-shadow: inset 0 1px 0 color-mix(in srgb, white 14%, transparent);
 	}
+	.compare.is-text-mode .compare__th--brand {
+		width: 25%;
+	}
 
 	.compare__th--rival {
-		width: 34%;
+		width: 26%;
 		background: color-mix(in srgb, var(--bg) 96%, var(--fg-muted) 4%);
+	}
+	.compare.is-text-mode .compare__th--rival,
+	.compare.is-text-mode .compare__th--rival-2 {
+		width: 25%;
 	}
 
 	.compare__brand-cap,
@@ -323,6 +389,11 @@
 		gap: 14px;
 		text-align: center;
 		min-height: 96px;
+	}
+	.compare.is-text-mode .compare__brand-cap,
+	.compare.is-text-mode .compare__rival-cap {
+		min-height: 96px;
+		gap: 14px;
 	}
 
 	.compare__vial {
@@ -351,12 +422,21 @@
 		text-transform: uppercase;
 		line-height: 1.25;
 	}
+	.compare.is-text-mode .compare__brand-title {
+		font-size: clamp(12px, 2.8vw, 14px);
+		line-height: 1.3;
+	}
 
 	.compare__rival-title {
 		font-size: 13px;
 		font-weight: 700;
 		color: var(--fg-muted);
 		line-height: 1.3;
+	}
+	.compare.is-text-mode .compare__rival-title {
+		font-size: clamp(11px, 2.6vw, 13px);
+		line-height: 1.35;
+		color: color-mix(in srgb, var(--fg) 72%, transparent);
 	}
 
 	.compare__logo {
@@ -387,6 +467,11 @@
 		background: color-mix(in srgb, var(--bg) 97%, var(--fg-muted) 3%);
 		line-height: 1.45;
 	}
+	.compare.is-text-mode .compare__feature {
+		text-align: center;
+		font-size: clamp(12px, 2.6vw, 14px);
+		line-height: 1.35;
+	}
 
 	.compare__cell {
 		padding: var(--compare-row-py) 16px;
@@ -395,9 +480,21 @@
 		border-bottom: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
 	}
 
+	.compare__cell--text {
+		text-align: center;
+		font-size: clamp(12px, 2.4vw, 14px);
+		font-weight: 500;
+		line-height: 1.4;
+		color: color-mix(in srgb, var(--fg) 88%, transparent);
+	}
+
 	.compare__cell--brand {
 		background: var(--compare-accent);
 		border-bottom-color: color-mix(in srgb, var(--compare-accent) 55%, black 45%);
+	}
+	.compare__cell--brand.compare__cell--text {
+		color: white;
+		font-weight: 600;
 	}
 
 	.compare__cell--rival {
@@ -416,19 +513,39 @@
 	}
 
 	@media (max-width: 860px) {
-		.compare__feature {
-			font-size: 14px;
-			padding: calc(var(--compare-row-py) * 0.85) 12px;
+		.compare.is-text-mode {
+			--compare-row-py: 16px;
+			--compare-head-py: 20px;
 		}
-		.compare__cell {
+		.compare__feature {
+			font-size: 13px;
 			padding: calc(var(--compare-row-py) * 0.85) 10px;
 		}
+		.compare.is-text-mode .compare__feature {
+			font-size: 12px;
+		}
+		.compare__cell {
+			padding: calc(var(--compare-row-py) * 0.85) 8px;
+		}
 		.compare__th {
-			padding: calc(var(--compare-head-py) * 0.88) 12px;
+			padding: calc(var(--compare-head-py) * 0.88) 10px;
 		}
 		.compare__vial {
-			width: 48px;
-			height: 76px;
+			width: 44px;
+			height: 70px;
+		}
+		.compare.is-text-mode .compare__cell--text {
+			font-size: 11px;
+			line-height: 1.35;
+		}
+		.compare.is-text-mode .compare__brand-title,
+		.compare.is-text-mode .compare__rival-title {
+			font-size: 10px;
+		}
+		.compare.is-text-mode .compare__brand-cap,
+		.compare.is-text-mode .compare__rival-cap {
+			min-height: 84px;
+			gap: 10px;
 		}
 	}
 </style>

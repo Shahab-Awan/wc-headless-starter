@@ -100,30 +100,63 @@ foreach ( $cfg['pages'] as $i => $page ) {
 		'spacing_h'     => 'normal',
 		'center_header' => true,
 		'config'        => [
-			'layout'          => 'comparison',
-			'title'           => 'Why Alyve',
-			'headline'        => '',
-			'content'         => '<p>Alyve started from a simple frustration: finding reliable, documented research peptides shouldn\'t be this hard. Every batch we sell is third-party tested. Every Certificate of Analysis is published before purchase.</p>',
-			'brand_name'      => '',
-			'competitor_name' => 'Unverified Sellers',
-			'brand_logo'      => '',
-			'competitor_logo' => '',
-			'comparison_rows' => [],
+			'layout'            => 'comparison',
+			'title'             => 'Why Alyve',
+			'headline'          => '',
+			'content'           => '<p>Alyve started from a simple frustration: finding reliable, documented research peptides shouldn\'t be this hard. Every batch we sell is third-party tested. Every Certificate of Analysis is published before purchase.</p>',
+			'brand_name'        => 'Alyve',
+			'competitor_name'   => 'Generic Peptide Sites',
+			'competitor_name_2' => 'Overseas / Grey-Market',
+			'brand_logo'        => '',
+			'competitor_logo'   => '',
+			'comparison_rows'   => [
+				[
+					'heading'      => '🧬 Endotoxin Testing',
+					'brand'        => 'LAL tested every batch, pharma-grade low',
+					'competitor'   => 'Skipped entirely',
+					'competitor_2' => 'Unknown, never tested',
+				],
+				[
+					'heading'      => '🧪 Purity',
+					'brand'        => '99%+ HPLC-verified at manufacture',
+					'competitor'   => 'Estimated, not proven',
+					'competitor_2' => 'Label claim only',
+				],
+				[
+					'heading'      => '📄 Third-Party Verification',
+					'brand'        => "Accredited labs, COA per batch, test it yourself and we'll reimburse",
+					'competitor'   => 'In-house claims only',
+					'competitor_2' => 'Redacted or none',
+				],
+				[
+					'heading'      => '🚚 Shipping',
+					'brand'        => 'Same-day, tracked, discreet, 2–3 days',
+					'competitor'   => 'Slow, sometimes tracked',
+					'competitor_2' => '2–6 weeks, customs risk',
+				],
+			],
 		],
 	];
 	$has_why_block = false;
-	foreach ( $modules as $m ) {
+	$why_block_index = null;
+	foreach ( $modules as $wi => $m ) {
 		if ( ( $m['type'] ?? '' ) === 'text_block' ) {
 			$cfg_check = $m['config'] ?? [];
 			if ( stripos( (string) ( $cfg_check['title'] ?? '' ), 'why alyve' ) !== false
 				|| ( $cfg_check['layout'] ?? '' ) === 'comparison' ) {
 				$has_why_block = true;
+				$why_block_index = $wi;
 				break;
 			}
 		}
 	}
 	if ( ! $has_why_block ) {
 		$modules[] = $why_alyve_block;
+	} else {
+		$modules[ $why_block_index ]['config'] = array_merge(
+			$modules[ $why_block_index ]['config'] ?? [],
+			$why_alyve_block['config']
+		);
 	}
 
 	$listicle_faqs_defaults = [

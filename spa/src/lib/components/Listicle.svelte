@@ -24,6 +24,17 @@
 		resolved?.accent_color ? `--accent: ${resolved.accent_color};` : ''
 	);
 
+	const EDITORIAL_DEFAULTS = {
+		headline: '8 Reasons Researchers Choose Alyve For their Research Compounds',
+		persona_name: 'Jessica H, Biotech CEO',
+		persona_badge: 'Verified',
+		persona_updated: 'UPDATED 2 DAYS AGO',
+		hero_callout:
+			'READ THIS BEFORE YOU BUY RESEARCH COMPOUNDS FROM ANY OTHER COMPANY',
+	} as const;
+
+	const isEditorialHero = $derived((config.hero_layout ?? 'editorial') === 'editorial');
+
 	const DEFAULT_LISTICLE_ITEMS: ListicleItem[] = [
 		{
 			icon: 'shipping',
@@ -122,6 +133,43 @@
 		return out || introHtml;
 	});
 
+	const heroHeadline = $derived(
+		config.headline?.trim() || EDITORIAL_DEFAULTS.headline
+	);
+	const personaName = $derived(
+		config.persona_name?.trim() || EDITORIAL_DEFAULTS.persona_name
+	);
+	const personaBadge = $derived(
+		config.persona_badge?.trim() || EDITORIAL_DEFAULTS.persona_badge
+	);
+	const personaUpdated = $derived(
+		config.persona_updated?.trim() || EDITORIAL_DEFAULTS.persona_updated
+	);
+	const heroCallout = $derived(
+		config.hero_callout?.trim() || EDITORIAL_DEFAULTS.hero_callout
+	);
+
+	const showEditorialHero = $derived(
+		isEditorialHero &&
+			Boolean(
+				heroHeadline ||
+					personaName ||
+					heroCallout ||
+					config.persona_image?.trim()
+			)
+	);
+
+	const showSplitHero = $derived(
+		!isEditorialHero &&
+			Boolean(
+				config.section_eyebrow?.trim() ||
+					config.headline?.trim() ||
+					introBody ||
+					showCta ||
+					config.hero_image?.trim()
+			)
+	);
+
 	function pointNumber(item: { number?: string }, index: number): string {
 		const raw = item.number?.trim();
 		if (raw) return raw.padStart(2, '0');
@@ -140,9 +188,10 @@
 	}
 </script>
 
-{#if config.headline?.trim() || config.intro?.trim() || items.length}
+{#if showEditorialHero || showSplitHero || items.length}
 	<section
 		class="listicle"
+		class:has-editorial-hero={showEditorialHero}
 		class:is-v-compact={spacing_v === 'compact'}
 		class:is-v-spacious={spacing_v === 'spacious'}
 		class:is-h-compact={spacing_h === 'compact'}
@@ -150,7 +199,58 @@
 		style={accentStyle}
 	>
 		<div class="listicle__inner">
-			{#if config.section_eyebrow?.trim() || config.headline?.trim() || introBody || showCta || config.hero_image?.trim()}
+			{#if showEditorialHero}
+				<header class="listicle__hero listicle__hero--editorial" class:has-items-headline={Boolean(itemsHeadline && items.length)}>
+					{#if config.section_eyebrow?.trim()}
+						<p class="listicle__eyebrow listicle__hero-eyebrow">{config.section_eyebrow.trim()}</p>
+					{/if}
+
+					<h1 class="listicle__editorial-headline">{heroHeadline}</h1>
+
+					{#if personaName || config.persona_image?.trim()}
+						<div class="listicle__persona">
+							<div class="listicle__persona-avatar" aria-hidden={!config.persona_image?.trim()}>
+								{#if config.persona_image?.trim()}
+									<img
+										src={config.persona_image.trim()}
+										alt={config.persona_image_alt?.trim() || personaName}
+										loading="eager"
+									/>
+								{:else}
+									<span class="listicle__persona-placeholder"></span>
+								{/if}
+							</div>
+							<div class="listicle__persona-meta">
+								<div class="listicle__persona-name-row">
+									{#if personaName}
+										<span class="listicle__persona-name">{personaName}</span>
+									{/if}
+									{#if personaBadge}
+										<span class="listicle__persona-badge">
+											<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+												<path
+													fill="currentColor"
+													d="M6.5 12 2 7.5l1.4-1.4L6.5 9.2 12.6 3 14 4.4z"
+												/>
+											</svg>
+											{personaBadge}
+										</span>
+									{/if}
+								</div>
+								{#if personaUpdated}
+									<p class="listicle__persona-updated">{personaUpdated}</p>
+								{/if}
+							</div>
+						</div>
+					{/if}
+
+					{#if heroCallout}
+						<div class="listicle__hero-callout">
+							<p>{heroCallout}</p>
+						</div>
+					{/if}
+				</header>
+			{:else if showSplitHero}
 				<header class="listicle__hero" class:has-items-headline={Boolean(itemsHeadline && items.length)}>
 					{#if config.section_eyebrow?.trim()}
 						<p class="listicle__eyebrow listicle__hero-eyebrow">{config.section_eyebrow.trim()}</p>
@@ -300,6 +400,11 @@
 		--mod-px: 40px;
 	}
 
+	.listicle.has-editorial-hero {
+		--mod-px: clamp(16px, 3vw, 28px);
+		--listicle-max: min(960px, 100%);
+	}
+
 	.listicle__inner {
 		max-width: var(--listicle-max);
 		margin: 0 auto;
@@ -315,6 +420,126 @@
 	}
 	.listicle__hero.has-items-headline {
 		margin-bottom: 40px;
+	}
+
+	.listicle__hero--editorial {
+		gap: 20px;
+		max-width: 100%;
+		width: 100%;
+		margin-left: 0;
+		margin-right: 0;
+	}
+
+	.listicle__editorial-headline {
+		margin: 0;
+		font-family: var(--font-heading, var(--font-sans));
+		font-size: clamp(28px, 7.2vw, 42px);
+		font-weight: 800;
+		line-height: 1.12;
+		letter-spacing: -0.03em;
+		color: var(--fg);
+		text-wrap: balance;
+	}
+
+	.listicle__persona {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin-top: 4px;
+	}
+
+	.listicle__persona-avatar {
+		flex-shrink: 0;
+		width: 48px;
+		height: 48px;
+		border-radius: 10px;
+		overflow: hidden;
+		background: var(--bg-muted);
+		border: 1px solid var(--border);
+	}
+
+	.listicle__persona-avatar img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.listicle__persona-placeholder {
+		display: block;
+		width: 100%;
+		height: 100%;
+		background: color-mix(in srgb, var(--listicle-teal) 14%, var(--bg-muted) 86%);
+	}
+
+	.listicle__persona-meta {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		min-width: 0;
+	}
+
+	.listicle__persona-name-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.listicle__persona-name {
+		font-size: 15px;
+		font-weight: 700;
+		line-height: 1.25;
+		color: var(--fg);
+	}
+
+	.listicle__persona-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		padding: 4px 10px 4px 8px;
+		border-radius: 999px;
+		border: 1px solid var(--border);
+		background: var(--bg);
+		font-size: 11px;
+		font-weight: 700;
+		line-height: 1;
+		color: color-mix(in srgb, var(--fg) 72%, transparent);
+	}
+
+	.listicle__persona-updated {
+		margin: 0;
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: color-mix(in srgb, var(--fg) 46%, transparent);
+	}
+
+	.listicle__hero-callout {
+		--callout-accent: #9b1c2e;
+		--callout-bg: #fde8e8;
+		margin-top: 4px;
+		padding: 16px 18px 16px 20px;
+		border-left: 6px solid var(--callout-accent);
+		border-radius: 0 10px 10px 0;
+		background: var(--callout-bg);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--callout-accent) 8%, transparent);
+	}
+
+	:global([data-theme='dark']) .listicle__hero-callout {
+		--callout-accent: #f87171;
+		--callout-bg: color-mix(in srgb, #ef4444 14%, var(--bg) 86%);
+	}
+
+	.listicle__hero-callout p {
+		margin: 0;
+		font-size: clamp(14px, 3.8vw, 16px);
+		font-weight: 800;
+		line-height: 1.45;
+		letter-spacing: 0.01em;
+		color: var(--fg);
+		text-wrap: pretty;
 	}
 
 	.listicle__hero-eyebrow {
@@ -385,6 +610,17 @@
 		line-height: 1.3;
 		letter-spacing: -0.02em;
 		color: var(--fg);
+	}
+
+	.listicle.has-editorial-hero .listicle__items-headline {
+		margin-left: 0;
+		margin-right: 0;
+		max-width: none;
+		padding: 0;
+		text-align: left;
+		font-size: clamp(18px, 4.6vw, 22px);
+		font-weight: 600;
+		line-height: 1.4;
 	}
 
 	.listicle__eyebrow {
@@ -664,6 +900,12 @@
 		max-width: 52ch;
 		margin-left: auto;
 		margin-right: auto;
+	}
+
+	@media (max-width: 640px) {
+		.listicle.has-editorial-hero {
+			--mod-px: 14px;
+		}
 	}
 
 	@media (max-width: 800px) {

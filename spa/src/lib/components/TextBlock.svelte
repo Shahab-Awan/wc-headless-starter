@@ -1,6 +1,10 @@
 <script lang="ts">
 	import BrandComparisonTable from '$lib/components/BrandComparisonTable.svelte';
 	import {
+		DEFAULT_WHY_ALYVE_COMPARE_ROWS,
+		type BrandComparisonRow,
+	} from '$lib/brand-comparison';
+	import {
 		config as siteCfg,
 		type ModuleResolved,
 		type TextBlockModuleConfig,
@@ -23,30 +27,28 @@
 
 	const TITLE_COMPARE_HINT = /why\s*alyve|why choose/i;
 
-	const DEFAULT_COMPARE_ROWS = [
-		'Every batch independently tested',
-		'Certificate of Analysis published before purchase',
-		'Documented sourcing & batch traceability',
-		'Fast, tracked domestic shipping',
-	];
-
 	const layoutMode = $derived((config.layout ?? 'auto') as 'auto' | 'standard' | 'comparison');
 	const titleTrim = $derived((config.title ?? '').trim());
 	const hint = $derived(TITLE_COMPARE_HINT.test(titleTrim.toLowerCase()));
 
-	const rowsFromConfig = $derived(
-		(config.comparison_rows ?? [])
-			.map((r) => r.heading?.trim() ?? '')
-			.filter((line) => line !== '')
-	);
+	const rowsFromConfig = $derived.by((): BrandComparisonRow[] => {
+		return (config.comparison_rows ?? [])
+			.map((r) => ({
+				feature: r.heading?.trim() ?? '',
+				brand: r.brand?.trim() ?? '',
+				competitor: r.competitor?.trim() ?? '',
+				competitor_2: r.competitor_2?.trim() ?? '',
+			}))
+			.filter((row) => row.feature !== '');
+	});
 
 	const forcedStandard = $derived(layoutMode === 'standard');
 	const forcedComparison = $derived(layoutMode === 'comparison');
 
-	const compareRows = $derived.by(() => {
+	const compareRows = $derived.by((): BrandComparisonRow[] => {
 		if (rowsFromConfig.length > 0) return rowsFromConfig;
 		if (forcedStandard) return [];
-		if (forcedComparison || hint) return DEFAULT_COMPARE_ROWS;
+		if (forcedComparison || hint) return DEFAULT_WHY_ALYVE_COMPARE_ROWS;
 		return [];
 	});
 
@@ -57,9 +59,14 @@
 	);
 
 	const brandName = $derived(
-		(config.brand_name?.trim() || siteCfg.data.brand_name?.trim() || 'Our brand').trim()
+		(config.brand_name?.trim() || siteCfg.data.brand_name?.trim() || 'Alyve').trim()
 	);
-	const competitorName = $derived((config.competitor_name?.trim() || 'Unverified Sellers').trim());
+	const competitorName = $derived(
+		(config.competitor_name?.trim() || 'Generic Peptide Sites').trim()
+	);
+	const competitorName2 = $derived(
+		(config.competitor_name_2?.trim() || 'Overseas / Grey-Market').trim()
+	);
 	const brandLogo = $derived(config.brand_logo?.trim() || '');
 	const competitorLogo = $derived(config.competitor_logo?.trim() || '');
 
@@ -84,6 +91,7 @@
 		subtitleHtml={compareLeadHtml}
 		brandName={brandName}
 		competitorName={competitorName}
+		competitorName2={competitorName2}
 		brandLogo={brandLogo}
 		competitorLogo={competitorLogo}
 		compareRows={compareRows}

@@ -207,6 +207,26 @@
 		--mod-pt: clamp(44px, 6vw, 64px);
 	}
 
+	@media (min-width: 901px) {
+		.content-page--listicle > :global(section.listicle.has-editorial-hero) {
+			--listicle-max: min(980px, 100%);
+			--mod-px: clamp(20px, 2.5vw, 36px);
+		}
+		.content-page--listicle > :global(section.compare.is-text-mode) {
+			--mod-max-w: min(1320px, calc(100% - 48px));
+			--mod-px: clamp(20px, 2.5vw, 36px);
+		}
+		.content-page--listicle > :global(section.promo-offer) {
+			--po-max: min(1080px, 100%);
+		}
+		.content-page--listicle > :global(section.reviews-listicle) {
+			--rl-max: min(1180px, 100%);
+		}
+		.content-page--listicle > :global(section.listicle-faqs) {
+			--lf-max: min(980px, 100%);
+		}
+	}
+
 	.content-page--listicle :global(.listicle__prose p),
 	.content-page--listicle :global(.listicle__intro p) {
 		font-size: 16px;

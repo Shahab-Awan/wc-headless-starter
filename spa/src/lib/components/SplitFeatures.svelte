@@ -31,8 +31,8 @@
 
 	const compareRows = $derived(
 		(config.items ?? [])
-			.map((row) => row.heading?.trim() || '')
-			.filter((line) => line !== '')
+			.map((row) => ({ feature: row.heading?.trim() || '' }))
+			.filter((row) => row.feature !== '')
 	);
 
 	const displayHeadline = $derived((config.headline?.trim() || config.title?.trim() || '').trim());

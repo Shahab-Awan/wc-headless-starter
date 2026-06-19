@@ -4960,7 +4960,28 @@ class AdminPage {
 		<!-- Listicle -->
 		<div id="wchs-mod-tpl-listicle" style="display:none">
 			<div class="wchs-module__fields" style="display:flex;flex-direction:column;gap:14px">
-				<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">First section (image left, copy right)</p>
+				<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Hero section</p>
+				<div class="wchs-field wchs-field--full"><label>Hero layout</label>
+					<select data-field="lc_hero_layout">
+						<option value="editorial">Editorial (headline + persona + callout)</option>
+						<option value="split">Split (hero image + copy)</option>
+					</select>
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Headline</label><input type="text" data-field="lc_headline" placeholder="8 Reasons Researchers Choose Alyve…" /></div>
+				<div class="wchs-field wchs-field--full"><label>Persona photo</label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="lc_persona_image" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:80px;margin-top:8px;border:1px solid #e0e0e0;border-radius:8px" />
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Persona photo alt text</label><input type="text" data-field="lc_persona_image_alt" /></div>
+				<div class="wchs-field wchs-field--full"><label>Persona name &amp; title</label><input type="text" data-field="lc_persona_name" placeholder="Jessica H, Biotech CEO" /></div>
+				<div class="wchs-field wchs-field--full"><label>Persona badge</label><input type="text" data-field="lc_persona_badge" placeholder="Verified" /></div>
+				<div class="wchs-field wchs-field--full"><label>Updated label</label><input type="text" data-field="lc_persona_updated" placeholder="UPDATED 2 DAYS AGO" /></div>
+				<div class="wchs-field wchs-field--full"><label>Callout subheadline <?php echo self::hint_icon( 'Highlighted box below the persona row.' ); ?></label><input type="text" data-field="lc_hero_callout" placeholder="READ THIS BEFORE YOU BUY…" /></div>
+				<p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Split layout only (image left, copy right)</p>
 				<div class="wchs-field wchs-field--full"><label>Hero image (left column)</label>
 					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
 						<input type="text" data-field="lc_hero_image" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
@@ -4970,9 +4991,8 @@ class AdminPage {
 					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:180px;margin-top:8px;border:1px solid #e0e0e0" />
 				</div>
 				<div class="wchs-field wchs-field--full"><label>Hero image alt text</label><input type="text" data-field="lc_hero_image_alt" /></div>
-				<div class="wchs-field wchs-field--full"><label>Eyebrow (optional)</label><input type="text" data-field="lc_section_eyebrow" placeholder="THE FIVE REASONS" /></div>
-				<div class="wchs-field wchs-field--full"><label>Headline</label><input type="text" data-field="lc_headline" placeholder="5 Reasons Why…" /></div>
-				<div class="wchs-field wchs-field--full"><label>Description</label><textarea rows="5" data-field="lc_intro" data-wysiwyg="1" placeholder="Paragraphs under the headline, before the CTA…"></textarea></div>
+				<div class="wchs-field wchs-field--full"><label>Eyebrow (optional)</label><input type="text" data-field="lc_section_eyebrow" placeholder="THE EIGHT REASONS" /></div>
+				<div class="wchs-field wchs-field--full"><label>Description (split layout)</label><textarea rows="5" data-field="lc_intro" data-wysiwyg="1" placeholder="Paragraphs under the headline, before the CTA…"></textarea></div>
 				<div class="wchs-field wchs-field--full"><label>CTA label</label><input type="text" data-field="lc_cta_label" placeholder="Shop research-grade peptides" /></div>
 				<div class="wchs-field wchs-field--full"><label>CTA link</label><input type="text" data-field="lc_cta_href" placeholder="/shop" /></div>
 				<p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Points section</p>
@@ -5144,8 +5164,9 @@ class AdminPage {
 				<div class="wchs-field wchs-field--full"><label>Title / eyebrow</label><input type="text" data-field="title" placeholder="e.g. WHY ALYVE" /></div>
 				<div class="wchs-field wchs-field--full"><label>Headline (optional)</label><input type="text" data-field="tb_headline" placeholder="Large heading below eyebrow" /></div>
 				<div class="wchs-field wchs-field--full"><label>Content</label><textarea data-field="content" rows="8" data-wysiwyg="1" style="width:100%"></textarea></div>
-				<div class="wchs-field"><label>Brand column name</label><input type="text" data-field="tb_brand_name" placeholder="Leave blank for site name" /></div>
-				<div class="wchs-field"><label>Competitor column name</label><input type="text" data-field="tb_competitor_name" placeholder="Unverified Sellers" /></div>
+				<div class="wchs-field"><label>Brand column name</label><input type="text" data-field="tb_brand_name" placeholder="Alyve" /></div>
+				<div class="wchs-field"><label>Competitor column 1</label><input type="text" data-field="tb_competitor_name" placeholder="Generic Peptide Sites" /></div>
+				<div class="wchs-field"><label>Competitor column 2</label><input type="text" data-field="tb_competitor_name_2" placeholder="Overseas / Grey-Market" /></div>
 				<div class="wchs-field wchs-field--full">
 					<label>Brand logo (optional)</label>
 					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
@@ -5165,11 +5186,18 @@ class AdminPage {
 					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:80px;margin-top:8px;border:1px solid #e0e0e0" />
 				</div>
 				<div class="wchs-field wchs-field--full">
-					<label>Comparison row labels</label>
-					<p style="margin:0 0 8px;font-size:12px;color:#666">Leave empty to use default rows when Auto or Comparison layout applies.</p>
+					<label>Comparison rows</label>
+					<p style="margin:0 0 8px;font-size:12px;color:#666">Feature + cell copy for each column. Leave empty to use Why Alyve defaults when Auto or Comparison layout applies.</p>
 					<div class="wchs-tb-compare-rows">
-						<div class="wchs-accordion-item" style="display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid #ddd;background:#fafafa">
-							<input type="text" style="flex:1" placeholder="Row label (left column)" />
+						<div class="wchs-accordion-item" style="display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #ddd;background:#fafafa">
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Feature</label>
+							<input type="text" data-field="tb_row_heading" placeholder="🧬 Endotoxin Testing" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Alyve</label>
+							<input type="text" data-field="tb_row_brand" placeholder="LAL tested every batch…" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Competitor 1</label>
+							<input type="text" data-field="tb_row_competitor" placeholder="Skipped entirely" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Competitor 2</label>
+							<input type="text" data-field="tb_row_competitor_2" placeholder="Unknown, never tested" />
 							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
 						</div>
 					</div>

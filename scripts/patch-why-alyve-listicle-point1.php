@@ -1,6 +1,6 @@
 <?php
 /**
- * Update Why Alyve listicle point 01 (domestic fulfillment) + default icons on all 8 points.
+ * Update Why Alyve listicle hero + point 01 + default icons on all 8 points.
  * Run: wp eval-file scripts/patch-why-alyve-listicle-point1.php
  */
 defined( 'ABSPATH' ) || exit;
@@ -49,9 +49,16 @@ foreach ( $cfg['pages'] as $pi => $page ) {
 			}
 		}
 
-		if ( empty( $config['headline'] ) || str_contains( (string) $config['headline'], '5 Reasons' ) ) {
-			$config['headline'] = '8 Reasons Researchers Choose Verified Peptide Suppliers Over Gray-Market Listings';
+		if ( empty( $config['headline'] ) || str_contains( (string) $config['headline'], '5 Reasons' ) || str_contains( (string) $config['headline'], 'Verified Peptide Suppliers' ) ) {
+			$config['headline'] = '8 Reasons Researchers Choose Alyve For their Research Compounds';
 		}
+
+		$config['hero_layout']      = 'editorial';
+		$config['persona_name']   = 'Jessica H, Biotech CEO';
+		$config['persona_badge']    = 'Verified';
+		$config['persona_updated']  = 'UPDATED 2 DAYS AGO';
+		$config['hero_callout']     = 'READ THIS BEFORE YOU BUY RESEARCH COMPOUNDS FROM ANY OTHER COMPANY';
+		$config['intro']            = '';
 
 		$config['items']                   = $items;
 		$modules[ $mi ]['config']          = $config;
@@ -74,4 +81,4 @@ if ( function_exists( 'wp_cache_flush' ) ) {
 	wp_cache_flush();
 }
 
-WP_CLI::success( "Updated {$slug} listicle point 01 + icons." );
+WP_CLI::success( "Updated {$slug} listicle hero, point 01, and icons." );

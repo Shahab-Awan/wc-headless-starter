@@ -237,7 +237,12 @@ export type TrustBarModuleConfig = {
 	icon_accent?: boolean;
 };
 
-export type TextBlockComparisonRow = { heading: string };
+export type TextBlockComparisonRow = {
+	heading: string;
+	brand?: string;
+	competitor?: string;
+	competitor_2?: string;
+};
 
 export type ListicleItem = {
 	number?: string;
@@ -303,9 +308,17 @@ export type ReviewsListicleModuleConfig = {
 
 export type ListicleModuleConfig = {
 	section_eyebrow?: string;
+	/** split = image + copy columns; editorial = headline, persona, callout stack. */
+	hero_layout?: 'split' | 'editorial';
 	headline?: string;
 	hero_image?: string;
 	hero_image_alt?: string;
+	persona_name?: string;
+	persona_image?: string;
+	persona_image_alt?: string;
+	persona_badge?: string;
+	persona_updated?: string;
+	hero_callout?: string;
 	intro?: string;
 	items_headline?: string;
 	closing?: string;
@@ -321,6 +334,7 @@ export type TextBlockModuleConfig = {
 	content: string;
 	brand_name?: string;
 	competitor_name?: string;
+	competitor_name_2?: string;
 	brand_logo?: string;
 	competitor_logo?: string;
 	comparison_rows?: TextBlockComparisonRow[];

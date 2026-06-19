@@ -20,9 +20,48 @@ return [
 			'default' => '',
 		],
 		[
+			'id'      => 'hero_layout',
+			'type'    => 'enum',
+			'default' => 'editorial',
+			'options' => [
+				'editorial' => 'Editorial (headline + persona + callout)',
+				'split'     => 'Split (hero image + copy)',
+			],
+		],
+		[
 			'id'      => 'headline',
 			'type'    => 'text',
-			'default' => '8 Reasons Researchers Choose Verified Peptide Suppliers Over Gray-Market Listings',
+			'default' => '8 Reasons Researchers Choose Alyve For their Research Compounds',
+		],
+		[
+			'id'      => 'persona_name',
+			'type'    => 'text',
+			'default' => 'Jessica H, Biotech CEO',
+		],
+		[
+			'id'      => 'persona_image',
+			'type'    => 'image',
+			'default' => '',
+		],
+		[
+			'id'      => 'persona_image_alt',
+			'type'    => 'text',
+			'default' => '',
+		],
+		[
+			'id'      => 'persona_badge',
+			'type'    => 'text',
+			'default' => 'Verified',
+		],
+		[
+			'id'      => 'persona_updated',
+			'type'    => 'text',
+			'default' => 'UPDATED 2 DAYS AGO',
+		],
+		[
+			'id'      => 'hero_callout',
+			'type'    => 'text',
+			'default' => 'READ THIS BEFORE YOU BUY RESEARCH COMPOUNDS FROM ANY OTHER COMPANY',
 		],
 		[
 			'id'      => 'hero_image',
@@ -37,7 +76,7 @@ return [
 		[
 			'id'      => 'intro',
 			'type'    => 'wysiwyg',
-			'default' => '<p>Many labs still source peptides from unverified sellers because the price looks right and the listing looks legitimate.</p><p>That shortcut often means missing batch documentation, inconsistent purity claims, and no traceable COA before you commit budget to a run.</p>',
+			'default' => '',
 		],
 		[
 			'id'      => 'items_headline',
