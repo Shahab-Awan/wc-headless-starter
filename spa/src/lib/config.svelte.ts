@@ -241,10 +241,16 @@ export type TextBlockComparisonRow = { heading: string };
 
 export type ListicleItem = {
 	number?: string;
+	/** Trust-bar icon key (shipping, lab, shield, …). */
+	icon?: string;
+	/** Short text fallback when no icon is set (e.g. US). */
+	icon_text?: string;
 	label?: string;
 	headline: string;
 	body?: string;
 	callout?: string;
+	/** Pill tags under the body copy. Empty strings render dot-only placeholders. */
+	badges?: string[];
 	image?: string;
 	image_alt?: string;
 };

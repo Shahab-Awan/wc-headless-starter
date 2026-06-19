@@ -6,6 +6,7 @@
 		SpacingPreset,
 	} from '$lib/config.svelte';
 	import { bridgeAwareHref } from '$lib/bridge-domain';
+	import { icons as listicleIcons } from '$lib/icons';
 
 	let {
 		config,
@@ -25,24 +26,45 @@
 
 	const DEFAULT_LISTICLE_ITEMS: ListicleItem[] = [
 		{
+			icon: 'shipping',
+			headline: 'Domestic Fulfillment, Direct to Your Lab',
+			body: '<p>Every Alyve order is fulfilled through our U.S. operations with an emphasis on transparency and dependable service. From sourcing to shipment, products are carefully handled and prepared under established quality practices to help maintain consistency. No unknown middlemen and no complicated fulfillment chains.</p>',
+			badges: ['Quality Standards', 'Supply Chain Transparency', 'Direct Fulfillment'],
+		},
+		{
+			icon: 'lab',
+			headline: 'Endotoxin Testing Standard',
+			body: '<p>Placeholder copy — content coming soon.</p>',
+		},
+		{
+			icon: 'shield',
 			headline: 'Unverified purity claims can invalidate your data.',
-			body: '<p>Your outcomes depend on what is actually in the vial. Without independent testing on every batch, you are trusting a label—not a lab result. Third-party COAs and published batch records let you align compound identity and purity with your protocol before you spend time in the bench.</p>',
+			body: '<p>Your outcomes depend on what is actually in the vial. Without independent testing on every batch, you are trusting a label—not a lab result.</p>',
 		},
 		{
+			icon: 'check',
 			headline: 'No COA before purchase means no audit trail.',
-			body: '<p>Reputable suppliers publish Certificates of Analysis tied to batch numbers before you buy. Gray-market listings rarely offer the same transparency, which makes reproducibility and compliance documentation much harder when results need to be defended.</p>',
+			body: '<p>Reputable suppliers publish Certificates of Analysis tied to batch numbers before you buy.</p>',
 		},
 		{
+			icon: 'refresh',
 			headline: 'Inconsistent sourcing slows every experiment cycle.',
-			body: '<p>Switching vendors mid-study introduces variables you cannot control. A single catalog with documented batches, clear SKUs, and predictable domestic fulfillment keeps your team focused on research—not re-qualifying material.</p>',
+			body: '<p>Switching vendors mid-study introduces variables you cannot control.</p>',
 		},
 		{
+			icon: 'award',
 			headline: 'Research-use standards matter for your reputation.',
-			body: '<p>Materials labeled and handled for research use, with clear disclaimers and batch traceability, reduce ambiguity for PI review, institutional policy, and downstream publication integrity.</p>',
+			body: '<p>Materials labeled and handled for research use reduce ambiguity for PI review and institutional policy.</p>',
 		},
 		{
+			icon: 'clock',
 			headline: 'Verified supply is faster to trust than faster to ship.',
-			body: '<p>Tracked domestic shipping matters—but only after purity and documentation are settled. The best workflow pairs batch-tested inventory with fulfillment you can plan around.</p>',
+			body: '<p>Tracked domestic shipping matters—but only after purity and documentation are settled.</p>',
+		},
+		{
+			icon: 'lock',
+			headline: 'Batch documentation you can defend in review.',
+			body: '<p>Placeholder copy — content coming soon.</p>',
 		},
 	];
 
@@ -51,7 +73,18 @@
 		if (!saved.length) return DEFAULT_LISTICLE_ITEMS;
 		const merged: ListicleItem[] = [];
 		for (let i = 0; i < DEFAULT_LISTICLE_ITEMS.length; i++) {
-			merged.push({ ...DEFAULT_LISTICLE_ITEMS[i], ...(saved[i] ?? {}) });
+			const savedItem = saved[i];
+			const base = DEFAULT_LISTICLE_ITEMS[i];
+			if (!savedItem) {
+				merged.push(base);
+				continue;
+			}
+			merged.push({
+				...base,
+				...savedItem,
+				icon: savedItem.icon?.trim() || base.icon,
+				badges: savedItem.badges?.length ? savedItem.badges : base.badges,
+			});
 		}
 		for (let j = DEFAULT_LISTICLE_ITEMS.length; j < saved.length; j++) {
 			merged.push(saved[j]);
@@ -93,6 +126,17 @@
 		const raw = item.number?.trim();
 		if (raw) return raw.padStart(2, '0');
 		return String(index + 1).padStart(2, '0');
+	}
+
+	function reasonLabel(index: number, total: number): string {
+		return `Reason ${String(index + 1).padStart(2, '0')} of ${String(total).padStart(2, '0')}`;
+	}
+
+	/** Always show three pill slots — empty text renders dot-only placeholders. */
+	function badgeSlots(item: ListicleItem): string[] {
+		const saved = item.badges ?? [];
+		if (saved.length >= 3) return saved.slice(0, 3);
+		return [...saved, ...Array(3 - saved.length).fill('')];
 	}
 </script>
 
@@ -156,16 +200,50 @@
 							class:listicle__row--media-first={i % 2 === 1}
 						>
 							<div class="listicle__copy">
-								<div class="listicle__meta">
-									<span class="listicle__index" aria-hidden="true">{pointNumber(item, i)}</span>
-									{#if item.label?.trim()}
-										<span class="listicle__label">{item.label.trim()}</span>
+								<span class="listicle__watermark" aria-hidden="true">{pointNumber(item, i)}</span>
+
+								<div class="listicle__reason-row">
+									{#if item.icon && listicleIcons[item.icon]}
+										<span class="listicle__icon-badge listicle__icon-badge--svg" aria-hidden="true">
+											<svg
+												viewBox="0 0 24 24"
+												width="22"
+												height="22"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.9"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											>
+												{@html listicleIcons[item.icon]}
+											</svg>
+										</span>
+									{:else if item.icon_text?.trim()}
+										<span class="listicle__icon-badge">{item.icon_text.trim()}</span>
+									{:else}
+										<span class="listicle__icon-badge listicle__icon-badge--empty" aria-hidden="true"></span>
 									{/if}
+									<span class="listicle__reason-label">{reasonLabel(i, items.length)}</span>
 								</div>
+
 								<h3 class="listicle__point-title">{item.headline}</h3>
+								<span class="listicle__title-accent" aria-hidden="true"></span>
+
 								{#if item.body?.trim()}
 									<div class="listicle__point-body listicle__prose">{@html item.body}</div>
 								{/if}
+
+								<ul class="listicle__badges" aria-label="Highlights">
+									{#each badgeSlots(item) as badge}
+										<li class="listicle__badge" class:is-empty={!badge.trim()}>
+											<span class="listicle__badge-dot" aria-hidden="true"></span>
+											{#if badge.trim()}
+												<span class="listicle__badge-text">{badge.trim()}</span>
+											{/if}
+										</li>
+									{/each}
+								</ul>
+
 								{#if item.callout?.trim()}
 									<aside class="listicle__callout listicle__prose">{@html item.callout}</aside>
 								{/if}
@@ -200,6 +278,9 @@
 		--mod-px: 28px;
 		--listicle-max: min(1120px, 100%);
 		--listicle-hero-max: min(1280px, 100%);
+		--listicle-teal: var(--accent, #0d9488);
+		--listicle-teal-soft: color-mix(in srgb, var(--listicle-teal) 12%, var(--bg) 88%);
+		--listicle-teal-border: color-mix(in srgb, var(--listicle-teal) 28%, var(--border) 72%);
 		background: var(--bg);
 		color: var(--fg);
 		padding: var(--mod-pt) var(--mod-px) var(--mod-pb);
@@ -342,13 +423,13 @@
 	.listicle__rows {
 		display: flex;
 		flex-direction: column;
-		gap: clamp(48px, 8vw, 80px);
+		gap: clamp(56px, 9vw, 96px);
 	}
 
 	.listicle__row {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-		gap: clamp(24px, 4vw, 48px);
+		gap: clamp(32px, 5vw, 64px);
 		align-items: center;
 	}
 
@@ -360,53 +441,164 @@
 	}
 
 	.listicle__copy {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
 		text-align: left;
-		gap: 16px;
+		gap: 0;
 		min-width: 0;
+		padding-top: 8px;
 	}
 
-	.listicle__meta {
+	.listicle__watermark {
+		position: absolute;
+		top: -0.12em;
+		right: 0;
+		font-family: var(--font-heading, var(--font-sans));
+		font-size: clamp(72px, 12vw, 120px);
+		font-weight: 700;
+		line-height: 1;
+		letter-spacing: -0.05em;
+		color: color-mix(in srgb, var(--fg) 8%, transparent);
+		pointer-events: none;
+		user-select: none;
+		z-index: 0;
+	}
+
+	.listicle__reason-row {
+		position: relative;
+		z-index: 1;
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		gap: 12px;
+		margin: 0 0 20px;
 		flex-wrap: wrap;
 	}
 
-	.listicle__index {
-		font-family: var(--font-heading, var(--font-sans));
-		font-size: clamp(40px, 6vw, 56px);
-		font-weight: 700;
-		line-height: 1;
-		letter-spacing: -0.04em;
-		color: color-mix(in srgb, var(--fg) 12%, transparent);
+	.listicle__icon-badge {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 44px;
+		height: 44px;
+		padding: 0 10px;
+		border-radius: 10px;
+		border: 1px solid var(--listicle-teal-border);
+		background: var(--listicle-teal-soft);
+		font-size: 13px;
+		font-weight: 800;
+		letter-spacing: 0.04em;
+		color: var(--fg);
+		flex-shrink: 0;
+	}
+	.listicle__icon-badge--empty {
+		min-width: 44px;
+		width: 44px;
+		padding: 0;
+	}
+	.listicle__icon-badge--svg {
+		color: var(--listicle-teal);
+	}
+	.listicle__icon-badge--svg :global(svg) {
+		display: block;
 	}
 
-	.listicle__label {
+	.listicle__reason-label {
 		font-size: 11px;
 		font-weight: 700;
-		letter-spacing: 0.12em;
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		color: var(--accent);
+		color: color-mix(in srgb, var(--fg) 42%, transparent);
 	}
 
 	.listicle__point-title {
+		position: relative;
+		z-index: 1;
 		margin: 0;
+		max-width: 16ch;
 		font-family: var(--font-heading, var(--font-sans));
-		font-size: clamp(22px, 2.8vw, 30px);
-		font-weight: var(--heading-weight, 700);
-		line-height: 1.2;
-		letter-spacing: -0.025em;
+		font-size: clamp(26px, 3.2vw, 36px);
+		font-weight: 800;
+		line-height: 1.15;
+		letter-spacing: -0.03em;
 		color: var(--fg);
-		max-width: 22ch;
+	}
+
+	.listicle__title-accent {
+		display: block;
+		width: 52px;
+		height: 4px;
+		margin: 14px 0 20px;
+		border-radius: 2px;
+		background: var(--listicle-teal);
+		flex-shrink: 0;
+	}
+
+	.listicle__point-body {
+		position: relative;
+		z-index: 1;
+		max-width: 38rem;
+		margin: 0 0 24px;
+	}
+	.listicle__point-body :global(p) {
+		font-size: clamp(15px, 1.6vw, 17px);
+		line-height: 1.72;
+		color: color-mix(in srgb, var(--fg) 62%, transparent);
+		margin: 0 0 14px;
+	}
+	.listicle__point-body :global(p:last-child) {
+		margin-bottom: 0;
+	}
+
+	.listicle__badges {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	.listicle__badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 36px;
+		padding: 8px 16px 8px 12px;
+		border-radius: 999px;
+		border: 1px solid var(--listicle-teal-border);
+		background: var(--listicle-teal-soft);
+	}
+	.listicle__badge.is-empty {
+		min-width: 52px;
+		padding-right: 16px;
+	}
+
+	.listicle__badge-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--listicle-teal);
+		flex-shrink: 0;
+	}
+
+	.listicle__badge-text {
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 1.2;
+		color: color-mix(in srgb, var(--listicle-teal) 78%, var(--fg) 22%);
+		white-space: nowrap;
 	}
 
 	.listicle__callout {
+		position: relative;
+		z-index: 1;
 		width: 100%;
 		max-width: 36rem;
-		margin: 4px 0 0;
+		margin: 20px 0 0;
 		padding: 14px 16px 14px 18px;
 		border-left: 3px solid var(--accent);
 		background: color-mix(in srgb, var(--fg) 4%, var(--bg-muted) 96%);
@@ -472,10 +664,6 @@
 		max-width: 52ch;
 		margin-left: auto;
 		margin-right: auto;
-	}
-
-	.listicle__point-body {
-		max-width: 40rem;
 	}
 
 	@media (max-width: 800px) {
@@ -550,7 +738,7 @@
 		.listicle__row--media-first {
 			display: flex;
 			flex-direction: column;
-			gap: 20px;
+			gap: 24px;
 		}
 
 		.listicle__row .listicle__media,
@@ -563,6 +751,10 @@
 		.listicle__row--media-first .listicle__copy {
 			order: 1;
 			width: 100%;
+		}
+
+		.listicle__watermark {
+			font-size: clamp(56px, 18vw, 88px);
 		}
 
 		.listicle__point-title {

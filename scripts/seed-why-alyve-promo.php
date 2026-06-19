@@ -26,7 +26,7 @@ $promo_defaults = [
 		'offer_primary'     => 'UP TO 40% OFF',
 		'offer_secondary'   => 'FOR A LIMITED TIME ONLY!',
 		'scarcity_text'     => 'High demand — popular batches sell out quickly.',
-		'cta_label'         => 'GET 40% OFF',
+		'cta_label'         => 'Check Availability',
 		'cta_href'          => '/shop',
 		'show_countdown'    => true,
 		'countdown_end_at'  => gmdate( 'c', time() + 3 * DAY_IN_SECONDS ),
@@ -45,9 +45,10 @@ foreach ( $cfg['pages'] as $i => $page ) {
 	$found   = true;
 	$modules = is_array( $page['modules'] ?? null ) ? $page['modules'] : [];
 	$has     = false;
-	foreach ( $modules as $m ) {
+	foreach ( $modules as $mi => $m ) {
 		if ( ( $m['type'] ?? '' ) === 'promo_offer' ) {
 			$has = true;
+			$modules[ $mi ]['config']['cta_label'] = 'Check Availability';
 			break;
 		}
 	}

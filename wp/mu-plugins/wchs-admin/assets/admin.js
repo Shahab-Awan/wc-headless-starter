@@ -326,30 +326,51 @@
 		if (type === 'listicle') {
 			return {
 				section_eyebrow: '',
-				headline: '5 Reasons Researchers Choose Verified Peptide Suppliers Over Gray-Market Listings',
+				headline: '8 Reasons Researchers Choose Verified Peptide Suppliers Over Gray-Market Listings',
 				intro: '<p>Many labs still source peptides from unverified sellers because the price looks right and the listing looks legitimate.</p><p>That shortcut often means missing batch documentation, inconsistent purity claims, and no traceable COA before you commit budget to a run.</p>',
 				items_headline: 'Here is why more research teams standardize on documented, batch-tested supply:',
 				closing: '<p>So why have more research teams switched to Alyve Peptides? Because documented purity, published COAs, and predictable domestic fulfillment are not extras—they are the baseline.</p>',
 				items: [
 					{
+						icon: 'shipping',
+						headline: 'Domestic Fulfillment, Direct to Your Lab',
+						body: '<p>Every Alyve order is fulfilled through our U.S. operations with an emphasis on transparency and dependable service. From sourcing to shipment, products are carefully handled and prepared under established quality practices to help maintain consistency. No unknown middlemen and no complicated fulfillment chains.</p>',
+						badges: ['Quality Standards', 'Supply Chain Transparency', 'Direct Fulfillment'],
+					},
+					{
+						icon: 'lab',
+						headline: 'Endotoxin Testing Standard',
+						body: '<p>Placeholder copy — content coming soon.</p>',
+					},
+					{
+						icon: 'shield',
 						headline: 'Unverified purity claims can invalidate your data.',
 						body: '<p>Your outcomes depend on what is actually in the vial. Without independent testing on every batch, you are trusting a label—not a lab result.</p>',
 					},
 					{
+						icon: 'check',
 						headline: 'No COA before purchase means no audit trail.',
-						body: '<p>Reputable suppliers publish Certificates of Analysis tied to batch numbers before you buy. Gray-market listings rarely offer the same transparency.</p>',
+						body: '<p>Reputable suppliers publish Certificates of Analysis tied to batch numbers before you buy.</p>',
 					},
 					{
+						icon: 'refresh',
 						headline: 'Inconsistent sourcing slows every experiment cycle.',
-						body: '<p>Switching vendors mid-study introduces variables you cannot control. A single catalog with documented batches keeps your team focused on research.</p>',
+						body: '<p>Switching vendors mid-study introduces variables you cannot control.</p>',
 					},
 					{
+						icon: 'award',
 						headline: 'Research-use standards matter for your reputation.',
-						body: '<p>Materials labeled and handled for research use, with clear disclaimers and batch traceability, reduce ambiguity for PI review and institutional policy.</p>',
+						body: '<p>Materials labeled and handled for research use reduce ambiguity for PI review and institutional policy.</p>',
 					},
 					{
+						icon: 'clock',
 						headline: 'Verified supply is faster to trust than faster to ship.',
 						body: '<p>Tracked domestic shipping matters—but only after purity and documentation are settled.</p>',
+					},
+					{
+						icon: 'lock',
+						headline: 'Batch documentation you can defend in review.',
+						body: '<p>Placeholder copy — content coming soon.</p>',
 					},
 				],
 				cta_label: 'Shop research-grade peptides',
@@ -418,7 +439,7 @@
 				offer_primary: 'UP TO 40% OFF',
 				offer_secondary: 'FOR A LIMITED TIME ONLY!',
 				scarcity_text: 'High demand — popular batches sell out quickly.',
-				cta_label: 'GET 40% OFF',
+				cta_label: 'Check Availability',
 				cta_href: '/shop',
 				show_countdown: true,
 				countdown_end_at: '',
@@ -1152,9 +1173,12 @@
 				syncListicleHeroMedia(container);
 				populateRepeaterItems(container, '.wchs-listicle-items', listicleItemsForAdmin(cfg), function (item, el) {
 					setVal(el, '[data-field="lc_item_number"]', item.number || '');
+					syncListicleItemIcon(el, item.icon || '');
+					setVal(el, '[data-field="lc_item_icon_text"]', item.icon_text || '');
 					setVal(el, '[data-field="lc_item_label"]', item.label || '');
 					setVal(el, '[data-field="lc_item_headline"]', item.headline || '');
 					setVal(el, '[data-field="lc_item_body"]', item.body || '');
+					setVal(el, '[data-field="lc_item_badges"]', listicleBadgesForInput(item.badges));
 					setVal(el, '[data-field="lc_item_callout"]', item.callout || '');
 					setVal(el, '[data-field="lc_item_image"]', item.image || '');
 					setVal(el, '[data-field="lc_item_image_alt"]', item.image_alt || '');
@@ -1807,6 +1831,29 @@
 		if (removeBtn) removeBtn.style.display = input.value ? '' : 'none';
 	}
 
+	function syncListicleItemIcon(el, iconVal) {
+		var picker = el.querySelector('.wchs-icon-picker');
+		if (!picker) return;
+		var val = iconVal || '';
+		var hidden = picker.querySelector('.wchs-icon-picker__value');
+		if (hidden) hidden.value = val;
+		picker.querySelectorAll('.wchs-icon-picker__btn').forEach(function (b) {
+			b.classList.toggle('is-selected', b.dataset.icon === val);
+		});
+	}
+
+	function listicleBadgesForInput(badges) {
+		if (!badges) return '';
+		if (Array.isArray(badges)) return badges.filter(Boolean).join(', ');
+		return String(badges);
+	}
+
+	function listicleBadgesFromInput(raw) {
+		var text = String(raw || '').trim();
+		if (!text) return [];
+		return text.split(',').map(function (part) { return part.trim(); }).filter(Boolean);
+	}
+
 	function listicleItemsForAdmin(cfg) {
 		var saved = cfg.items || [];
 		var defaults = defaultConfigFor('listicle').items || [];
@@ -1896,11 +1943,15 @@
 		ctx.querySelectorAll('.wchs-listicle-items .wchs-accordion-item').forEach(function (el) {
 			var headline = getVal(el, '[data-field="lc_item_headline"]').trim();
 			if (!headline) return;
+			var iconHidden = el.querySelector('.wchs-icon-picker__value');
 			items.push({
 				number: getVal(el, '[data-field="lc_item_number"]'),
+				icon: iconHidden ? iconHidden.value : '',
+				icon_text: getVal(el, '[data-field="lc_item_icon_text"]'),
 				label: getVal(el, '[data-field="lc_item_label"]'),
 				headline: headline,
 				body: getVal(el, '[data-field="lc_item_body"]'),
+				badges: listicleBadgesFromInput(getVal(el, '[data-field="lc_item_badges"]')),
 				callout: getVal(el, '[data-field="lc_item_callout"]'),
 				image: getVal(el, '[data-field="lc_item_image"]'),
 				image_alt: getVal(el, '[data-field="lc_item_image_alt"]'),
@@ -2583,6 +2634,7 @@
 			if (!lcTpl) return;
 			var lcClone = lcTpl.cloneNode(true);
 			lcClone.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
+			syncListicleItemIcon(lcClone, '');
 			syncListicleItemMedia(lcClone);
 			lcWrap.appendChild(lcClone);
 			return;

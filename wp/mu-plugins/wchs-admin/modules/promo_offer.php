@@ -23,7 +23,7 @@ return [
 		[ 'id' => 'offer_primary',     'type' => 'text',    'default' => 'UP TO 40% OFF' ],
 		[ 'id' => 'offer_secondary',   'type' => 'text',    'default' => 'FOR A LIMITED TIME ONLY!' ],
 		[ 'id' => 'scarcity_text',     'type' => 'text',    'default' => 'High demand — popular batches sell out quickly.' ],
-		[ 'id' => 'cta_label',         'type' => 'text',    'default' => 'GET 40% OFF' ],
+		[ 'id' => 'cta_label',         'type' => 'text',    'default' => 'Check Availability' ],
 		[ 'id' => 'cta_href',          'type' => 'text',    'default' => '/shop' ],
 		[ 'id' => 'show_countdown',    'type' => 'boolean', 'default' => true ],
 		[ 'id' => 'countdown_end_at',  'type' => 'text',    'default' => '' ],

@@ -4984,12 +4984,18 @@ class AdminPage {
 						<div class="wchs-accordion-item wchs-listicle-item" style="display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #ddd;background:#fafafa">
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Point number (optional)</label>
 							<input type="text" data-field="lc_item_number" placeholder="01" style="max-width:80px" />
-							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Category label</label>
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Icon <?php echo self::hint_icon( 'Shown in the teal badge square. Use text fallback below only if you need letters like US instead of an icon.' ); ?></label>
+							<?php echo $icon_picker_html; ?>
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Icon text fallback (optional)</label>
+							<input type="text" data-field="lc_item_icon_text" placeholder="US" style="max-width:120px" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Category label (legacy)</label>
 							<input type="text" data-field="lc_item_label" placeholder="U.S. MANUFACTURING" />
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Point headline</label>
 							<input type="text" data-field="lc_item_headline" placeholder="Headline for this point" />
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Body</label>
 							<textarea rows="4" data-field="lc_item_body" placeholder="Supporting copy" data-wysiwyg="1"></textarea>
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Pill badges <?php echo self::hint_icon( 'Comma-separated, e.g. GMP Conditions, Full Traceability, No Repackaging. Leave empty for dot-only placeholders.' ); ?></label>
+							<input type="text" data-field="lc_item_badges" placeholder="Badge one, Badge two, Badge three" />
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Callout box (optional)</label>
 							<textarea rows="3" data-field="lc_item_callout" placeholder="Highlighted summary line…" data-wysiwyg="1"></textarea>
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Image</label>
@@ -5036,7 +5042,7 @@ class AdminPage {
 				<div class="wchs-field wchs-field--full"><label>Offer line (accent)</label><input type="text" data-field="po_offer_primary" placeholder="UP TO 40% OFF" /></div>
 				<div class="wchs-field wchs-field--full"><label>Offer line (secondary)</label><input type="text" data-field="po_offer_secondary" placeholder="FOR A LIMITED TIME ONLY!" /></div>
 				<div class="wchs-field wchs-field--full"><label>Scarcity text</label><input type="text" data-field="po_scarcity_text" /></div>
-				<div class="wchs-field wchs-field--full"><label>CTA label</label><input type="text" data-field="po_cta_label" placeholder="GET 40% OFF" /></div>
+				<div class="wchs-field wchs-field--full"><label>CTA label</label><input type="text" data-field="po_cta_label" placeholder="Check Availability" /></div>
 				<div class="wchs-field wchs-field--full"><label>CTA link</label><input type="text" data-field="po_cta_href" placeholder="/shop" /></div>
 				<div class="wchs-field">
 					<label style="display:inline-flex;align-items:center;gap:8px;font-weight:500">
