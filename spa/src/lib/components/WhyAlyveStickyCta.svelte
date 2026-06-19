@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { bridgeAwareHref } from '$lib/bridge-domain';
 
 	let {
@@ -8,10 +10,50 @@
 		label: string;
 		href: string;
 	} = $props();
+
+	let promoInView = $state(false);
+
+	onMount(() => {
+		if (!browser) return;
+
+		const anchor = document.querySelector('.content-page--why-alyve section.promo-offer');
+		if (!anchor) return;
+
+		const mq = window.matchMedia('(max-width: 639px)');
+
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (!mq.matches) {
+					promoInView = false;
+					return;
+				}
+				promoInView = entry.isIntersecting;
+			},
+			{ threshold: [0, 0.05, 0.12] }
+		);
+
+		observer.observe(anchor);
+
+		const onMqChange = () => {
+			if (!mq.matches) promoInView = false;
+		};
+		mq.addEventListener('change', onMqChange);
+
+		return () => {
+			observer.disconnect();
+			mq.removeEventListener('change', onMqChange);
+		};
+	});
 </script>
 
-<div class="why-alyve-sticky" role="region" aria-label="Call to action">
-	<a class="why-alyve-sticky__btn" href={bridgeAwareHref(href)}>{label}</a>
+<div
+	class="why-alyve-sticky"
+	class:is-hidden={promoInView}
+	role="region"
+	aria-label="Call to action"
+	aria-hidden={promoInView}
+>
+	<a class="why-alyve-sticky__btn" href={bridgeAwareHref(href)} tabindex={promoInView ? -1 : undefined}>{label}</a>
 </div>
 
 <style>
@@ -27,6 +69,17 @@
 		box-shadow: 0 -10px 36px color-mix(in srgb, var(--fg) 10%, transparent);
 		backdrop-filter: blur(14px);
 		-webkit-backdrop-filter: blur(14px);
+		transition:
+			transform var(--dur-med, 0.28s) var(--ease-out, ease),
+			opacity var(--dur-fast, 0.15s) var(--ease-out, ease),
+			visibility var(--dur-fast, 0.15s) var(--ease-out, ease);
+	}
+
+	.why-alyve-sticky.is-hidden {
+		transform: translateY(calc(100% + env(safe-area-inset-bottom, 0px)));
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
 	}
 
 	@media (min-width: 640px) {
