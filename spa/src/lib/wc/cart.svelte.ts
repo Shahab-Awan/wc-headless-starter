@@ -19,7 +19,7 @@ import {
 	type ShadowItem
 } from './shadow-cart';
 import { config } from '../config.svelte';
-import { resolveCartBundleLabel } from '../cart/bundle-label';
+import { estimateCartLineCro } from '../cart/bundle-pricing';
 
 /**
  * Shape of the wchs_cro extension injected by the headless-cro-extension
@@ -134,11 +134,14 @@ class CartStore {
 	restored = $state(false); // true if shadow replay fired on last fetch
 
 	/**
-	 * Monotonic generation counter for cart mutations. Still used for
-	 * convergence fetch ordering — so a stale GET /cart from an earlier
-	 * mutation can't clobber the latest state.
+	 * Cancels in-flight convergence GETs when a newer mutation starts.
+	 * POST responses always apply — mutations are serialized on mutationChain.
 	 */
-	private generation = 0;
+	private convergenceGen = 0;
+
+	/** Latest qty per line — coalesces rapid +/- clicks into one POST. */
+	private pendingQtyByKey = new Map<string, number>();
+	private qtyFlushChain: Promise<void> = Promise.resolve();
 
 	/**
 	 * Mutation mutex. Cart writes must serialize because the Store API's
@@ -324,8 +327,8 @@ class CartStore {
 		op: () => Promise<StoreApiCart>,
 		options?: { converge?: boolean }
 	): Promise<void> {
-		const converge = options?.converge !== false;
-		const gen = ++this.generation;
+		const shouldConverge = options?.converge !== false;
+		const convergeAtStart = ++this.convergenceGen;
 
 		const run = async () => {
 			const showLoading = !this.cart;
@@ -333,38 +336,29 @@ class CartStore {
 			this.error = null;
 			try {
 				const next = await op();
-				if (gen === this.generation) {
-					this.cart = next;
-					this.syncShadow();
-				}
+				this.cart = next;
+				this.syncShadow();
 			} catch (e) {
-				if (gen === this.generation) {
-					this.error = e instanceof Error ? e.message : String(e);
-					await this.fetch().catch(() => {});
-				}
+				this.error = e instanceof Error ? e.message : String(e);
+				await this.fetch().catch(() => {});
 				throw e;
 			} finally {
-				if (gen === this.generation) {
-					if (showLoading) this.loading = false;
-					if (converge) {
-						try {
-							const fresh = await request<StoreApiCart>('/cart');
-							if (gen === this.generation) {
-								this.cart = fresh;
-								await this.pruneOrphanShippingProtection();
-								this.syncShadow();
-							}
-						} catch {
-							// best-effort convergence; swallow
+				if (showLoading) this.loading = false;
+				if (shouldConverge && convergeAtStart === this.convergenceGen) {
+					try {
+						const fresh = await request<StoreApiCart>('/cart');
+						if (convergeAtStart === this.convergenceGen) {
+							this.cart = fresh;
+							await this.pruneOrphanShippingProtection();
+							this.syncShadow();
 						}
+					} catch {
+						// best-effort convergence; swallow
 					}
 				}
 			}
 		};
 
-		// Chain off the previous mutation. Errors in earlier mutations do
-		// not block later ones — we catch and swallow the chain state so
-		// new mutations always run.
 		const promise = this.mutationChain.catch(() => {}).then(run);
 		this.mutationChain = promise;
 		return promise;
@@ -388,8 +382,9 @@ class CartStore {
 		analytics?: { clicked_from?: string },
 	) {
 		const beforeQuantities = new Map((this.cart?.items ?? []).map((item) => [item.key, item.quantity]));
-		await this.mutate(() =>
-			request<StoreApiCart>('/cart/add-item', { method: 'POST', body: { id, quantity, variation } })
+		await this.mutate(
+			() => request<StoreApiCart>('/cart/add-item', { method: 'POST', body: { id, quantity, variation } }),
+			{ converge: false }
 		);
 		await this.openCartDrawer();
 		dispatch('added_to_cart', { id, quantity });
@@ -434,44 +429,92 @@ class CartStore {
 	private patchItemQuantity(key: string, quantity: number): void {
 		if (!this.cart) return;
 		const bogo = config.data.pdp?.bundle_bogo;
+		let itemsSubtotalMinor = 0;
+
+		const items = this.cart.items.map((item) => {
+			let patched = item;
+			if (item.key === key) {
+				const cro = item.extensions?.wchs_cro;
+				if (cro) {
+					const nextCro = estimateCartLineCro(quantity, cro, bogo);
+					const lineStr = String(nextCro.line_total_minor ?? Number(item.totals.line_total));
+					patched = {
+						...item,
+						quantity,
+						totals: {
+							...item.totals,
+							line_total: lineStr,
+							line_subtotal: lineStr
+						},
+						extensions: {
+							...item.extensions,
+							wchs_cro: nextCro
+						}
+					};
+				} else {
+					patched = { ...item, quantity };
+				}
+			}
+
+			if (!this.isShippingProtectionItem(patched)) {
+				const line =
+					patched.extensions?.wchs_cro?.line_total_minor ?? Number(patched.totals.line_total);
+				itemsSubtotalMinor += line;
+			}
+			return patched;
+		});
+
 		this.cart = {
 			...this.cart,
-			items: this.cart.items.map((item) => {
-				if (item.key !== key) return item;
-				const cro = item.extensions?.wchs_cro;
-				if (!cro) return { ...item, quantity };
-				const thresholds = cro.tier_qty_thresholds ?? [];
-				const bundle_label = resolveCartBundleLabel(quantity, thresholds, bogo);
-				return {
-					...item,
-					quantity,
-					extensions: {
-						...item.extensions,
-						wchs_cro: {
-							...cro,
-							bundle_label,
-							active_bundle_min_qty: thresholds.includes(quantity)
-								? quantity
-								: thresholds.filter((t) => t <= quantity).pop() ?? 0
-						}
-					}
-				};
-			})
+			items,
+			items_count: items.reduce((n, i) => n + i.quantity, 0),
+			totals: {
+				...this.cart.totals,
+				total_items: String(itemsSubtotalMinor),
+				total_price: String(itemsSubtotalMinor)
+			}
 		};
+	}
+
+	private flushQtyUpdate(key: string): Promise<void> {
+		this.qtyFlushChain = this.qtyFlushChain.catch(() => {}).then(async () => {
+			let quantity = this.pendingQtyByKey.get(key);
+			while (quantity !== undefined) {
+				this.pendingQtyByKey.delete(key);
+				try {
+					await this.mutate(
+						() =>
+							request<StoreApiCart>('/cart/update-item', {
+								method: 'POST',
+								body: { key, quantity }
+							}),
+						{ converge: false }
+					);
+				} catch {
+					await this.fetch().catch(() => {});
+					break;
+				}
+				quantity = this.pendingQtyByKey.get(key);
+			}
+		});
+		return this.qtyFlushChain;
 	}
 
 	async updateItem(key: string, quantity: number) {
 		this.patchItemQuantity(key, quantity);
-		await this.mutate(
-			() => request<StoreApiCart>('/cart/update-item', { method: 'POST', body: { key, quantity } }),
-			{ converge: false }
-		);
+		this.pendingQtyByKey.set(key, quantity);
+		try {
+			await this.flushQtyUpdate(key);
+		} catch {
+			await this.fetch().catch(() => {});
+		}
 		dispatch('fkcart_quantity_updated', { key, quantity });
 	}
 
 	async removeItem(key: string) {
-		await this.mutate(() =>
-			request<StoreApiCart>('/cart/remove-item', { method: 'POST', body: { key } })
+		await this.mutate(
+			() => request<StoreApiCart>('/cart/remove-item', { method: 'POST', body: { key } }),
+			{ converge: false }
 		);
 		if (this.cart && this.cart.items_count === 0) clearShadow();
 		dispatch('removed_from_cart', { key });
