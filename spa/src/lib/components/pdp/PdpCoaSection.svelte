@@ -1,10 +1,6 @@
 <script lang="ts">
 	import { config } from '$lib/config.svelte';
-	import {
-		coaDownloadFilename,
-		downloadCoaFile,
-		resolveCoaDownloadUrl,
-	} from '$lib/wc/coa';
+	import { resolveCoaDownloadUrl } from '$lib/wc/coa';
 	import type { StoreProduct, WchsCoaMetric, WchsCroProduct } from '$lib/wc/products';
 
 	let {
@@ -21,7 +17,7 @@
 	const section = $derived(config.data.pdp?.coa_section);
 	const enabled = $derived(section?.enabled !== false);
 
-	const downloadUrl = $derived(
+	const coaUrl = $derived(
 		resolveCoaDownloadUrl(product, cro, config.data.pdp?.coa_library_url)
 	);
 
@@ -39,31 +35,6 @@
 		if (rows?.length) return rows;
 		return section?.default_metrics ?? [];
 	});
-
-	const downloadFilename = $derived(
-		coaDownloadFilename(product.slug, batch, downloadUrl || undefined)
-	);
-
-	let downloading = $state(false);
-
-	async function onCoaDownload(e: MouseEvent) {
-		e.preventDefault();
-		if (!downloadUrl || downloading) return;
-		downloading = true;
-		try {
-			await downloadCoaFile(downloadUrl, downloadFilename);
-		} catch {
-			const anchor = document.createElement('a');
-			anchor.href = downloadUrl;
-			anchor.download = downloadFilename;
-			anchor.rel = 'noopener';
-			document.body.appendChild(anchor);
-			anchor.click();
-			anchor.remove();
-		} finally {
-			downloading = false;
-		}
-	}
 </script>
 
 {#if enabled}
@@ -109,25 +80,26 @@
 				{/if}
 
 				<div class="pdp-coa__actions">
-					{#if downloadUrl}
+					{#if coaUrl}
 						<a
 							class="pdp-coa__download"
-							href={downloadUrl}
-							download={downloadFilename}
-							aria-busy={downloading}
-							onclick={onCoaDownload}
+							href={coaUrl}
+							target="_blank"
+							rel="noopener noreferrer"
 						>
 							<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-								<path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/>
+								<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+								<path d="M15 3h6v6M10 14L21 3"/>
 							</svg>
-							{downloading ? 'Downloading…' : 'Download COA'}
+							View Report
 						</a>
 					{:else}
 						<button type="button" class="pdp-coa__download pdp-coa__download--pending" disabled>
 							<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-								<path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/>
+								<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+								<path d="M15 3h6v6M10 14L21 3"/>
 							</svg>
-							Download COA
+							View Report
 						</button>
 					{/if}
 				</div>

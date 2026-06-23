@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { coaDownloadFilename, downloadCoaFile } from '$lib/wc/coa';
 	import {
 		fetchCoaLibrary,
 		type CoaLibraryCertificate,
@@ -10,7 +9,6 @@
 	let loading = $state(true);
 	let error = $state('');
 	let products = $state<CoaLibraryProduct[]>([]);
-	let downloadingId = $state<number | null>(null);
 
 	$effect(() => {
 		let cancelled = false;
@@ -72,30 +70,6 @@
 		}
 		return out;
 	});
-
-	async function onDownload(
-		e: MouseEvent,
-		productSlug: string,
-		cert: CoaLibraryCertificate
-	) {
-		e.preventDefault();
-		if (!cert.coa_url || downloadingId === cert.id) return;
-		downloadingId = cert.id;
-		const filename = coaDownloadFilename(productSlug, cert.batch, cert.coa_url);
-		try {
-			await downloadCoaFile(cert.coa_url, filename);
-		} catch {
-			const anchor = document.createElement('a');
-			anchor.href = cert.coa_url;
-			anchor.download = filename;
-			anchor.rel = 'noopener';
-			document.body.appendChild(anchor);
-			anchor.click();
-			anchor.remove();
-		} finally {
-			downloadingId = null;
-		}
-	}
 </script>
 
 <section class="coa-lib" aria-labelledby="coa-lib-title">
@@ -166,14 +140,14 @@
 									<a
 										class="coa-lib__download"
 										href={cert.coa_url}
-										download={coaDownloadFilename(product.slug, cert.batch, cert.coa_url)}
-										aria-busy={downloadingId === cert.id}
-										onclick={(e) => onDownload(e, product.slug, cert)}
+										target="_blank"
+										rel="noopener noreferrer"
 									>
 										<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-											<path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/>
+											<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+											<path d="M15 3h6v6M10 14L21 3"/>
 										</svg>
-										{downloadingId === cert.id ? '…' : 'COA'}
+										View Report
 									</a>
 								</li>
 							{/each}
