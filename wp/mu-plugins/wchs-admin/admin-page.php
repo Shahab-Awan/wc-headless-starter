@@ -5308,14 +5308,16 @@ class AdminPage {
 		<div id="wchs-mod-tpl-reviews_listicle" style="display:none">
 			<div class="wchs-module__fields" style="display:flex;flex-direction:column;gap:14px">
 				<div class="wchs-field wchs-field--full">
-					<label>Headline <?php echo self::hint_icon( 'No review count — e.g. “Amazing Reviews with a 4.9 Rating”.' ); ?></label>
-					<input type="text" data-field="rl_headline" placeholder="Amazing Reviews with a 4.9 Rating" />
+					<label>Product reviews headline <?php echo self::hint_icon( 'Mid-listicle block — e.g. “What researchers say after ordering”.' ); ?></label>
+					<input type="text" data-field="rl_headline" placeholder="What researchers say after ordering" />
 				</div>
 				<div class="wchs-field wchs-field--full">
-					<label>Reviews (shows up to 3)</label>
+					<label>Product reviews (shows up to 3)</label>
 					<div class="wchs-reviews-listicle-items wchs-accordion-items" style="display:flex;flex-direction:column;gap:10px">
 						<div class="wchs-accordion-item" style="display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #ddd;background:#fafafa">
-							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Review quote</label>
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Product name</label>
+							<input type="text" placeholder="e.g. TB-500 5mg" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Review quote</label>
 							<textarea rows="4" placeholder="Customer quote"></textarea>
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Name</label>
 							<input type="text" placeholder="e.g. Vincent R." />
@@ -5325,6 +5327,33 @@ class AdminPage {
 						</div>
 					</div>
 					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-reviews-listicle-item-modal" style="margin-top:10px">+ Add review</button>
+				</div>
+				<div class="wchs-field wchs-field--full">
+					<label>Proof carousel headline <?php echo self::hint_icon( 'Before FAQs on Why Alyve — e.g. “Trusted by 10K+ Researchers Worldwide”.' ); ?></label>
+					<input type="text" data-field="rl_proof_headline" placeholder="Trusted by 10K+ Researchers Worldwide" />
+				</div>
+				<div class="wchs-field wchs-field--full">
+					<label>Proof carousel subheadline</label>
+					<input type="text" data-field="rl_proof_subheadline" placeholder="Real labs. Real protocols. Trusted for consistency." />
+				</div>
+				<div class="wchs-field wchs-field--full">
+					<label>Proof carousel reviews</label>
+					<div class="wchs-reviews-listicle-proof-items wchs-accordion-items" style="display:flex;flex-direction:column;gap:10px">
+						<div class="wchs-accordion-item" style="display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #ddd;background:#fafafa">
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Title</label>
+							<input type="text" placeholder="Review headline" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Quote</label>
+							<textarea rows="4" placeholder="Customer quote"></textarea>
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Name</label>
+							<input type="text" placeholder="e.g. K.S." />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Location</label>
+							<input type="text" placeholder="e.g. Sydney" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Star rating (1–5)</label>
+							<input type="number" min="1" max="5" value="5" style="max-width:80px" />
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-reviews-listicle-proof-item-modal" style="margin-top:10px">+ Add proof review</button>
 				</div>
 			</div>
 			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">

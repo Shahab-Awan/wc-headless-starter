@@ -998,6 +998,177 @@ function wchs_rest_contact_submit( \WP_REST_Request $request ) {
  * This lets one SPA build serve many sites — origin is per-deploy, not
  * baked into the bundle.
  */
+function wchs_why_alyve_reviews_defaults(): array {
+	return [
+		'headline'          => 'What researchers say after ordering',
+		'proof_headline'    => 'Trusted by 10K+ Researchers Worldwide',
+		'proof_subheadline' => 'Real labs. Real protocols. Trusted for consistency.',
+		'items'             => [
+			[
+				'quote'   => 'COAs matched the batch numbers on our BPC-157 vials. Documentation was clear and easy to file for our lab records.',
+				'name'    => 'Vincent R.',
+				'product' => 'BPC-157 5mg',
+				'rating'  => 5,
+			],
+			[
+				'quote'   => 'TB-500 batch purity matched the published COA exactly. Reconstitution notes were clear and shipment arrived tracked within two days.',
+				'name'    => 'James T.',
+				'product' => 'TB-500 5mg',
+				'rating'  => 5,
+			],
+			[
+				'quote'   => 'Tirzepatide purity report was posted before checkout — exactly what our QC process requires.',
+				'name'    => 'Justin F.',
+				'product' => 'Tirzepatide 10mg',
+				'rating'  => 5,
+			],
+			[
+				'quote'   => 'Consistent Retatrutide quality across reorders — no surprises between batches. Support answered technical questions the same day.',
+				'name'    => 'Carlos B.',
+				'product' => 'Retatrutide 5mg',
+				'rating'  => 5,
+			],
+		],
+		'proof_items'       => [
+			[
+				'title'    => 'Purity and documentation matched perfectly',
+				'quote'    => 'Batch number, vial presentation, and stated specifications were all consistent. This level of QC is what keeps my research on track.',
+				'name'     => 'K.S.',
+				'location' => 'Sydney',
+				'rating'   => 5,
+			],
+			[
+				'title'    => 'Complete Transparency From Packaging to Documentation',
+				'quote'    => 'Material arrived well-documented with clear batch identifiers and intact packaging. Everything matched the specification sheet precisely, which gave me full confidence in proceeding with my protocol.',
+				'name'     => 'A.S.',
+				'location' => 'Chicago, IL',
+				'rating'   => 5,
+			],
+			[
+				'title'    => 'Consistency and COA Alignment Were Flawless',
+				'quote'    => 'Consistency across every vial was exactly as expected. Labeling, batch traceability, and purity data aligned with the COA without any discrepancies. That reliability is essential for reproducible results.',
+				'name'     => 'J.R.',
+				'location' => 'San Diego, CA',
+				'rating'   => 5,
+			],
+			[
+				'title'    => 'Accurate Labeling and Reliable Sample Integrity',
+				'quote'    => 'The documentation clarity and sample integrity were excellent. Every detail from concentration to labeling was consistent with what was promised, making the entire process seamless.',
+				'name'     => 'L.M.',
+				'location' => 'Miami, FL',
+				'rating'   => 5,
+			],
+			[
+				'title'    => 'Strict Quality Control Reflected in Every Detail',
+				'quote'    => 'What stood out most was the traceability and clean presentation of each batch. COA alignment was exact, and the overall quality control standards are clearly very strict.',
+				'name'     => 'N.K.',
+				'location' => 'New York, NY',
+				'rating'   => 5,
+			],
+		],
+	];
+}
+
+/**
+ * Backfill product-tied + proof review blocks when saved config is incomplete.
+ * Admin saves historically omitted proof_items and product fields.
+ */
+function wchs_enrich_reviews_listicle_config( array $cfg, bool $why_alyve = false ): array {
+	$schema = class_exists( '\\WCHS\\Admin\\ModuleRegistry' )
+		? \WCHS\Admin\ModuleRegistry::get( 'reviews_listicle' )
+		: null;
+	$schema_defaults = [];
+	if ( $schema ) {
+		foreach ( $schema['fields'] as $field ) {
+			if ( array_key_exists( 'default', $field ) ) {
+				$schema_defaults[ $field['id'] ] = $field['default'];
+			}
+		}
+	}
+
+	$defaults = $why_alyve ? wchs_why_alyve_reviews_defaults() : $schema_defaults;
+	if ( empty( $defaults ) ) {
+		return $cfg;
+	}
+
+	$legacy_headline = 'Amazing Reviews with a 4.9 Rating';
+	foreach ( [ 'headline', 'proof_headline', 'proof_subheadline' ] as $key ) {
+		$v = trim( (string) ( $cfg[ $key ] ?? '' ) );
+		if ( $v === '' || ( $why_alyve && $key === 'headline' && $v === $legacy_headline ) ) {
+			if ( ! empty( $defaults[ $key ] ) ) {
+				$cfg[ $key ] = $defaults[ $key ];
+			}
+		}
+	}
+
+	$proof_items = is_array( $cfg['proof_items'] ?? null ) ? $cfg['proof_items'] : [];
+	$proof_items = array_values(
+		array_filter(
+			$proof_items,
+			static function ( $item ) {
+				return is_array( $item )
+					&& trim( (string) ( $item['title'] ?? '' ) ) !== ''
+					&& trim( (string) ( $item['quote'] ?? '' ) ) !== ''
+					&& trim( (string) ( $item['name'] ?? '' ) ) !== '';
+			}
+		)
+	);
+	if ( empty( $proof_items ) && ! empty( $defaults['proof_items'] ) ) {
+		$cfg['proof_items'] = $defaults['proof_items'];
+	}
+
+	$items = is_array( $cfg['items'] ?? null ) ? $cfg['items'] : [];
+	$default_items = is_array( $defaults['items'] ?? null ) ? $defaults['items'] : [];
+	$has_product   = false;
+	foreach ( $items as $item ) {
+		if ( ! is_array( $item ) ) {
+			continue;
+		}
+		if ( trim( (string) ( $item['product'] ?? '' ) ) !== '' ) {
+			$has_product = true;
+			break;
+		}
+	}
+
+	if ( ! $has_product && ! empty( $default_items ) ) {
+		$cfg['items'] = $default_items;
+	} elseif ( $has_product && ! empty( $default_items ) ) {
+		foreach ( $items as $i => $item ) {
+			if ( ! is_array( $item ) || trim( (string) ( $item['product'] ?? '' ) ) !== '' ) {
+				continue;
+			}
+			foreach ( $default_items as $def ) {
+				if ( ! is_array( $def ) || empty( $def['product'] ) ) {
+					continue;
+				}
+				if ( ( $def['name'] ?? '' ) === ( $item['name'] ?? '' )
+					|| ( $def['quote'] ?? '' ) === ( $item['quote'] ?? '' ) ) {
+					$items[ $i ]['product'] = $def['product'];
+					break;
+				}
+			}
+			if ( empty( $items[ $i ]['product'] ) && isset( $default_items[ $i ]['product'] ) ) {
+				$items[ $i ]['product'] = $default_items[ $i ]['product'];
+			}
+		}
+		$cfg['items'] = $items;
+	}
+
+	return $cfg;
+}
+
+function wchs_enrich_page_modules( array $modules, string $page_slug ): array {
+	$why_alyve = $page_slug === 'why-alyve';
+	foreach ( $modules as $i => $mod ) {
+		if ( ! is_array( $mod ) || ( $mod['type'] ?? '' ) !== 'reviews_listicle' ) {
+			continue;
+		}
+		$cfg = is_array( $mod['config'] ?? null ) ? $mod['config'] : [];
+		$modules[ $i ]['config'] = wchs_enrich_reviews_listicle_config( $cfg, $why_alyve );
+	}
+	return $modules;
+}
+
 function wchs_rest_config( \WP_REST_Request $request ) {
 	$wp_origin  = function_exists( 'wchs_public_origin' ) ? wchs_public_origin() : untrailingslashit( home_url( '/' ) );
 	$allowed    = function_exists( 'wchs_allowed_origin_list' ) ? wchs_allowed_origin_list() : wchs_allowed_origins();
@@ -1144,7 +1315,9 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 	$pages_cfg = \WCHS\Admin\AdminPage::get_pages_config();
 	if ( ! empty( $pages_cfg['pages'] ) && is_array( $pages_cfg['pages'] ) ) {
 		foreach ( $pages_cfg['pages'] as $pi => $pg ) {
-			$pages_cfg['pages'][ $pi ]['modules'] = $_resolve_mods( $_migrate_mods( $pg['modules'] ?? [] ) );
+			$slug  = (string) ( $pg['slug'] ?? '' );
+			$mods  = wchs_enrich_page_modules( $_migrate_mods( $pg['modules'] ?? [] ), $slug );
+			$pages_cfg['pages'][ $pi ]['modules'] = $_resolve_mods( $mods );
 		}
 	}
 	$accent         = $site_settings['accent_color'] ?? null;

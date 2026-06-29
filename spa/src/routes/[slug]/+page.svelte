@@ -28,6 +28,7 @@
 	import WhyAlyveStickyCta from '$lib/components/WhyAlyveStickyCta.svelte';
 	import SEO from '$lib/components/SEO.svelte';
 	import { getWhyAlyveCta } from '$lib/why-alyve-cta';
+	import { mergeWhyAlyveReviewsConfig } from '$lib/why-alyve-reviews';
 
 	const pageData = $derived(
 		config.data.pages?.find(p => p.slug === (page.params.slug ?? '')) ?? null
@@ -50,7 +51,27 @@
 	const whyAlyveReviewsModule = $derived.by((): (HomepageModule & { type: 'reviews_listicle' }) | null => {
 		if (!isWhyAlyvePage || !pageData?.modules) return null;
 		const mod = pageData.modules.find((m) => m.type === 'reviews_listicle' && isModuleVisibleNow(m));
-		return mod?.type === 'reviews_listicle' ? mod : null;
+		const hiddenReviews = pageData.modules.some(
+			(m) => m.type === 'reviews_listicle' && !isModuleVisibleNow(m),
+		);
+		if (hiddenReviews) return null;
+		const mergedConfig = mergeWhyAlyveReviewsConfig(
+			mod?.type === 'reviews_listicle' ? mod.config : null,
+		);
+		if (mod?.type === 'reviews_listicle') {
+			return { ...mod, config: mergedConfig };
+		}
+		const hasListicle = pageData.modules.some(
+			(m) => m.type === 'listicle' && isModuleVisibleNow(m),
+		);
+		if (!hasListicle) return null;
+		return {
+			type: 'reviews_listicle',
+			visibility: 'all',
+			spacing_v: 'normal',
+			spacing_h: 'normal',
+			config: mergedConfig,
+		};
 	});
 
 	const whyAlyveProcessModule = $derived.by((): (HomepageModule & { type: 'order_handling' }) | null => {
@@ -205,7 +226,7 @@
 				{:else if mod.type === 'reviews_listicle'}
 					<ReviewsListicle config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 				{:else if mod.type === 'listicle_faqs'}
-					{#if isWhyAlyvePage && whyAlyveReviewsModule && (whyAlyveReviewsModule.config.proof_items?.length ?? 0) > 0}
+					{#if isWhyAlyvePage && whyAlyveReviewsModule}
 						<ReviewsListicle
 							config={whyAlyveReviewsModule.config}
 							resolved={whyAlyveReviewsModule.resolved}

@@ -420,21 +420,49 @@
 		}
 		if (type === 'reviews_listicle') {
 			return {
-				headline: 'Amazing Reviews with a 4.9 Rating',
+				headline: 'What researchers say after ordering',
+				proof_headline: 'Trusted by 10K+ Researchers Worldwide',
+				proof_subheadline: 'Real labs. Real protocols. Trusted for consistency.',
 				items: [
 					{
-						quote: 'COAs matched the batch numbers on our vials. Documentation was clear and easy to file for our lab records.',
-						name: 'Vincent R.',
+						quote: 'TB-500 batch purity matched the published COA exactly. Reconstitution notes were clear and shipment arrived tracked within two days.',
+						name: 'James T.',
+						product: 'TB-500 5mg',
 						rating: 5,
 					},
 					{
-						quote: 'Ordering was straightforward and fulfillment was faster than our previous supplier. Purity reports were posted before we checked out.',
+						quote: 'Tirzepatide purity report was posted before checkout — exactly what our QC process requires.',
 						name: 'Justin F.',
+						product: 'Tirzepatide 10mg',
 						rating: 5,
 					},
 					{
-						quote: 'Consistent quality across reorders — no surprises between batches. Support answered technical questions the same day.',
+						quote: 'Consistent Retatrutide quality across reorders — no surprises between batches. Support answered technical questions the same day.',
 						name: 'Carlos B.',
+						product: 'Retatrutide 5mg',
+						rating: 5,
+					},
+				],
+				proof_items: [
+					{
+						title: 'Purity and documentation matched perfectly',
+						quote: 'Batch number, vial presentation, and stated specifications were all consistent. This level of QC is what keeps my research on track.',
+						name: 'K.S.',
+						location: 'Sydney',
+						rating: 5,
+					},
+					{
+						title: 'Complete Transparency From Packaging to Documentation',
+						quote: 'Material arrived well-documented with clear batch identifiers and intact packaging. Everything matched the specification sheet precisely, which gave me full confidence in proceeding with my protocol.',
+						name: 'A.S.',
+						location: 'Chicago, IL',
+						rating: 5,
+					},
+					{
+						title: 'Consistency and COA Alignment Were Flawless',
+						quote: 'Consistency across every vial was exactly as expected. Labeling, batch traceability, and purity data aligned with the COA without any discrepancies.',
+						name: 'J.R.',
+						location: 'San Diego, CA',
 						rating: 5,
 					},
 				],
@@ -1258,12 +1286,24 @@
 				break;
 			case 'reviews_listicle':
 				setVal(container, '[data-field="rl_headline"]', cfg.headline || '');
+				setVal(container, '[data-field="rl_proof_headline"]', cfg.proof_headline || '');
+				setVal(container, '[data-field="rl_proof_subheadline"]', cfg.proof_subheadline || '');
 				populateRepeaterItems(container, '.wchs-reviews-listicle-items', cfg.items || [], function (item, el) {
 					var textareas = el.querySelectorAll('textarea');
 					var inputs = el.querySelectorAll('input');
+					if (inputs[0]) inputs[0].value = item.product || '';
 					if (textareas[0]) textareas[0].value = item.quote || '';
-					if (inputs[0]) inputs[0].value = item.name || '';
-					if (inputs[1]) inputs[1].value = item.rating != null ? String(item.rating) : '5';
+					if (inputs[1]) inputs[1].value = item.name || '';
+					if (inputs[2]) inputs[2].value = item.rating != null ? String(item.rating) : '5';
+				});
+				populateRepeaterItems(container, '.wchs-reviews-listicle-proof-items', cfg.proof_items || [], function (item, el) {
+					var textareas = el.querySelectorAll('textarea');
+					var inputs = el.querySelectorAll('input');
+					if (inputs[0]) inputs[0].value = item.title || '';
+					if (textareas[0]) textareas[0].value = item.quote || '';
+					if (inputs[1]) inputs[1].value = item.name || '';
+					if (inputs[2]) inputs[2].value = item.location || '';
+					if (inputs[3]) inputs[3].value = item.rating != null ? String(item.rating) : '5';
 				});
 				break;
 			case 'promo_offer':
@@ -1585,7 +1625,10 @@
 				break;
 			case 'reviews_listicle':
 				cfg.headline = getVal(container, '[data-field="rl_headline"]') || '';
+				cfg.proof_headline = getVal(container, '[data-field="rl_proof_headline"]') || '';
+				cfg.proof_subheadline = getVal(container, '[data-field="rl_proof_subheadline"]') || '';
 				cfg.items = readReviewsListicleItems(container);
+				cfg.proof_items = readReviewsListicleProofItems(container);
 				delete cfg.title;
 				break;
 			case 'listicle_faqs':
@@ -1874,13 +1917,36 @@
 		ctx.querySelectorAll('.wchs-reviews-listicle-items .wchs-accordion-item').forEach(function (el) {
 			var textareas = el.querySelectorAll('textarea');
 			var inputs = el.querySelectorAll('input');
+			var product = inputs[0] ? inputs[0].value.trim() : '';
 			var quote = textareas[0] ? textareas[0].value.trim() : '';
-			var name = inputs[0] ? inputs[0].value.trim() : '';
+			var name = inputs[1] ? inputs[1].value.trim() : '';
 			if (!quote || !name) return;
-			var rating = parseInt(inputs[1] ? inputs[1].value : '5', 10);
+			var rating = parseInt(inputs[2] ? inputs[2].value : '5', 10);
 			if (isNaN(rating)) rating = 5;
 			rating = Math.min(5, Math.max(1, rating));
-			items.push({ quote: quote, name: name, rating: rating });
+			var item = { quote: quote, name: name, rating: rating };
+			if (product) item.product = product;
+			items.push(item);
+		});
+		return items;
+	}
+
+	function readReviewsListicleProofItems(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-reviews-listicle-proof-items .wchs-accordion-item').forEach(function (el) {
+			var textareas = el.querySelectorAll('textarea');
+			var inputs = el.querySelectorAll('input');
+			var title = inputs[0] ? inputs[0].value.trim() : '';
+			var quote = textareas[0] ? textareas[0].value.trim() : '';
+			var name = inputs[1] ? inputs[1].value.trim() : '';
+			var location = inputs[2] ? inputs[2].value.trim() : '';
+			if (!title || !quote || !name) return;
+			var rating = parseInt(inputs[3] ? inputs[3].value : '5', 10);
+			if (isNaN(rating)) rating = 5;
+			rating = Math.min(5, Math.max(1, rating));
+			var item = { title: title, quote: quote, name: name, rating: rating };
+			if (location) item.location = location;
+			items.push(item);
 		});
 		return items;
 	}
@@ -2721,6 +2787,20 @@
 			var rlRating = rlClone.querySelector('input[type="number"]');
 			if (rlRating) rlRating.value = '5';
 			rlWrap.appendChild(rlClone);
+			return;
+		}
+
+		var addReviewsListicleProofModal = e.target.closest('.wchs-add-reviews-listicle-proof-item-modal');
+		if (addReviewsListicleProofModal) {
+			var rlProofWrap = addReviewsListicleProofModal.closest('.wchs-field').querySelector('.wchs-reviews-listicle-proof-items');
+			if (!rlProofWrap) return;
+			var rlProofTpl = rlProofWrap.querySelector('.wchs-accordion-item');
+			if (!rlProofTpl) return;
+			var rlProofClone = rlProofTpl.cloneNode(true);
+			rlProofClone.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
+			var rlProofRating = rlProofClone.querySelector('input[type="number"]');
+			if (rlProofRating) rlProofRating.value = '5';
+			rlProofWrap.appendChild(rlProofClone);
 			return;
 		}
 

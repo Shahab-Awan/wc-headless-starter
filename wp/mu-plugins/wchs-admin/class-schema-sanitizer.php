@@ -228,7 +228,8 @@ class SchemaSanitizer {
 
 			case 'repeater':
 				if ( ! is_array( $value ) ) {
-					return [];
+					$default = $field['default'] ?? null;
+					return is_array( $default ) ? self::sanitize_repeater( $field, $default ) : [];
 				}
 				return self::sanitize_repeater( $field, $value );
 

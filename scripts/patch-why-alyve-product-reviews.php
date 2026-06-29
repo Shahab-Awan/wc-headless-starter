@@ -80,15 +80,25 @@ $reviews_config = [
 	],
 ];
 
+$reviews_module_defaults = [
+	'type'       => 'reviews_listicle',
+	'visibility' => 'all',
+	'spacing_v'  => 'normal',
+	'spacing_h'  => 'normal',
+	'config'     => $reviews_config,
+];
+
 $found   = false;
 $updated = false;
+$page_index = null;
 
 foreach ( $cfg['pages'] as $pi => $page ) {
 	if ( ( $page['slug'] ?? '' ) !== $slug ) {
 		continue;
 	}
-	$found   = true;
-	$modules = is_array( $page['modules'] ?? null ) ? $page['modules'] : [];
+	$found      = true;
+	$page_index = $pi;
+	$modules    = is_array( $page['modules'] ?? null ) ? $page['modules'] : [];
 
 	foreach ( $modules as $mi => $mod ) {
 		if ( ( $mod['type'] ?? '' ) !== 'reviews_listicle' ) {
@@ -102,18 +112,17 @@ foreach ( $cfg['pages'] as $pi => $page ) {
 		break;
 	}
 
-	if ( $updated ) {
-		$cfg['pages'][ $pi ]['modules'] = \WCHS\Admin\SchemaSanitizer::sanitize_modules( $modules, 'pages' );
+	if ( ! $updated ) {
+		$modules[] = $reviews_module_defaults;
+		$updated   = true;
 	}
+
+	$cfg['pages'][ $pi ]['modules'] = \WCHS\Admin\SchemaSanitizer::sanitize_modules( $modules, 'pages' );
 	break;
 }
 
 if ( ! $found ) {
 	WP_CLI::error( "Page slug “{$slug}” not found in wchs_pages_config." );
-}
-if ( ! $updated ) {
-	WP_CLI::warning( 'No reviews_listicle module found on Why Alyve.' );
-	return;
 }
 
 update_option( 'wchs_pages_config', $cfg );
