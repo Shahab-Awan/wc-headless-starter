@@ -49,6 +49,9 @@
 
 <AccessGate requires="products">
 	<ShopCatalog
+		layout="filter-grid"
+		pageTitle="All Products"
+		pageSubtitle="Browse our complete research catalog"
 		spacing_v="normal"
 		spacing_h={config.data.shop?.spacing_h ?? 'normal'}
 		searchQuery={shopSearch}

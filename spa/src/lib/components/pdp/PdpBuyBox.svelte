@@ -1,16 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { config } from '$lib/config.svelte';
-	import { FATHERS_DAY_HERO_CONTENT } from '$lib/fathers-day-hero';
-	import PdpCoaSection from '$lib/components/pdp/PdpCoaSection.svelte';
-	import { resolveBundleRows, type BundleDisplayRow } from '$lib/pdp/bogo-bundles';
+	import PdpInfoTabs from '$lib/components/pdp/PdpInfoTabs.svelte';
+	import { resolveBundleRows, defaultBundleMinQty, type BundleDisplayRow } from '$lib/pdp/bogo-bundles';
 	import type { StoreProduct, StoreProductVariation, WchsCroProduct } from '$lib/wc/products';
 
 	const TRUST_LABELS: Record<string, string> = {
-		shipping: 'Faster shipping',
-		shield: '60-day guarantee',
-		lock: 'Secure checkout',
+		shield: '60-Day Money-Back Guarantee',
+		shipping: 'Ships Today if Ordered Before 2PM',
+		lock: 'Secure Checkout',
 	};
+
+	const PDP_TRUST_ICONS = ['shield', 'shipping', 'lock'] as const;
 
 	const FEATURE_ICONS: Record<string, string> = {
 		lab: '<path d="M9 4.8h6M10.2 4.8v4.3L6.5 16a3.5 3.5 0 0 0 3.1 5.2h4.8a3.5 3.5 0 0 0 3.1-5.2l-3.7-6.9V4.8M9.1 14.6h5.8"/>',
@@ -74,12 +75,11 @@
 	} = $props();
 
 	const pdpUi = $derived(config.data.pdp);
-	const fathersDayMode = $derived(config.data.homepage.fathers_day_mode !== false);
 	const features = $derived(pdpUi?.features?.length ? pdpUi.features : []);
 	const trustBadges = $derived(
-		(pdpUi?.trust_badges ?? []).map((b) => ({
-			...b,
-			label: TRUST_LABELS[b.icon] ?? b.label,
+		PDP_TRUST_ICONS.map((icon) => ({
+			icon,
+			label: TRUST_LABELS[icon],
 		}))
 	);
 
@@ -132,7 +132,7 @@
 		}
 		const valid = bundleRows.some((b) => b.min_qty === selectedBundleQty);
 		if (selectedBundleQty === null || !valid) {
-			selectedBundleQty = bundleRows[0]?.min_qty ?? null;
+			selectedBundleQty = defaultBundleMinQty(bundleRows);
 		}
 	});
 
@@ -212,38 +212,11 @@
 		</button>
 	{/if}
 
-	{#if product.short_description}
-		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-		<div class="pdp-buy__desc">{@html product.short_description}</div>
-	{/if}
-
-	{#if features.length}
-		<ul class="pdp-buy__features">
-			{#each features as feat}
-				<li>
-					{#if feat.icon && FEATURE_ICONS[feat.icon]}
-						<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-							{@html FEATURE_ICONS[feat.icon]}
-						</svg>
-					{/if}
-					<span>{feat.label}</span>
-				</li>
-			{/each}
-		</ul>
-	{/if}
-
 	<div class="pdp-buy__panel">
 		{#if pdpUi?.show_ships_banner !== false}
-			<div class="pdp-buy__ships" class:pdp-buy__ships--fathers-day={fathersDayMode}>
+			<div class="pdp-buy__ships">
 				<span class="pdp-buy__ships-dot" aria-hidden="true"></span>
-				{#if fathersDayMode}
-					<span
-						>{FATHERS_DAY_HERO_CONTENT.pdpShipsTimerBefore}<strong>{shipsCountdown}</strong
-						>{FATHERS_DAY_HERO_CONTENT.pdpShipsTimerAfter}</span
-					>
-				{:else}
-					<span>Order within <strong>{shipsCountdown}</strong> — Ships Today</span>
-				{/if}
+				<span>Order within <strong>{shipsCountdown}</strong> — Ships Today</span>
 			</div>
 		{/if}
 
@@ -325,6 +298,19 @@
 			</button>
 		</div>
 
+		<ul class="pdp-buy__trust" aria-label="Purchase guarantees">
+			{#each trustBadges as badge}
+				<li>
+					{#if badge.icon && FEATURE_ICONS[badge.icon]}
+						<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							{@html FEATURE_ICONS[badge.icon]}
+						</svg>
+					{/if}
+					<span>{badge.label}</span>
+				</li>
+			{/each}
+		</ul>
+
 		{#if pdpUi?.show_payment_icons !== false}
 			<div class="pdp-buy__payments">
 				<span>We Accept:</span>
@@ -336,28 +322,8 @@
 			</div>
 		{/if}
 
-		{#if trustBadges.length}
-			<ul class="pdp-buy__trust">
-				{#each trustBadges as badge}
-					<li>
-						{#if badge.icon && FEATURE_ICONS[badge.icon]}
-							<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-								{@html FEATURE_ICONS[badge.icon]}
-							</svg>
-						{/if}
-						<span>{badge.label}</span>
-					</li>
-				{/each}
-			</ul>
-		{/if}
+		<PdpInfoTabs {product} {cro} {features} />
 	</div>
-
-	<PdpCoaSection {product} {cro} embedded />
-
-	{#if product.description}
-		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-		<div class="pdp-buy__long">{@html product.description}</div>
-	{/if}
 </div>
 
 <style>
@@ -707,7 +673,10 @@
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: center;
-		gap: 10px;
+		gap: 8px;
+		margin-top: 10px;
+		padding-top: 0;
+		border-top: 0;
 		font-size: 12px;
 		color: var(--fg-muted);
 	}
@@ -726,19 +695,21 @@
 	}
 	.pdp-buy__trust {
 		list-style: none;
-		margin: 0;
-		padding: 16px 0 0;
-		border-top: 1px solid var(--border);
+		margin: 10px 0 0;
+		padding: 0;
+		border-top: 0;
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 16px;
+		gap: 8px 10px;
 	}
 	@media (max-width: 720px) {
 		.pdp-buy__trust {
-			grid-template-columns: 1fr;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 6px 8px;
 		}
-		.pdp-buy__features {
-			grid-template-columns: 1fr;
+
+		.pdp-buy__trust li {
+			font-size: 10px;
 		}
 	}
 	.pdp-buy__trust li {
@@ -747,9 +718,9 @@
 		align-items: center;
 		justify-content: flex-start;
 		text-align: center;
-		gap: 8px;
-		font-size: 12px;
-		line-height: 1.35;
+		gap: 5px;
+		font-size: 11px;
+		line-height: 1.3;
 		color: var(--fg-muted);
 	}
 	.pdp-buy__trust span {

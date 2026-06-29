@@ -24,7 +24,7 @@ return [
 			'type'    => 'enum',
 			'default' => 'editorial',
 			'options' => [
-				'editorial' => 'Editorial (headline + persona + callout)',
+				'editorial' => 'Editorial (headline + trust bar + callout)',
 				'split'     => 'Split (hero image + copy)',
 			],
 		],
@@ -34,34 +34,65 @@ return [
 			'default' => '8 Reasons Researchers Choose Alyve For their Research Compounds',
 		],
 		[
-			'id'      => 'persona_name',
+			'id'      => 'trust_brand',
 			'type'    => 'text',
-			'default' => 'Jessica H, Biotech CEO',
+			'default' => 'Alyve Peptides',
 		],
 		[
-			'id'      => 'persona_image',
-			'type'    => 'image',
-			'default' => '',
-		],
-		[
-			'id'      => 'persona_image_alt',
-			'type'    => 'text',
-			'default' => '',
-		],
-		[
-			'id'      => 'persona_badge',
-			'type'    => 'text',
-			'default' => 'Verified',
-		],
-		[
-			'id'      => 'persona_updated',
-			'type'    => 'text',
-			'default' => 'UPDATED 2 DAYS AGO',
+			'id'       => 'trust_items',
+			'type'     => 'text',
+			'default'  => '99%+ HPLC Verified, 3rd-Party Tested Every Batch, COA Pre-Purchase',
+			'validate' => function ( $value ) {
+				if ( is_array( $value ) ) {
+					return array_values(
+						array_filter(
+							array_map(
+								static fn( $item ) => sanitize_text_field( wp_unslash( (string) $item ) ),
+								$value
+							)
+						)
+					);
+				}
+				$raw = sanitize_text_field( wp_unslash( (string) $value ) );
+				if ( $raw === '' ) {
+					return [];
+				}
+				return array_values(
+					array_filter(
+						array_map( 'trim', explode( ',', $raw ) )
+					)
+				);
+			},
 		],
 		[
 			'id'      => 'hero_callout',
 			'type'    => 'text',
 			'default' => 'READ THIS BEFORE YOU BUY RESEARCH COMPOUNDS FROM ANY OTHER COMPANY',
+		],
+		[
+			'id'      => 'hero_cta_image',
+			'type'    => 'image',
+			'default' => '/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp',
+		],
+		[
+			'id'      => 'hero_cta_image_alt',
+			'type'    => 'text',
+			'default' => 'Alyve research-grade peptide vials',
+		],
+		[
+			'id'      => 'hero_cta_headline',
+			'type'    => 'text',
+			'default' => 'Up to 40% Off — Verified Batches In Stock',
+		],
+		[
+			'id'      => 'hero_cta_label',
+			'type'    => 'text',
+			'default' => 'Shop Now — Check Availability',
+		],
+		[
+			'id'      => 'hero_cta_href',
+			'type'    => 'text',
+			'default' => '/shop',
 		],
 		[
 			'id'      => 'hero_image',
@@ -95,7 +126,7 @@ return [
 				[
 					'icon'     => 'shipping',
 					'headline' => 'Domestic Fulfillment, Direct to Your Lab',
-					'body'     => '<p>Every Alyve order is fulfilled through our U.S. operations with an emphasis on transparency and dependable service. From sourcing to shipment, products are carefully handled and prepared under established quality practices to help maintain consistency. No unknown middlemen and no complicated fulfillment chains.</p>',
+					'body'     => '<p>Every Alyve order is fulfilled through our U.S. operations with an emphasis on transparency and dependable service. From sourcing to shipment, products are carefully handled and prepared under established quality practices to help maintain consistency. No unknown middlemen and no complicated fulfillment chains.</p><div class="listicle__highlight-callout"><p>Orders placed before 2PM EST ship same day. Delivered in 2–3 business days via tracked carrier.</p></div>',
 					'badges'   => [ 'Quality Standards', 'Supply Chain Transparency', 'Direct Fulfillment' ],
 				],
 				[
@@ -175,5 +206,25 @@ return [
 		],
 		[ 'id' => 'cta_label', 'type' => 'text', 'default' => 'Shop research-grade peptides' ],
 		[ 'id' => 'cta_href',  'type' => 'text', 'default' => '/shop' ],
+		[
+			'id'      => 'coa_embed_image',
+			'type'    => 'image',
+			'default' => '',
+		],
+		[
+			'id'      => 'coa_embed_image_alt',
+			'type'    => 'text',
+			'default' => 'Sample Certificate of Analysis preview',
+		],
+		[
+			'id'      => 'coa_embed_href',
+			'type'    => 'text',
+			'default' => '/coa-library',
+		],
+		[
+			'id'      => 'coa_embed_link_label',
+			'type'    => 'text',
+			'default' => 'View COA Library →',
+		],
 	],
 ];

@@ -107,9 +107,11 @@ return [
 			'type'    => 'enum',
 			'default' => 'left',
 			'options' => [
-				'left'   => 'Left',
-				'center' => 'Center',
-				'bottom' => 'Bottom',
+				'precision' => 'Precision (catalog)',
+				'split'     => 'Split',
+				'left'      => 'Left',
+				'center'    => 'Center',
+				'bottom'    => 'Bottom',
 			],
 		],
 

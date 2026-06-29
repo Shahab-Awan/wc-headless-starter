@@ -1,8 +1,14 @@
 /**
- * Client-side BOGO line pricing for optimistic cart qty updates.
+ * Client-side bundle line pricing for optimistic cart qty updates.
  * Mirrors wchs_cro_line_total_minor_for_qty() in headless-cro-extension.php.
  */
-import { repairBundlePresets, type BogoBundleConfig } from '$lib/pdp/bogo-bundles';
+import {
+	repairBundlePresets,
+	VOLUME_DISCOUNT_CAP_QTY,
+	type BogoBundleConfig,
+	unitPriceAtTier,
+	bogoUsesVolumePresets,
+} from '$lib/pdp/bogo-bundles';
 import type { WchsCroCartItem } from '$lib/wc/cart.svelte';
 import { resolveCartBundleLabel } from './bundle-label';
 
@@ -14,23 +20,22 @@ function activeBundleAnchor(qty: number, thresholds: number[]): number {
 	return anchor;
 }
 
-function unitPriceAtTier(
-	tierQty: number,
+function estimateLineTotalUncapped(
+	qty: number,
 	regularMinor: number,
-	bogo?: BogoBundleConfig | null
+	thresholds: number[],
+	presets: ReturnType<typeof repairBundlePresets>
 ): number {
-	if (tierQty <= 1) return regularMinor;
-	const presets = repairBundlePresets(bogo?.presets?.length ? bogo.presets : []);
-	for (const preset of presets) {
-		const paid = preset.paid_qty;
-		if (paid < 1) continue;
-		const free = preset.free_qty !== undefined ? preset.free_qty : paid;
-		const total = paid + Math.max(0, free);
-		if (total !== tierQty) continue;
-		if (free < 1) return regularMinor;
-		return Math.round((regularMinor * paid) / total);
-	}
-	return regularMinor;
+	if (qty < 1 || regularMinor <= 0) return 0;
+	if (!thresholds.length) return regularMinor * qty;
+
+	const anchor = activeBundleAnchor(qty, thresholds);
+	if (anchor < 1) return regularMinor * qty;
+
+	const bundleUnit = unitPriceAtTier(anchor, regularMinor, presets);
+	const bundleLine = bundleUnit * anchor;
+	const overage = Math.max(0, qty - anchor);
+	return bundleLine + overage * regularMinor;
 }
 
 export function estimateLineTotalMinor(
@@ -40,15 +45,16 @@ export function estimateLineTotalMinor(
 	bogo?: BogoBundleConfig | null
 ): number {
 	if (qty < 1 || regularMinor <= 0) return 0;
-	if (!thresholds.length) return regularMinor * qty;
 
-	const anchor = activeBundleAnchor(qty, thresholds);
-	if (anchor < 1) return regularMinor * qty;
+	const presets = repairBundlePresets(bogo?.presets?.length ? bogo.presets : []);
+	if (bogoUsesVolumePresets(presets) && qty > VOLUME_DISCOUNT_CAP_QTY) {
+		return (
+			estimateLineTotalUncapped(VOLUME_DISCOUNT_CAP_QTY, regularMinor, thresholds, presets) +
+			(qty - VOLUME_DISCOUNT_CAP_QTY) * regularMinor
+		);
+	}
 
-	const bundleUnit = unitPriceAtTier(anchor, regularMinor, bogo);
-	const bundleLine = bundleUnit * anchor;
-	const overage = Math.max(0, qty - anchor);
-	return bundleLine + overage * regularMinor;
+	return estimateLineTotalUncapped(qty, regularMinor, thresholds, presets);
 }
 
 /** Optimistic wchs_cro fields after a qty change (before server round-trip). */
@@ -75,6 +81,6 @@ export function estimateCartLineCro(
 		savings_line_total: savingsLine,
 		savings_pct: savingsPct,
 		bundle_label: resolveCartBundleLabel(qty, thresholds, bogo),
-		active_bundle_min_qty: thresholds.includes(qty) ? qty : activeBundleAnchor(qty, thresholds)
+		active_bundle_min_qty: thresholds.includes(qty) ? qty : activeBundleAnchor(qty, thresholds),
 	};
 }

@@ -188,6 +188,10 @@
 	}
 	.site-header[data-brand-position='nav-center'] .site-header__nav-menu > * {
 		pointer-events: auto;
+		pointer-events: none;
+	}
+	.site-header[data-brand-position='nav-center'] .site-header__nav-menu > * {
+		pointer-events: auto;
 	}
 	.site-header[data-brand-position='nav-center'] .site-header__nav-actions {
 		display: flex;

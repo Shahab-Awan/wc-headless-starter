@@ -73,40 +73,74 @@ add_action( 'woocommerce_blocks_loaded', function () {
 } );
 
 /**
- * Site-wide bundle presets: paid_qty + optional free_qty (missing free_qty ⇒ legacy Buy-N-Get-N).
+ * Site-wide bundle presets: paid_qty + optional free_qty (legacy BOGO) or discount_pct (volume).
  */
+function wchs_cro_volume_discount_cap_qty(): int {
+	return 15;
+}
+
+function wchs_cro_volume_discount_max_pct(): float {
+	return 40.0;
+}
+
+function wchs_cro_bogo_preset_is_volume( array $row ): bool {
+	return array_key_exists( 'discount_pct', $row );
+}
+
+function wchs_cro_bogo_uses_volume_presets( array $presets ): bool {
+	foreach ( $presets as $row ) {
+		if ( is_array( $row ) && wchs_cro_bogo_preset_is_volume( $row ) ) {
+			return true;
+		}
+	}
+	return false;
+}
+
 function wchs_cro_bogo_normalize_preset_row( array $row ): ?array {
 	$paid = (int) ( $row['paid_qty'] ?? 0 );
 	if ( $paid < 1 ) {
 		return null;
 	}
-	$has_explicit_free = array_key_exists( 'free_qty', $row );
-	$free              = $has_explicit_free ? max( 0, (int) $row['free_qty'] ) : $paid;
-	return [
+	$out = [
 		'paid_qty' => $paid,
-		'free_qty' => $free,
 		'flag'     => sanitize_text_field( (string) ( $row['flag'] ?? '' ) ),
 	];
+	if ( wchs_cro_bogo_preset_is_volume( $row ) ) {
+		$out['discount_pct'] = min(
+			wchs_cro_volume_discount_max_pct(),
+			max( 0.0, (float) ( $row['discount_pct'] ?? 0 ) )
+		);
+		if ( ! empty( $row['pdp_hidden'] ) ) {
+			$out['pdp_hidden'] = true;
+		}
+		return $out;
+	}
+	$has_explicit_free = array_key_exists( 'free_qty', $row );
+	$free              = $has_explicit_free ? max( 0, (int) $row['free_qty'] ) : $paid;
+	$out['free_qty']   = $free;
+	return $out;
 }
 
 /**
- * Buy 1 · 3-for-2 paid · 5-for-3 paid (extras above a tier at full price).
+ * 1 · 3 · 5 · 10 vials (% off) + hidden 15 @ 40% cap tier.
  *
- * @return list<array{paid_qty:int,free_qty:int,flag:string}>
+ * @return list<array<string, mixed>>
  */
 function wchs_cro_bogo_canonical_presets(): array {
 	return [
-		[ 'paid_qty' => 1, 'free_qty' => 0, 'flag' => '' ],
-		[ 'paid_qty' => 2, 'free_qty' => 1, 'flag' => 'MOST POPULAR' ],
-		[ 'paid_qty' => 3, 'free_qty' => 2, 'flag' => 'BEST VALUE' ],
+		[ 'paid_qty' => 1, 'discount_pct' => 0, 'flag' => '' ],
+		[ 'paid_qty' => 3, 'discount_pct' => 15, 'flag' => 'POPULAR' ],
+		[ 'paid_qty' => 5, 'discount_pct' => 23, 'flag' => 'BEST VALUE' ],
+		[ 'paid_qty' => 10, 'discount_pct' => 31, 'flag' => 'BULK' ],
+		[ 'paid_qty' => 15, 'discount_pct' => 40, 'flag' => '', 'pdp_hidden' => true ],
 	];
 }
 
 /**
- * Upgrade volume-discount presets (paid 1/2/3, all free_qty 0) to BOGO bundles.
+ * Upgrade legacy BOGO / volume-% presets to current volume tiers.
  *
  * @param array<int, array<string, mixed>> $presets
- * @return list<array{paid_qty:int,free_qty:int,flag:string}>
+ * @return list<array<string, mixed>>
  */
 function wchs_cro_bogo_repair_presets( array $presets ): array {
 	$canonical = wchs_cro_bogo_canonical_presets();
@@ -135,6 +169,10 @@ function wchs_cro_bogo_repair_presets( array $presets ): array {
 		}
 	);
 
+	if ( wchs_cro_bogo_uses_volume_presets( $normalized ) ) {
+		return $normalized;
+	}
+
 	$has_bundle_free = false;
 	foreach ( $normalized as $row ) {
 		if ( (int) ( $row['free_qty'] ?? 0 ) > 0 ) {
@@ -143,20 +181,27 @@ function wchs_cro_bogo_repair_presets( array $presets ): array {
 		}
 	}
 
-	// Volume-% era stored paid 1/2/3 with free_qty 0 on every row.
 	if ( ! $has_bundle_free && count( $normalized ) >= 3 ) {
 		$paid_seq = array_map(
 			static fn( array $row ): int => (int) ( $row['paid_qty'] ?? 0 ),
 			array_slice( $normalized, 0, 3 )
 		);
 		if ( $paid_seq === [ 1, 2, 3 ] ) {
-			$out = $canonical;
-			foreach ( [ 1, 2 ] as $i ) {
-				if ( isset( $normalized[ $i ]['flag'] ) && (string) $normalized[ $i ]['flag'] !== '' ) {
-					$out[ $i ]['flag'] = sanitize_text_field( (string) $normalized[ $i ]['flag'] );
-				}
-			}
-			return $out;
+			return $canonical;
+		}
+	}
+
+	if ( $has_bundle_free && count( $normalized ) >= 3 ) {
+		$paid_seq = array_map(
+			static fn( array $row ): int => (int) ( $row['paid_qty'] ?? 0 ),
+			array_slice( $normalized, 0, 3 )
+		);
+		$free_seq = array_map(
+			static fn( array $row ): int => (int) ( $row['free_qty'] ?? 0 ),
+			array_slice( $normalized, 0, 3 )
+		);
+		if ( $paid_seq === [ 1, 2, 3 ] && $free_seq === [ 0, 1, 2 ] ) {
+			return $canonical;
 		}
 	}
 
@@ -252,6 +297,30 @@ function wchs_cro_get_tier_rules( \WC_Product $product ): array {
 	if ( ! $bogo['enabled'] ) {
 		return [ 'type' => null, 'rules' => [] ];
 	}
+	if ( wchs_cro_bogo_uses_volume_presets( $bogo['presets'] ) ) {
+		$rules = [];
+		foreach ( $bogo['presets'] as $preset ) {
+			if ( ! is_array( $preset ) || ! wchs_cro_bogo_preset_is_volume( $preset ) ) {
+				continue;
+			}
+			$min = (int) ( $preset['paid_qty'] ?? 0 );
+			if ( $min < 1 ) {
+				continue;
+			}
+			$rules[ $min ] = min(
+				wchs_cro_volume_discount_max_pct(),
+				max( 0.0, (float) ( $preset['discount_pct'] ?? 0 ) )
+			);
+		}
+		if ( empty( $rules ) ) {
+			return [ 'type' => null, 'rules' => [] ];
+		}
+		ksort( $rules, SORT_NUMERIC );
+		return [
+			'type'  => 'percentage',
+			'rules' => $rules,
+		];
+	}
 	$rules = [];
 	foreach ( $bogo['presets'] as $preset ) {
 		$paid = (int) ( $preset['paid_qty'] ?? 0 );
@@ -276,16 +345,38 @@ function wchs_cro_get_tier_rules( \WC_Product $product ): array {
 }
 
 /**
- * PDP tier rows from bundle presets (pay paid_qty × regular, receive paid+free units).
+ * PDP tier rows from bundle presets.
  *
  * @return list<array<string, int|float>>
  */
+function wchs_cro_bogo_volume_title( int $min_qty ): string {
+	return 1 === $min_qty ? '1 Vial' : sprintf( '%d Vials', $min_qty );
+}
+
 function wchs_cro_build_bogo_bundle_rows( int $regular_minor ): array {
 	$bogo = wchs_cro_bogo_settings();
 	$rows = [];
 	foreach ( $bogo['presets'] as $preset ) {
-		$paid = (int) $preset['paid_qty'];
+		if ( ! is_array( $preset ) ) {
+			continue;
+		}
+		if ( ! empty( $preset['pdp_hidden'] ) ) {
+			continue;
+		}
+		$paid = (int) ( $preset['paid_qty'] ?? 0 );
 		if ( $paid < 1 ) {
+			continue;
+		}
+		if ( wchs_cro_bogo_preset_is_volume( $preset ) ) {
+			$pct        = min( wchs_cro_volume_discount_max_pct(), max( 0.0, (float) ( $preset['discount_pct'] ?? 0 ) ) );
+			$unit_minor = (int) round( $regular_minor * ( 1 - ( $pct / 100 ) ) );
+			$rows[]     = [
+				'min_qty'               => $paid,
+				'unit_price'            => $unit_minor,
+				'savings_per_unit'      => max( 0, $regular_minor - $unit_minor ),
+				'savings_pct'           => round( $pct, 1 ),
+				'line_total_at_min_qty' => $unit_minor * $paid,
+			];
 			continue;
 		}
 		$free = (int) ( $preset['free_qty'] ?? $paid );
@@ -376,6 +467,12 @@ function wchs_cro_line_total_minor_for_qty( \WC_Product $product, int $qty, arra
 	$regular_minor  = (int) round( (float) $product->get_regular_price() * $minor );
 	if ( $qty < 1 || $regular_minor <= 0 || empty( $rules_data['rules'] ) ) {
 		return max( 0, $regular_minor * max( 0, $qty ) );
+	}
+
+	$cap = wchs_cro_volume_discount_cap_qty();
+	if ( $qty > $cap && wchs_cro_bogo_settings()['enabled'] && wchs_cro_bogo_uses_volume_presets( wchs_cro_bogo_settings()['presets'] ) ) {
+		return wchs_cro_line_total_minor_for_qty( $product, $cap, $rules_data )
+			+ ( ( $qty - $cap ) * $regular_minor );
 	}
 
 	$anchor = wchs_cro_active_bundle_min_qty( $qty, $rules_data );
@@ -668,8 +765,11 @@ function wchs_cro_cart_item_bundle_label(
 			continue;
 		}
 		$paid = (int) ( $preset['paid_qty'] ?? 0 );
-		if ( $paid < 1 ) {
+		if ( $paid < 1 || $paid !== $qty ) {
 			continue;
+		}
+		if ( wchs_cro_bogo_preset_is_volume( $preset ) ) {
+			return wchs_cro_bogo_volume_title( $paid );
 		}
 		$free  = array_key_exists( 'free_qty', $preset ) ? (int) $preset['free_qty'] : $paid;
 		$total = $paid + max( 0, $free );
@@ -705,6 +805,28 @@ function wchs_cro_cart_item_data( $cart_item ) {
 		return [
 			'is_shipping_protection' => true,
 			'fee_minor'              => (int) round( $fee_major * $minor ),
+		];
+	}
+	$bac_id = wchs_bac_water_product_id();
+	if ( $bac_id > 0
+		&& (int) ( $cart_item['product_id'] ?? 0 ) === $bac_id
+		&& ! empty( $cart_item['wchs_free_bac_gift'] ) ) {
+		$qty           = (int) $cart_item['quantity'];
+		$minor         = pow( 10, (int) wc_get_price_decimals() );
+		$regular_major = (float) $product->get_regular_price();
+		$regular_minor = (int) round( $regular_major * $minor );
+		return [
+			'is_free_bac_gift'     => true,
+			'regular_unit_price'   => $regular_minor,
+			'effective_unit_price' => 0,
+			'line_total_minor'     => 0,
+			'compare_line_minor'   => $regular_minor * max( 1, $qty ),
+			'savings_per_unit'     => $regular_minor,
+			'savings_line_total'   => $regular_minor * max( 1, $qty ),
+			'savings_pct'          => 100.0,
+			'next_tier'            => null,
+			'bundle_label'         => 'FREE GIFT',
+			'cross_sell_ids'       => [],
 		];
 	}
 	$qty = (int) $cart_item['quantity'];
@@ -781,6 +903,7 @@ function wchs_cro_cart_item_schema() {
 		'tier_qty_thresholds'   => [ 'type' => 'array', 'items' => [ 'type' => 'integer' ], 'context' => [ 'view', 'edit' ], 'readonly' => true ],
 		'active_bundle_min_qty' => [ 'type' => 'integer', 'context' => [ 'view', 'edit' ], 'readonly' => true ],
 		'cross_sell_ids'        => [ 'type' => 'array', 'items' => [ 'type' => 'integer' ], 'context' => [ 'view', 'edit' ], 'readonly' => true ],
+		'is_free_bac_gift'      => [ 'type' => 'boolean', 'context' => [ 'view', 'edit' ], 'readonly' => true ],
 	];
 }
 
@@ -896,6 +1019,302 @@ function wchs_shipping_protection_cart_subtotal_major( $cart = null ): float {
 	}
 	return max( 0.0, $sum );
 }
+
+/**
+ * Lowest positive free-shipping min_amount from WooCommerce zones (major units).
+ */
+function wchs_wc_shipping_free_threshold_major(): float {
+	if ( ! function_exists( 'WC' ) || ! class_exists( 'WC_Shipping_Zones' ) ) {
+		return 0.0;
+	}
+	$zones = WC_Shipping_Zones::get_zones();
+	$rest  = WC_Shipping_Zones::get_zone( 0 );
+	if ( $rest ) {
+		$zones[] = [ 'shipping_methods' => $rest->get_shipping_methods() ];
+	}
+	$min = 0.0;
+	foreach ( $zones as $z ) {
+		foreach ( ( $z['shipping_methods'] ?? [] ) as $m ) {
+			if ( $m->id !== 'free_shipping' ) {
+				continue;
+			}
+			$amt = (float) ( $m->min_amount ?? 0 );
+			if ( $amt > 0 && ( $min === 0.0 || $amt < $min ) ) {
+				$min = $amt;
+			}
+		}
+	}
+	return $min;
+}
+
+/** Cart-rewards BAC water gift threshold (major units). */
+function wchs_rewards_bac_water_threshold_major(): float {
+	return 300.0;
+}
+
+/**
+ * Qualifying subtotal for cart rewards (excludes shipping protection + free BAC gift).
+ *
+ * @param \WC_Cart|null $cart
+ */
+function wchs_rewards_cart_subtotal_major( $cart = null ): float {
+	if ( ! function_exists( 'WC' ) ) {
+		return 0.0;
+	}
+	if ( ! $cart instanceof \WC_Cart ) {
+		$cart = WC()->cart;
+	}
+	if ( ! $cart || $cart->is_empty() ) {
+		return 0.0;
+	}
+	$protect_id = wchs_shipping_protection_product_id();
+	$sum        = 0.0;
+	foreach ( $cart->get_cart() as $item ) {
+		if ( ! empty( $item['wchs_free_bac_gift'] ) ) {
+			continue;
+		}
+		$pid = (int) ( $item['product_id'] ?? 0 );
+		if ( $protect_id > 0 && $pid === $protect_id ) {
+			continue;
+		}
+		if ( ! empty( $item['line_subtotal'] ) ) {
+			$sum += (float) $item['line_subtotal'];
+			continue;
+		}
+		if ( empty( $item['data'] ) || ! $item['data'] instanceof \WC_Product ) {
+			continue;
+		}
+		$sum += (float) $item['data']->get_price() * (int) ( $item['quantity'] ?? 1 );
+	}
+	return max( 0.0, $sum );
+}
+
+/**
+ * @param \WC_Cart|null $cart
+ */
+function wchs_rewards_cart_has_qualifying_products( $cart = null ): bool {
+	if ( ! function_exists( 'WC' ) ) {
+		return false;
+	}
+	if ( ! $cart instanceof \WC_Cart ) {
+		$cart = WC()->cart;
+	}
+	if ( ! $cart || $cart->is_empty() ) {
+		return false;
+	}
+	$protect_id = wchs_shipping_protection_product_id();
+	$bac_id     = wchs_bac_water_product_id();
+	foreach ( $cart->get_cart() as $item ) {
+		if ( ! empty( $item['wchs_free_bac_gift'] ) ) {
+			continue;
+		}
+		$pid = (int) ( $item['product_id'] ?? 0 );
+		if ( $protect_id > 0 && $pid === $protect_id ) {
+			continue;
+		}
+		if ( $bac_id > 0 && $pid === $bac_id ) {
+			continue;
+		}
+		return true;
+	}
+	return false;
+}
+
+/**
+ * @return array{product_id:int,variation_id:int,variation:array<string,string>}
+ */
+function wchs_bac_water_default_add_args(): array {
+	$id = wchs_bac_water_product_id();
+	if ( $id < 1 ) {
+		return [
+			'product_id'   => 0,
+			'variation_id' => 0,
+			'variation'    => [],
+		];
+	}
+	$product = wc_get_product( $id );
+	if ( ! $product instanceof \WC_Product ) {
+		return [
+			'product_id'   => 0,
+			'variation_id' => 0,
+			'variation'    => [],
+		];
+	}
+	if ( $product->is_type( 'variable' ) ) {
+		foreach ( $product->get_children() as $vid ) {
+			$variation = wc_get_product( (int) $vid );
+			if ( $variation instanceof \WC_Product_Variation
+				&& $variation->is_purchasable()
+				&& $variation->is_in_stock() ) {
+				return [
+					'product_id'   => $id,
+					'variation_id' => (int) $vid,
+					'variation'    => $variation->get_variation_attributes(),
+				];
+			}
+		}
+	}
+	return [
+		'product_id'   => $id,
+		'variation_id' => 0,
+		'variation'    => [],
+	];
+}
+
+/**
+ * Auto-add/remove the free BAC water gift when the cart crosses the rewards threshold.
+ */
+function wchs_sync_free_bac_water_gift(): void {
+	static $syncing = false;
+	if ( $syncing || ! function_exists( 'WC' ) || ! WC()->cart ) {
+		return;
+	}
+	$bac_id = wchs_bac_water_product_id();
+	if ( $bac_id < 1 ) {
+		return;
+	}
+	$threshold = wchs_rewards_bac_water_threshold_major();
+	$subtotal  = wchs_rewards_cart_subtotal_major( WC()->cart );
+	$qualifies = $subtotal >= $threshold - 0.009;
+
+	$free_key  = null;
+	$has_bac   = false;
+	foreach ( WC()->cart->get_cart() as $cart_item_key => $item ) {
+		$pid = (int) ( $item['product_id'] ?? 0 );
+		$vid = (int) ( $item['variation_id'] ?? 0 );
+		if ( $pid !== $bac_id && ( $vid <= 0 || (int) wp_get_post_parent_id( $vid ) !== $bac_id ) ) {
+			continue;
+		}
+		$has_bac = true;
+		if ( ! empty( $item['wchs_free_bac_gift'] ) ) {
+			$free_key = $cart_item_key;
+		}
+	}
+
+	if ( ! $qualifies || ! wchs_rewards_cart_has_qualifying_products( WC()->cart ) ) {
+		if ( $free_key ) {
+			$syncing = true;
+			try {
+				WC()->cart->remove_cart_item( $free_key );
+			} finally {
+				$syncing = false;
+			}
+		}
+		return;
+	}
+
+	if ( $has_bac ) {
+		return;
+	}
+
+	$args = wchs_bac_water_default_add_args();
+	if ( (int) ( $args['product_id'] ?? 0 ) < 1 ) {
+		return;
+	}
+
+	$syncing = true;
+	try {
+		WC()->cart->add_to_cart(
+			(int) $args['product_id'],
+			1,
+			(int) $args['variation_id'],
+			(array) $args['variation'],
+			[ 'wchs_free_bac_gift' => true ]
+		);
+	} finally {
+		$syncing = false;
+	}
+}
+
+/**
+ * @param \WC_Cart $cart
+ * @return array<string, mixed>
+ */
+function wchs_cro_rewards_cart_payload( $cart ): array {
+	$minor        = pow( 10, (int) wc_get_price_decimals() );
+	$subtotal     = wchs_rewards_cart_subtotal_major( $cart );
+	$ship_major   = wchs_wc_shipping_free_threshold_major();
+	$bac_major    = wchs_rewards_bac_water_threshold_major();
+	$track_major  = max( $bac_major, $ship_major, 0.01 );
+	$subtotal_minor = (int) round( $subtotal * $minor );
+	$ship_minor     = (int) round( $ship_major * $minor );
+	$bac_minor      = (int) round( $bac_major * $minor );
+	$track_minor    = (int) round( $track_major * $minor );
+
+	return [
+		'subtotal_minor'           => $subtotal_minor,
+		'shipping_threshold_minor' => $ship_minor,
+		'bac_water_threshold_minor'=> $bac_minor,
+		'track_max_minor'          => $track_minor,
+		'shipping_unlocked'        => $ship_major > 0 && $subtotal >= $ship_major - 0.009,
+		'bac_water_unlocked'       => $subtotal >= $bac_major - 0.009,
+		'bac_water_product_id'     => wchs_bac_water_product_id(),
+	];
+}
+
+/**
+ * Zero out free BAC gift lines on every totals pass.
+ *
+ * @param \WC_Cart $cart Cart instance.
+ */
+function wchs_apply_free_bac_gift_cart_prices( $cart ): void {
+	if ( ! $cart instanceof \WC_Cart ) {
+		return;
+	}
+	$bac_id = wchs_bac_water_product_id();
+	if ( $bac_id < 1 ) {
+		return;
+	}
+	foreach ( $cart->get_cart() as $cart_item_key => $item ) {
+		if ( empty( $item['wchs_free_bac_gift'] ) ) {
+			continue;
+		}
+		if ( empty( $item['data'] ) || ! $item['data'] instanceof \WC_Product ) {
+			continue;
+		}
+		if ( (int) ( $item['quantity'] ?? 1 ) !== 1 ) {
+			$cart->set_quantity( $cart_item_key, 1, false );
+		}
+		$item['data']->set_price( '0' );
+	}
+}
+
+add_filter(
+	'woocommerce_get_cart_item_from_session',
+	static function ( $cart_item, $values ) {
+		if ( ! empty( $values['wchs_free_bac_gift'] ) ) {
+			$cart_item['wchs_free_bac_gift'] = true;
+		}
+		return $cart_item;
+	},
+	10,
+	2
+);
+
+add_action(
+	'woocommerce_before_calculate_totals',
+	static function ( $cart ) {
+		if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
+			return;
+		}
+		wchs_sync_free_bac_water_gift();
+		wchs_apply_free_bac_gift_cart_prices( $cart );
+	},
+	5,
+	1
+);
+
+add_action( 'woocommerce_cart_item_removed', 'wchs_sync_free_bac_water_gift', 25 );
+add_action( 'woocommerce_after_cart_item_quantity_update', 'wchs_sync_free_bac_water_gift', 25 );
+add_action(
+	'woocommerce_add_to_cart',
+	static function ( $cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data ) {
+		unset( $cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data );
+		wchs_sync_free_bac_water_gift();
+	},
+	25,
+	6
+);
 
 /**
  * Product IDs excluded from Store API catalog listings (shipping protection only).
@@ -1287,6 +1706,114 @@ function wchs_cro_stable_bac_first_cross_sell_ids( int $random_count, array $exc
 }
 
 /**
+ * Sanitize cart cross-sell IDs (no BAC water — dedicated slide-cart prompt owns that).
+ *
+ * @param int[] $ids
+ * @param int[] $exclude
+ */
+function wchs_cro_sanitize_cart_cross_sell_ids( array $ids, array $exclude, int $max ): array {
+	$max     = max( 1, $max );
+	$exclude = array_values( array_unique( array_filter( array_map( 'intval', $exclude ) ) ) );
+	$clean   = [];
+
+	foreach ( $ids as $id ) {
+		$id = (int) $id;
+		if ( $id < 1 || in_array( $id, $exclude, true ) ) {
+			continue;
+		}
+		if ( wchs_cro_is_cart_cross_sell_blocked_product_id( $id ) ) {
+			continue;
+		}
+		if ( in_array( $id, $clean, true ) ) {
+			continue;
+		}
+		$product = wc_get_product( $id );
+		if ( ! $product || ! $product->is_purchasable() || ! $product->is_in_stock() ) {
+			continue;
+		}
+		$clean[] = $id;
+	}
+
+	return array_slice( $clean, 0, $max );
+}
+
+/**
+ * @param int    $count   Target product count.
+ * @param int[]  $exclude Product IDs to omit.
+ * @param string $seed    Cache key for deterministic order.
+ * @return int[]
+ */
+function wchs_cro_build_cart_cross_sell_ids( int $count, array $exclude = [], string $seed = '' ): array {
+	$count = max( 0, $count );
+	if ( $count < 1 ) {
+		return [];
+	}
+
+	$exclude = array_values( array_unique( array_filter( array_map( 'intval', $exclude ) ) ) );
+	$pool    = wchs_cro_query_cart_cross_sell_candidates(
+		[
+			'exclude' => $exclude,
+			'limit'   => max( 12, $count * 5 ),
+		]
+	);
+	if ( count( $pool ) > 1 && '' !== $seed ) {
+		usort(
+			$pool,
+			static function ( int $a, int $b ) use ( $seed ): int {
+				$ha = (int) sprintf( '%u', crc32( $seed . '|' . $a ) );
+				$hb = (int) sprintf( '%u', crc32( $seed . '|' . $b ) );
+				return $ha <=> $hb;
+			}
+		);
+	}
+
+	return array_slice( $pool, 0, $count );
+}
+
+/**
+ * Stable slide-cart cross-sell list (BAC water excluded — see CartBacWaterPrompt).
+ *
+ * @param int    $count   Target product count.
+ * @param int[]  $exclude Product IDs to omit.
+ * @param string $scope   Session cache scope.
+ * @return int[]
+ */
+function wchs_cro_stable_cart_cross_sell_ids( int $count, array $exclude, string $scope ): array {
+	$max = max( 1, $count );
+	if ( '' === $scope ) {
+		return wchs_cro_sanitize_cart_cross_sell_ids(
+			wchs_cro_build_cart_cross_sell_ids( $max, $exclude, 'ephemeral' ),
+			$exclude,
+			$max
+		);
+	}
+
+	$scope_key = 'wchs_xsell_cart_' . md5( $scope );
+	$fp_key    = $scope_key . '_fp';
+
+	if ( function_exists( 'WC' ) && WC()->session ) {
+		$stored_fp  = WC()->session->get( $fp_key );
+		$stored_ids = WC()->session->get( $scope_key );
+		if ( is_string( $stored_fp ) && $stored_fp === $scope && is_array( $stored_ids ) && ! empty( $stored_ids ) ) {
+			$sanitized = wchs_cro_sanitize_cart_cross_sell_ids( $stored_ids, $exclude, $max );
+			if ( ! empty( $sanitized ) ) {
+				return $sanitized;
+			}
+		}
+	}
+
+	$ids = wchs_cro_build_cart_cross_sell_ids( $max, $exclude, $scope );
+	$ids = wchs_cro_sanitize_cart_cross_sell_ids( $ids, $exclude, $max );
+
+	if ( function_exists( 'WC' ) && WC()->session && ! empty( $ids ) ) {
+		WC()->session->set( $fp_key, $scope );
+		WC()->session->set( $scope_key, $ids );
+	}
+
+	return $ids;
+}
+
+/**
  * PDP “Often ordered with” rail: BAC water + 2 random products.
  *
  * @param int $product_id Viewed product (simple, variable parent, or variation).
@@ -1330,7 +1857,7 @@ function wchs_cro_cart_cross_sell_context_exclude_ids(): array {
 }
 
 /**
- * Slide-cart cross-sell rail: BAC water + 3 random products.
+ * Slide-cart cross-sell rail: random in-stock products (BAC water uses dedicated prompt).
  *
  * @param int[] $ids Unused; kept for call-site compatibility.
  * @return int[]
@@ -1344,7 +1871,13 @@ function wchs_cro_pad_cart_cross_sell_ids( array $ids ): array {
 	if ( '' === $scope ) {
 		return [];
 	}
-	return wchs_cro_stable_bac_first_cross_sell_ids( 3, wchs_cro_cart_cross_sell_context_exclude_ids(), 'cart:' . $scope );
+	$target  = wchs_cro_cart_cross_sell_target_count();
+	$exclude = wchs_cro_cart_cross_sell_context_exclude_ids();
+	$bac_id  = wchs_bac_water_product_id();
+	if ( $bac_id > 0 ) {
+		$exclude[] = $bac_id;
+	}
+	return wchs_cro_stable_cart_cross_sell_ids( $target, $exclude, 'cart:' . $scope );
 }
 
 function wchs_cro_cart_data() {
@@ -1352,6 +1885,7 @@ function wchs_cro_cart_data() {
 		return [ 'total_savings' => 0, 'cross_sell_ids' => [] ];
 	}
 
+	wchs_sync_free_bac_water_gift();
 	wchs_prune_orphan_shipping_protection();
 
 	$total_savings = 0;
@@ -1392,6 +1926,7 @@ function wchs_cro_cart_data() {
 	return [
 		'total_savings'       => $total_savings,
 		'cross_sell_ids'      => wchs_cro_pad_cart_cross_sell_ids( [] ),
+		'rewards'             => wchs_cro_rewards_cart_payload( WC()->cart ),
 		'shipping_protection' => [
 			'subtotal_basis_minor' => (int) round( $basis_major * $minor ),
 			'fee_minor'            => (int) round( $fee_major * $minor ),
@@ -1433,6 +1968,12 @@ function wchs_cro_cart_schema() {
 				'fee_minor'            => [ 'type' => 'integer' ],
 				'tiers'                => [ 'type' => 'array' ],
 			],
+		],
+		'rewards' => [
+			'description' => 'Slide-cart rewards progress (free shipping + free BAC water gift).',
+			'type'        => 'object',
+			'context'     => [ 'view', 'edit' ],
+			'readonly'    => true,
 		],
 	];
 }

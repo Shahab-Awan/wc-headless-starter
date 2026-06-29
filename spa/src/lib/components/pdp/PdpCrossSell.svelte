@@ -5,10 +5,18 @@
 	import ProductCard from '$lib/components/ProductCard.svelte';
 	import type { StoreProduct } from '$lib/wc/products';
 
+	const REVEAL_DELAY_MS = 30_000;
+
 	let {
 		products,
+		productId = 0,
+		specsAnchor = null,
+		postAtcSignal = 0,
 	}: {
 		products: StoreProduct[];
+		productId?: number;
+		specsAnchor?: HTMLElement | null;
+		postAtcSignal?: number;
 	} = $props();
 
 	const copy = $derived(config.data.pdp?.cross_sell ?? {});
@@ -17,13 +25,56 @@
 	const subtitle = $derived(copy.subtitle ?? 'Researchers commonly add these to their order');
 	const viewAllUrl = $derived(copy.view_all_url ?? '/shop');
 
-	const visible = $derived(
+	const items = $derived(
 		products.filter(
 			(p) =>
 				!isCatalogHiddenProduct(p.id, p.slug) &&
 				(config.data.product_card?.show_oos_cards !== false || p.is_in_stock !== false)
 		)
 	);
+
+	let revealed = $state(false);
+
+	function reveal() {
+		if (items.length === 0) return;
+		revealed = true;
+	}
+
+	$effect(() => {
+		productId;
+		revealed = false;
+	});
+
+	$effect(() => {
+		if (postAtcSignal < 1) return;
+		reveal();
+	});
+
+	$effect(() => {
+		if (items.length === 0 || revealed) return;
+
+		const delayTimer = window.setTimeout(() => reveal(), REVEAL_DELAY_MS);
+
+		let observer: IntersectionObserver | null = null;
+		const anchor = specsAnchor;
+		if (anchor) {
+			observer = new IntersectionObserver(
+				(entries) => {
+					const entry = entries[0];
+					if (!entry || entry.isIntersecting) return;
+					if (entry.boundingClientRect.top > 0) return;
+					reveal();
+				},
+				{ threshold: [0] }
+			);
+			observer.observe(anchor);
+		}
+
+		return () => {
+			window.clearTimeout(delayTimer);
+			observer?.disconnect();
+		};
+	});
 
 	let viewport: HTMLElement;
 	let track: HTMLUListElement;
@@ -53,7 +104,7 @@
 	}
 
 	$effect(() => {
-		if (!viewport || !track || visible.length === 0) return;
+		if (!revealed || !viewport || !track || items.length === 0) return;
 		embla = EmblaCarousel(viewport, { ...options, container: track });
 		embla.on('scroll', update);
 		embla.on('select', update);
@@ -71,8 +122,15 @@
 	onDestroy(() => embla?.destroy());
 </script>
 
-{#if visible.length > 0}
-	<section class="pdp-pair" aria-labelledby="pdp-pair-title">
+{#if items.length > 0}
+	<section
+		class="pdp-pair"
+		class:pdp-pair--holding={!revealed}
+		class:pdp-pair--revealed={revealed}
+		aria-labelledby="pdp-pair-title"
+		aria-hidden={!revealed}
+	>
+		<div class="pdp-pair__content">
 		<header class="pdp-pair__head">
 			<div class="pdp-pair__head-text">
 				<p class="pdp-pair__eyebrow">{eyebrow}</p>
@@ -87,7 +145,7 @@
 		<div class="pdp-pair__rail">
 			<div class="pdp-pair__viewport" bind:this={viewport}>
 				<ul class="pdp-pair__track" bind:this={track}>
-					{#each visible as product (product.id)}
+					{#each items as product (product.id)}
 						<li class="pdp-pair__cell">
 							<ProductCard {product} cardWidth={260} listingSource="Cross-sells" />
 						</li>
@@ -122,6 +180,7 @@
 				</button>
 			</div>
 		</div>
+		</div>
 	</section>
 {/if}
 
@@ -130,6 +189,19 @@
 		padding: 48px 28px 56px;
 		max-width: 1320px;
 		margin: 0 auto;
+	}
+	.pdp-pair--holding {
+		min-height: 380px;
+	}
+	.pdp-pair--holding .pdp-pair__content {
+		visibility: hidden;
+		opacity: 0;
+		pointer-events: none;
+	}
+	.pdp-pair--revealed .pdp-pair__content {
+		visibility: visible;
+		opacity: 1;
+		transition: opacity 0.35s var(--ease-out, ease);
 	}
 	@media (max-width: 860px) {
 		.pdp-pair {

@@ -7,14 +7,14 @@
 	 * cart. BAC water, protected shipping, and admin-configured exclusions
 	 * are stripped server-side and again here as a safety net.
 	 */
-	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
 	import EmblaCarousel, { type EmblaCarouselType } from 'embla-carousel';
 	import { cart } from '$lib/wc/cart.svelte';
 	import {
+		findPurchasableDefaultSelection,
+		findVariationId,
 		getProductsByIds,
 		getVariations,
-		findPurchasableDefaultSelection,
+		selectionFromVariationAttrs,
 		type StoreProduct,
 		type StoreProductVariation,
 	} from '$lib/wc/products';
@@ -24,6 +24,7 @@
 	import {
 		CART_CROSS_SELL_TARGET_COUNT,
 		config,
+		isCartCrossSellBlockedProduct,
 		isCatalogHiddenProduct,
 	} from '$lib/config.svelte';
 	import { formatPrice } from '$lib/utils/format';
@@ -44,7 +45,9 @@
 
 	const mode = $derived(config.data.pdp?.cross_sell_mode ?? 'simple');
 	const recommendIds = $derived(
-		ids.filter((id) => !isCatalogHiddenProduct(id)).slice(0, CART_CROSS_SELL_TARGET_COUNT)
+		ids
+			.filter((id) => !isCatalogHiddenProduct(id) && !isCartCrossSellBlockedProduct(id))
+			.slice(0, CART_CROSS_SELL_TARGET_COUNT)
 	);
 
 	// Modal state for simple mode variable products
@@ -104,6 +107,88 @@
 	let loadedForIds = $state('');
 	let fetchGeneration = 0;
 	let addingId = $state<number | null>(null);
+	let justAddedIds = $state<Record<number, number>>({});
+	const variationCache = new Map<number, StoreProductVariation[]>();
+
+	async function loadVariations(product: StoreProduct): Promise<StoreProductVariation[]> {
+		if (!product.has_options || product.variations.length === 0) return [];
+		const cached = variationCache.get(product.id);
+		if (cached) return cached;
+		const rows = await getVariations(product.variations.map((v) => v.id));
+		variationCache.set(product.id, rows);
+		return rows;
+	}
+
+	function resolveDirectAddTarget(
+		product: StoreProduct,
+		variations: StoreProductVariation[]
+	): { variationId: number; attrs: Record<string, string> } | null {
+		if (!product.has_options || product.variations.length === 0) return null;
+
+		const displayMinor = Number(product.prices.price);
+		for (const ref of product.variations) {
+			const row = variations.find((v) => v.id === ref.id);
+			if (row && canPurchase(row) && Number(row.prices.price) === displayMinor) {
+				return {
+					variationId: ref.id,
+					attrs: selectionFromVariationAttrs(ref.attributes),
+				};
+			}
+		}
+
+		const defaults = findPurchasableDefaultSelection(product, variations);
+		if (!defaults) return null;
+		const variationId = findVariationId(product.variations, defaults);
+		if (!variationId) return null;
+		const row = variations.find((v) => v.id === variationId);
+		if (!row || !canPurchase(row)) return null;
+		return { variationId, attrs: defaults };
+	}
+
+	function canDirectAdd(product: StoreProduct): boolean {
+		if (!product.has_options) return canPurchase(product);
+		const cached = variationCache.get(product.id);
+		if (!cached) return true;
+		return resolveDirectAddTarget(product, cached) !== null;
+	}
+
+	function flashAdded(productId: number) {
+		justAddedIds = { ...justAddedIds, [productId]: Date.now() };
+		setTimeout(() => {
+			justAddedIds = Object.fromEntries(
+				Object.entries(justAddedIds).filter(([id]) => Number(id) !== productId)
+			);
+		}, 900);
+	}
+
+	async function directAdd(e: Event, product: StoreProduct) {
+		e.preventDefault();
+		e.stopPropagation();
+		if (addingId !== null) return;
+
+		addingId = product.id;
+		try {
+			if (product.has_options && product.variations.length > 0) {
+				const variations = await loadVariations(product);
+				const target = resolveDirectAddTarget(product, variations);
+				if (!target) return;
+				const variation = Object.entries(target.attrs).map(([attribute, value]) => ({
+					attribute,
+					value,
+				}));
+				await cart.addItem(target.variationId, 1, variation, {
+					clicked_from: 'cart_cross_sell',
+				});
+			} else {
+				if (!canPurchase(product)) return;
+				await cart.addItem(product.id, 1, [], { clicked_from: 'cart_cross_sell' });
+			}
+			flashAdded(product.id);
+		} finally {
+			addingId = null;
+		}
+	}
+
 	let miniStates = $state<Map<number, MiniState>>(new Map());
 
 	function getState(product: StoreProduct): MiniState {
@@ -171,14 +256,6 @@
 		return getAttrKeys(product).every(k => !!attrs[k]);
 	}
 
-	function findVariationId(product: StoreProduct, attrs: Record<string, string>): number | null {
-		const keys = getAttrKeys(product);
-		const v = (product.variations ?? []).find(v =>
-			keys.every(k => v.attributes.find(a => a.name === k)?.value === attrs[k])
-		);
-		return v?.id ?? null;
-	}
-
 	async function miniAdd(e: Event, product: StoreProduct) {
 		e.preventDefault();
 		e.stopPropagation();
@@ -200,7 +277,7 @@
 			return;
 		}
 
-		const vid = product.has_options ? findVariationId(product, s.attrs) : null;
+		const vid = product.has_options ? findVariationId(product.variations, s.attrs) : null;
 		const variation = product.has_options
 			? Object.entries(s.attrs).map(([k, v]) => ({ attribute: k, value: v }))
 			: [];
@@ -294,7 +371,7 @@
 		const ready = (!modalProduct.has_options || allSelected(modalProduct, modalState.attrs)) && isQty;
 		if (!ready) return;
 
-		const vid = modalProduct.has_options ? findVariationId(modalProduct, modalState.attrs) : null;
+		const vid = modalProduct.has_options ? findVariationId(modalProduct.variations, modalState.attrs) : null;
 		if (modalProduct.has_options && !vid) return;
 		const variation = modalProduct.has_options
 			? Object.entries(modalState.attrs).map(([k, v]) => ({ attribute: k, value: v }))
@@ -350,7 +427,7 @@
 		return () => embla?.destroy();
 	});
 
-	// Re-fetch only when the server id list changes (order preserved — BAC first).
+	// Re-fetch only when the server id list changes.
 	$effect(() => {
 		const key = recommendIds.join(',');
 		if (key === loadedForIds) return;
@@ -366,7 +443,11 @@
 				if (gen !== fetchGeneration) return;
 				const order = new Map(recommendIds.map((id, i) => [id, i]));
 				products = list
-					.filter((p) => !isCatalogHiddenProduct(p.id, p.slug))
+					.filter(
+						(p) =>
+							!isCatalogHiddenProduct(p.id, p.slug) &&
+							!isCartCrossSellBlockedProduct(p.id, p.slug)
+					)
 					.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 				loadedForIds = key;
 			})
@@ -375,17 +456,13 @@
 			});
 	});
 
-	async function addToCart(e: Event, product: StoreProduct) {
-		e.preventDefault();
-		e.stopPropagation();
-		if (addingId !== null || !canPurchase(product)) return;
-		addingId = product.id;
-		try {
-			await cart.addItem(product.id, 1, [], { clicked_from: 'cart_cross_sell' });
-		} finally {
-			addingId = null;
+	$effect(() => {
+		for (const product of products) {
+			if (product.has_options && product.variations.length > 0) {
+				void loadVariations(product);
+			}
 		}
-	}
+	});
 
 	function formatMoneyInt(minorInt: number): string {
 		return formatPrice(minorInt, {
@@ -393,27 +470,6 @@
 			currency_symbol: cart.currencySymbol,
 			currency_code: cart.currencyCode,
 		});
-	}
-
-	function productHref(slug: string): string {
-		return `/product/${slug}`;
-	}
-
-	function openProduct(e: MouseEvent, slug: string) {
-		if (
-			e.defaultPrevented ||
-			e.button !== 0 ||
-			e.metaKey ||
-			e.ctrlKey ||
-			e.shiftKey ||
-			e.altKey
-		) {
-			return;
-		}
-		e.preventDefault();
-		e.stopPropagation();
-		cart.toggle(false);
-		void goto(productHref(slug), { invalidateAll: true });
 	}
 </script>
 
@@ -436,12 +492,14 @@
 					{@const regular = cro?.regular_price ?? Number(product.prices.regular_price)}
 					{@const current = Number(product.prices.price)}
 					{@const onSale = regular > current}
-					<article class="cart-xsell__card cart-xsell__card--stack" role="listitem">
-						<a
-							class="cart-xsell__card-link cart-xsell__card-link--stack"
-							href={productHref(product.slug)}
-							onclick={(e) => openProduct(e, product.slug)}
-						>
+					{@const isAdding = addingId === product.id}
+					{@const justAdded = !!justAddedIds[product.id]}
+					<article
+						class="cart-xsell__card cart-xsell__card--stack"
+						class:just-added={justAdded}
+						role="listitem"
+					>
+						<div class="cart-xsell__stack">
 							<span class="cart-xsell__media-stack">
 								{#if product.images[0]}
 									<img
@@ -460,7 +518,17 @@
 									{/if}
 								</span>
 							</span>
-						</a>
+							<button
+								type="button"
+								class="cart-xsell__cta"
+								class:just-added={justAdded}
+								disabled={isAdding || !canDirectAdd(product)}
+								aria-busy={isAdding}
+								onclick={(e) => void directAdd(e, product)}
+							>
+								{isAdding ? 'Adding…' : 'Add'}
+							</button>
+						</div>
 					</article>
 				{/each}
 			</div>
@@ -472,12 +540,10 @@
 				{@const regular = cro?.regular_price ?? Number(product.prices.regular_price)}
 				{@const current = Number(product.prices.price)}
 				{@const onSale = regular > current}
-				<article class="cart-xsell__card" role="listitem">
-					<a
-						class="cart-xsell__link"
-						href={productHref(product.slug)}
-						onclick={(e) => openProduct(e, product.slug)}
-					>
+				{@const isAdding = addingId === product.id}
+				{@const justAdded = !!justAddedIds[product.id]}
+				<article class="cart-xsell__card" class:just-added={justAdded} role="listitem">
+					<div class="cart-xsell__strip">
 						<div class="cart-xsell__media">
 							{#if product.images[0]}
 								<img
@@ -495,8 +561,19 @@
 									<span class="cart-xsell__price-was">{formatMoneyInt(regular)}</span>
 								{/if}
 							</p>
+							<button
+								type="button"
+								class="cart-xsell__cta cart-xsell__cta--compact"
+								class:just-added={justAdded}
+								disabled={isAdding || !canDirectAdd(product)}
+								aria-busy={isAdding}
+								onmousedown={(e) => e.stopPropagation()}
+								onclick={(e) => void directAdd(e, product)}
+							>
+								{isAdding ? 'Adding…' : 'Add'}
+							</button>
 						</div>
-					</a>
+					</div>
 				</article>
 			{/each}
 			</div>
@@ -513,7 +590,7 @@
 	{@const mSteps = getSteps(modalProduct)}
 	{@const mStep = mSteps[modalState.stepIdx]}
 	{@const mIsQty = mStep?.type === 'quantity'}
-	{@const mVariationFound = modalProduct.has_options ? findVariationId(modalProduct, modalState.attrs) !== null : true}
+	{@const mVariationFound = modalProduct.has_options ? findVariationId(modalProduct.variations, modalState.attrs) !== null : true}
 	{@const mReady = (!modalProduct.has_options || (allSelected(modalProduct, modalState.attrs) && mVariationFound)) && mIsQty}
 	<div class="xsell-modal" role="dialog" aria-label="Select options">
 		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
@@ -615,7 +692,7 @@
 		padding: 0;
 		display: flex;
 	}
-	.cart-xsell__card-link--stack {
+	.cart-xsell__stack {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -625,14 +702,50 @@
 		padding: 14px 12px;
 		box-sizing: border-box;
 		text-align: center;
-		text-decoration: none;
-		color: inherit;
-		border-radius: inherit;
-		cursor: pointer;
 		gap: 10px;
 	}
-	.cart-xsell__card-link--stack:hover .cart-xsell__title {
-		color: color-mix(in srgb, var(--accent) 72%, var(--fg));
+	.cart-xsell__strip {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		flex: 1 1 auto;
+	}
+	.cart-xsell__cta {
+		width: 100%;
+		margin-top: 2px;
+		padding: 8px 12px;
+		border: 1px solid var(--accent);
+		border-radius: var(--radius-sm, 6px);
+		background: transparent;
+		color: var(--accent);
+		font: inherit;
+		font-size: 12px;
+		font-weight: 600;
+		letter-spacing: -0.12px;
+		cursor: pointer;
+		transition:
+			background 150ms var(--ease-out),
+			color 150ms var(--ease-out),
+			border-color 150ms var(--ease-out);
+	}
+	.cart-xsell__cta--compact {
+		width: auto;
+		align-self: flex-start;
+		margin-top: 4px;
+		padding: 6px 10px;
+		font-size: 11px;
+	}
+	.cart-xsell__cta:hover:not(:disabled) {
+		background: color-mix(in srgb, var(--accent) 10%, transparent);
+	}
+	.cart-xsell__cta:disabled {
+		opacity: 0.55;
+		cursor: not-allowed;
+	}
+	.cart-xsell__cta.just-added {
+		border-color: var(--success, #059669);
+		color: var(--success, #059669);
+		background: color-mix(in srgb, var(--success, #059669) 10%, transparent);
 	}
 	.cart-xsell__media-stack {
 		flex: 0 0 auto;
@@ -745,20 +858,6 @@
 	}
 	.cart-xsell__card.just-added {
 		border-color: var(--success, #059669);
-		animation: xsell-card-flash 0.6s ease-out;
-	}
-	@keyframes xsell-card-flash {
-		0% { transform: scale(0.97); box-shadow: 0 0 0 0 color-mix(in srgb, var(--success, #059669) 40%, transparent); }
-		40% { transform: scale(1.02); box-shadow: 0 0 0 4px color-mix(in srgb, var(--success, #059669) 30%, transparent); }
-		100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
-	}
-	.cart-xsell__link {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		color: var(--fg);
-		text-decoration: none;
-		flex: 1 1 auto;
 	}
 	.cart-xsell__media {
 		aspect-ratio: 1 / 1;

@@ -22,6 +22,8 @@ import { resolveModules, siteDefaults } from './resolver';
 import { theme } from './theme.svelte';
 import { loadFont } from './hero-fonts';
 import { isCaptchaChallenge, handleCaptchaChallenge } from './siteground-captcha';
+import type { HeroPrecisionConfig } from './hero-precision';
+import { HERO_PRECISION_DEFAULTS } from './hero-precision';
 
 export type HeroTrustItem = {
 	icon: string;
@@ -59,7 +61,7 @@ export type HomepageHeroConfig = {
 		| 'webgl-variant-4'
 		| 'webgl-variant-5'
 		| 'webgl-variant-6';
-	layout: 'left' | 'center' | 'bottom';
+	layout: 'left' | 'center' | 'bottom' | 'split' | 'precision';
 	image_desktop: string;
 	image_mobile: string;
 	image_position_x: number;
@@ -78,6 +80,7 @@ export type HomepageHeroConfig = {
 	cta_secondary_text?: string;
 	cta_secondary_link?: string;
 	research_stats?: HeroResearchStat[];
+	precision?: HeroPrecisionConfig;
 };
 
 /**
@@ -107,7 +110,7 @@ export type HeroModuleConfig = {
 	show_cta?: boolean;
 	cta_text?: string;
 	cta_link?: string;
-	layout?: 'left' | 'center' | 'bottom';
+	layout?: 'left' | 'center' | 'bottom' | 'split' | 'precision';
 	variant?:
 		| 'text-only'
 		| 'research-motion'
@@ -296,35 +299,54 @@ export type ListicleFaqsModuleConfig = {
 };
 
 export type ReviewsListicleItem = {
+	title?: string;
 	quote?: string;
 	name?: string;
+	location?: string;
+	product?: string;
 	rating?: number;
 };
 
 export type ReviewsListicleModuleConfig = {
 	headline?: string;
+	subheadline?: string;
+	proof_headline?: string;
+	proof_subheadline?: string;
 	items?: ReviewsListicleItem[];
+	proof_items?: ReviewsListicleItem[];
+	marquee_headline?: string;
+	marquee_items?: ReviewsListicleItem[];
 };
 
 export type ListicleModuleConfig = {
 	section_eyebrow?: string;
-	/** split = image + copy columns; editorial = headline, persona, callout stack. */
+	/** split = image + copy columns; editorial = headline, trust bar, callout stack. */
 	hero_layout?: 'split' | 'editorial';
 	headline?: string;
 	hero_image?: string;
 	hero_image_alt?: string;
-	persona_name?: string;
-	persona_image?: string;
-	persona_image_alt?: string;
-	persona_badge?: string;
-	persona_updated?: string;
+	trust_brand?: string;
+	trust_items?: string[];
 	hero_callout?: string;
+	hero_cta_image?: string;
+	hero_cta_image_alt?: string;
+	hero_cta_headline?: string;
+	hero_cta_badge?: string;
+	hero_cta_ribbon?: string;
+	hero_cta_scarcity?: string;
+	hero_cta_label?: string;
+	hero_cta_href?: string;
 	intro?: string;
 	items_headline?: string;
 	closing?: string;
 	items?: ListicleItem[];
 	cta_label?: string;
 	cta_href?: string;
+	/** Reason #4 — COA thumbnail + library link. */
+	coa_embed_image?: string;
+	coa_embed_image_alt?: string;
+	coa_embed_href?: string;
+	coa_embed_link_label?: string;
 };
 
 export type TextBlockModuleConfig = {
@@ -520,7 +542,6 @@ export type HomepageModule =
 	| (ModuleBase & { type: 'video'; config: VideoModuleConfig });
 
 export type HomepageConfig = {
-	fathers_day_mode?: boolean;
 	hero: HomepageHeroConfig;
 	modules: HomepageModule[];
 };
@@ -532,7 +553,13 @@ export type PdpCoaMetric = { label: string; value: string };
 export type PdpBogoBundleConfig = {
 	enabled?: boolean;
 	savings_pct?: number;
-	presets?: Array<{ paid_qty: number; free_qty?: number; flag?: string }>;
+	presets?: Array<{
+		paid_qty: number;
+		free_qty?: number;
+		discount_pct?: number;
+		flag?: string;
+		pdp_hidden?: boolean;
+	}>;
 };
 
 export type PdpCoaSectionConfig = {
@@ -559,16 +586,36 @@ export type ShippingProtectionTierConfig = {
 	fee: number;
 };
 
+export type SlideCartSocialProofConfig = {
+	enabled?: boolean;
+	count_min?: number;
+	count_max?: number;
+	suffix?: string;
+	live_label?: string;
+	avatars?: string[];
+};
+
+export type SlideCartRewardsConfig = {
+	enabled?: boolean;
+	bac_water_threshold?: number;
+	urgency_label?: string;
+};
+
 export type SlideCartConfig = {
 	cross_sell_exclude_product_ids?: number[];
 	cross_sell_exclude_slugs?: string[];
 	/** Hidden product for slide-cart shipping protection addon (from WP slug). */
 	shipping_protection_product_id?: number;
 	shipping_protection_tiers?: ShippingProtectionTierConfig[];
+	/** BAC water ancillary product (slide-cart reconstitution prompt). */
+	bac_water_product_id?: number;
+	social_proof?: SlideCartSocialProofConfig;
+	rewards?: SlideCartRewardsConfig;
 };
 
 export const CART_CROSS_SELL_DEFAULT_EXCLUDE_SLUGS = ['bac-water-10ml', 'shipping-protection'] as const;
 export const SHIPPING_PROTECTION_SLUG = 'shipping-protection';
+export const BAC_WATER_SLUG = 'bac-water-10ml';
 export const CART_CROSS_SELL_TARGET_COUNT = 4;
 
 export function cartCrossSellExcludeSlugs(): string[] {
@@ -578,7 +625,9 @@ export function cartCrossSellExcludeSlugs(): string[] {
 
 export function cartCrossSellExcludeProductIds(): number[] {
 	const fromConfig = config.data.pdp?.slide_cart?.cross_sell_exclude_product_ids ?? [];
-	return [...new Set([...fromConfig])];
+	const bacId = config.data.pdp?.slide_cart?.bac_water_product_id ?? 0;
+	const extras = bacId > 0 ? [bacId] : [];
+	return [...new Set([...fromConfig, ...extras])];
 }
 
 /** Shipping protection only — hidden from shop/catalog API lists, not BAC water. */
@@ -614,6 +663,15 @@ export function isCartCrossSellBlockedProduct(id: number, slug = ''): boolean {
 	if (cartCrossSellExcludeProductIds().includes(id)) return true;
 	if (slug) return isCartCrossSellBlockedSlug(slug);
 	return false;
+}
+
+export function isBacWaterProduct(id: number, slug = ''): boolean {
+	const bacId = config.data.pdp?.slide_cart?.bac_water_product_id;
+	if (bacId && id === bacId) return true;
+	const s = slug.trim().toLowerCase();
+	if (!s) return false;
+	if (s === BAC_WATER_SLUG || s.startsWith(`${BAC_WATER_SLUG}-`)) return true;
+	return /bac[-_]?water|bacteriostatic[-_]?water/.test(s);
 }
 
 export type PdpConfig = {
@@ -852,7 +910,6 @@ const DEFAULTS: SiteConfig = {
 	google_ads_conversion_id: '',
 	google_ads_conversion_label: '',
 	homepage: {
-		fathers_day_mode: true,
 		hero: {
 			headline: 'A leading grade provider of research peptides.',
 			content_mode: 'text',
@@ -878,7 +935,8 @@ const DEFAULTS: SiteConfig = {
 				{ value: '60+', label: 'RESEARCH COMPOUNDS' },
 			],
 			variant: 'webgl-variant-6',
-			layout: 'left',
+			layout: 'precision',
+			precision: { ...HERO_PRECISION_DEFAULTS },
 			show_eyebrow: true,
 			image_desktop: '',
 			image_mobile: '',
@@ -895,6 +953,38 @@ const DEFAULTS: SiteConfig = {
 			trust_items: [],
 		},
 		modules: [
+			{
+				type: 'trust_bar',
+				visibility: 'all',
+				spacing_v: 'compact',
+				spacing_h: 'normal',
+				config: {
+					title: '',
+					icon_accent: true,
+					items: [
+						{
+							icon: 'percent',
+							headline: 'Price Below Market',
+							description: 'Research-grade pricing without inflated reseller markups.',
+						},
+						{
+							icon: 'lab',
+							headline: '1 Vial 3 Tests',
+							description: 'Purity, identity, and endotoxin verification on every batch.',
+						},
+						{
+							icon: 'check',
+							headline: 'COA Before Purchase',
+							description: 'Batch documentation published before you add to cart.',
+						},
+						{
+							icon: 'shipping',
+							headline: 'Same-Day US Fulfillment',
+							description: 'Orders placed before 2PM EST ship the same business day.',
+						},
+					],
+				},
+			},
 			{
 				type: 'split_value',
 				visibility: 'all',
@@ -925,43 +1015,6 @@ const DEFAULTS: SiteConfig = {
 				},
 			},
 			{
-				type: 'feature_highlights',
-				visibility: 'all',
-				spacing_v: 'normal',
-				spacing_h: 'normal',
-				config: {
-					badge_text: 'Verified & Trusted',
-					headline_prefix: 'The Standard for ',
-					headline_accent: 'Verified Peptides',
-					subheadline:
-						'Independent testing. Full batch documentation. Reliable, tracked delivery.',
-					items: [
-						{
-							variant: 'pin',
-							headline: 'USA Manufactured',
-							description: 'Synthesized and packaged domestically. No overseas sourcing.',
-						},
-						{
-							variant: 'star',
-							headline: '5-Star Reviewed',
-							description: 'Rated 5 stars by verified customers.',
-						},
-						{
-							variant: 'lab',
-							headline: 'Third-Party Lab Tested',
-							description: 'Every batch independently verified before shipping.',
-						},
-						{
-							variant: 'award',
-							headline: 'Triple-Tested for Quality',
-							description: 'Purity, Content, and Endotoxin testing on every product.',
-						},
-					],
-					cta_label: 'Buy 1 Get 1 Free',
-					cta_href: '/shop',
-				},
-			},
-			{
 				type: 'product_slider',
 				visibility: 'all',
 				config: {
@@ -969,6 +1022,86 @@ const DEFAULTS: SiteConfig = {
 					source: 'all',
 					category: null,
 					product_ids: [],
+				},
+			},
+			{
+				type: 'reviews_listicle',
+				visibility: 'all',
+				spacing_v: 'normal',
+				spacing_h: 'normal',
+				center_header: true,
+				config: {
+					headline: 'What researchers say after ordering',
+					proof_subheadline: '4.9 stars · 200+ verified orders.',
+					items: [
+						{
+							quote:
+								'COAs matched the batch numbers on our BPC-157 vials. Documentation was clear and easy to file for our lab records.',
+							name: 'Vincent R.',
+							product: 'BPC-157 5mg',
+							rating: 5,
+						},
+						{
+							quote:
+								'TB-500 batch purity matched the published COA exactly. Reconstitution notes were clear and shipment arrived tracked within two days.',
+							name: 'James T.',
+							product: 'TB-500 5mg',
+							rating: 5,
+						},
+						{
+							quote:
+								'Tirzepatide purity report was posted before checkout — exactly what our QC process requires.',
+							name: 'Justin F.',
+							product: 'Tirzepatide 10mg',
+							rating: 5,
+						},
+						{
+							quote:
+								'Ipamorelin vials arrived cold-packed with batch COA attached. Purity matched the published report on the first HPLC rerun.',
+							name: 'Sarah M.',
+							product: 'Ipamorelin 2mg',
+							rating: 5,
+						},
+						{
+							quote:
+								'Consistent Retatrutide quality across reorders — no surprises between batches. Support answered technical questions the same day.',
+							name: 'Carlos B.',
+							product: 'Retatrutide 5mg',
+							rating: 5,
+						},
+					],
+				},
+			},
+			{
+				type: 'listicle_faqs',
+				visibility: 'all',
+				spacing_v: 'normal',
+				spacing_h: 'normal',
+				config: {
+					eyebrow: 'PRODUCT QUESTIONS',
+					headline: 'FAQs by compound',
+					items: [
+						{
+							q: 'What purity should I expect from BPC-157 batches?',
+							a: '<p>Every BPC-157 batch is third-party tested for identity and purity via HPLC. Published COAs list the exact percentage for the batch tied to your vial — typically ≥99% on recent lots.</p>',
+						},
+						{
+							q: 'Is the BPC-157 COA available before I order?',
+							a: '<p>Yes. Batch-specific Certificates of Analysis are posted on the product page and in our COA library before checkout, so your team can qualify material against protocol requirements in advance.</p>',
+						},
+						{
+							q: 'How is TB-500 tested before release?',
+							a: '<p>TB-500 undergoes independent laboratory testing for purity, identity, and endotoxin. Results are tied to a batch number printed on each vial and documented on the COA shipped with your order.</p>',
+						},
+						{
+							q: 'Can I match TB-500 batch numbers to the published COA?',
+							a: '<p>Every TB-500 vial label matches the batch identifier on its COA. Search by product name or batch number in the COA library to pull the exact report for the lot you received.</p>',
+						},
+						{
+							q: 'What documentation comes with Ipamorelin orders?',
+							a: '<p>Ipamorelin shipments include batch-linked COA PDFs with HPLC purity, identity confirmation, and storage guidance. Research-use labeling and batch traceability are included for lab filing.</p>',
+						},
+					],
 				},
 			},
 			{
@@ -1059,9 +1192,11 @@ const DEFAULTS: SiteConfig = {
 			enabled: true,
 			savings_pct: 50,
 			presets: [
-				{ paid_qty: 1, free_qty: 0, flag: '' },
-				{ paid_qty: 2, free_qty: 1, flag: 'MOST POPULAR' },
-				{ paid_qty: 3, free_qty: 2, flag: 'BEST VALUE' },
+				{ paid_qty: 1, discount_pct: 0, flag: '' },
+				{ paid_qty: 3, discount_pct: 15, flag: 'POPULAR' },
+				{ paid_qty: 5, discount_pct: 23, flag: 'BEST VALUE' },
+				{ paid_qty: 10, discount_pct: 31, flag: 'BULK' },
+				{ paid_qty: 15, discount_pct: 40, flag: '', pdp_hidden: true },
 			],
 		},
 		cross_sell: {
@@ -1073,6 +1208,19 @@ const DEFAULTS: SiteConfig = {
 		slide_cart: {
 			cross_sell_exclude_product_ids: [],
 			cross_sell_exclude_slugs: [...CART_CROSS_SELL_DEFAULT_EXCLUDE_SLUGS],
+			social_proof: {
+				enabled: true,
+				count_min: 18,
+				count_max: 32,
+				suffix: 'researchers checking out now',
+				live_label: 'LIVE',
+				avatars: ['JM', 'AH', 'RT'],
+			},
+			rewards: {
+				enabled: true,
+				bac_water_threshold: 300,
+				urgency_label: 'ENDS SUNDAY',
+			},
 		},
 		coa_section: {
 			enabled: true,
@@ -1102,9 +1250,9 @@ const DEFAULTS: SiteConfig = {
 			{ icon: 'shipping', label: 'Same Day Shipping' },
 		],
 		trust_badges: [
-			{ icon: 'shipping', label: 'Faster shipping' },
-			{ icon: 'shield', label: '60-day guarantee' },
-			{ icon: 'lock', label: 'Secure checkout' },
+			{ icon: 'shield', label: '60-Day Money-Back Guarantee' },
+			{ icon: 'shipping', label: 'Ships Today if Ordered Before 2PM' },
+			{ icon: 'lock', label: 'Secure Checkout' },
 		],
 	},
 	shop: { modules: [], cols_min: 2, cols_max: 4, spacing_h: 'normal' },
@@ -1165,21 +1313,15 @@ function normalizeHeroVariant(raw: unknown): HomepageHeroConfig['variant'] {
 	return DEFAULTS.homepage.hero.variant;
 }
 
-/** Where to seed feature_highlights — after BOGO when present, else before the catalog slider. */
-function legacyFeatureHighlightsInsertIndex(modules: HomepageModule[]): number {
+/** Where to seed trust_bar — before split_value / catalog when missing. */
+function legacyTrustBarInsertIndex(modules: HomepageModule[]): number {
 	const list = modules;
 	const svIdx = list.findIndex((m) => m?.type === 'split_value');
 	if (svIdx !== -1) {
-		let j = svIdx + 1;
-		while (j < list.length) {
-			const t = list[j]?.type;
-			if (t === 'trust_bar' || t === 'spacer') j++;
-			else break;
-		}
-		if (j < list.length && list[j]?.type === 'product_slider') return j;
+		return svIdx;
 	}
 	const sliderIdx = list.findIndex((m) => m?.type === 'product_slider');
-	return sliderIdx >= 0 ? sliderIdx : -1;
+	return sliderIdx >= 0 ? sliderIdx : 0;
 }
 
 function mergeHomepageModulesWithDefaultSplitValue(modules: HomepageModule[]): HomepageModule[] {
@@ -1193,14 +1335,11 @@ function mergeHomepageModulesWithDefaultSplitValue(modules: HomepageModule[]): H
 			list.unshift(JSON.parse(JSON.stringify(seed)) as HomepageModule);
 		}
 	}
-	const fhInsert = legacyFeatureHighlightsInsertIndex(list);
-	const needsLegacyFh =
-		!list.some((m) => m && m.type === 'feature_highlights') && fhInsert >= 0;
-	if (needsLegacyFh) {
-		const fhSeed = DEFAULTS.homepage.modules.find((m) => m.type === 'feature_highlights');
-		if (fhSeed) {
-			const copy = JSON.parse(JSON.stringify(fhSeed)) as HomepageModule;
-			list.splice(fhInsert, 0, copy);
+	const tbInsert = legacyTrustBarInsertIndex(list);
+	if (!list.some((m) => m && m.type === 'trust_bar') && tbInsert >= 0) {
+		const tbSeed = DEFAULTS.homepage.modules.find((m) => m.type === 'trust_bar');
+		if (tbSeed) {
+			list.splice(tbInsert, 0, JSON.parse(JSON.stringify(tbSeed)) as HomepageModule);
 		}
 	}
 	return list;
@@ -1227,27 +1366,38 @@ function mergeHomepageModulesWithDefaultOrderHandling(modules: HomepageModule[])
 
 export function homepageModulesWithSplitValueAfterHero(modules: HomepageModule[]): HomepageModule[] {
 	const visible = modules.filter(isModuleVisibleNow);
-	const svIdx = visible.findIndex((m) => m.type === 'split_value');
 	let ordered = [...visible];
-	if (HOMEPAGE_SPLIT_VALUE_ENABLED && svIdx > 0) {
+
+	const tbIdx = ordered.findIndex((m) => m.type === 'trust_bar');
+	if (tbIdx > 0) {
+		const [tb] = ordered.splice(tbIdx, 1);
+		ordered.unshift(tb);
+	}
+
+	const svIdx = ordered.findIndex((m) => m.type === 'split_value');
+	if (HOMEPAGE_SPLIT_VALUE_ENABLED && svIdx !== -1) {
 		const [sv] = ordered.splice(svIdx, 1);
-		ordered.unshift(sv);
+		const afterTrust = ordered.findIndex((m) => m.type === 'trust_bar');
+		ordered.splice(afterTrust >= 0 ? afterTrust + 1 : 0, 0, sv);
 	}
-	const fhIdx = ordered.findIndex((m) => m.type === 'feature_highlights');
-	const svPos = ordered.findIndex((m) => m.type === 'split_value');
-	if (
-		HOMEPAGE_SPLIT_VALUE_ENABLED &&
-		fhIdx !== -1 &&
-		svPos !== -1 &&
-		fhIdx !== svPos + 1
-	) {
-		const [fh] = ordered.splice(fhIdx, 1);
-		const insertAfter = ordered.findIndex((m) => m.type === 'split_value');
-		ordered.splice(insertAfter + 1, 0, fh);
-	} else if (fhIdx > 0 && (!HOMEPAGE_SPLIT_VALUE_ENABLED || svPos === -1)) {
-		const [fh] = ordered.splice(fhIdx, 1);
-		ordered.unshift(fh);
+
+	const catalogIdx = ordered.findIndex(
+		(m) => m.type === 'product_slider' || m.type === 'shop_grid'
+	);
+	const reviewsIdx = ordered.findIndex((m) => m.type === 'reviews_listicle');
+	if (catalogIdx !== -1 && reviewsIdx !== -1 && reviewsIdx !== catalogIdx + 1) {
+		const [reviews] = ordered.splice(reviewsIdx, 1);
+		ordered.splice(catalogIdx + 1, 0, reviews);
 	}
+
+	const faqsIdx = ordered.findIndex((m) => m.type === 'listicle_faqs');
+	const reviewsPos = ordered.findIndex((m) => m.type === 'reviews_listicle');
+	if (faqsIdx !== -1 && reviewsPos !== -1 && faqsIdx !== reviewsPos + 1) {
+		const [faqs] = ordered.splice(faqsIdx, 1);
+		const insertAfter = ordered.findIndex((m) => m.type === 'reviews_listicle');
+		ordered.splice(insertAfter + 1, 0, faqs);
+	}
+
 	return ordered;
 }
 
@@ -1272,6 +1422,14 @@ function mergeFetchedPdp(incoming: PdpConfig | undefined): PdpConfig {
 					...(slide.cross_sell_exclude_product_ids ?? []),
 				]),
 			],
+			social_proof: {
+				...base.slide_cart?.social_proof,
+				...slide.social_proof,
+			},
+			rewards: {
+				...base.slide_cart?.rewards,
+				...slide.rewards,
+			},
 		},
 	};
 }
@@ -1289,6 +1447,10 @@ function mergeFetchedHomepage(incoming: HomepageConfig | undefined): HomepageCon
 			...base.hero,
 			...rawHero,
 			variant: normalizeHeroVariant(rawHero.variant),
+			precision: {
+				...HERO_PRECISION_DEFAULTS,
+				...(rawHero.precision ?? {}),
+			},
 		},
 		modules: mergeHomepageModulesWithDefaultOrderHandling(
 			mergeHomepageModulesWithDefaultSplitValue(rawModules)

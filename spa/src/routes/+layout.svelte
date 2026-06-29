@@ -474,8 +474,7 @@
 	}
 
 	const hasAnnouncementBar = $derived(
-		config.data.homepage.fathers_day_mode !== false ||
-			Boolean(config.data.announcement_bar_enabled && (config.data.announcement_bar_items?.length ?? 0) > 0)
+		Boolean(config.data.announcement_bar_enabled && (config.data.announcement_bar_items?.length ?? 0) > 0)
 	);
 
 	$effect(() => {

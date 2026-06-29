@@ -328,12 +328,18 @@
 				section_eyebrow: '',
 				hero_layout: 'editorial',
 				headline: '8 Reasons Researchers Choose Alyve For their Research Compounds',
-				persona_name: 'Jessica H, Biotech CEO',
-				persona_image: '',
-				persona_image_alt: '',
-				persona_badge: 'Verified',
-				persona_updated: 'UPDATED 2 DAYS AGO',
+				trust_brand: 'Alyve Peptides',
+				trust_items: [
+					'99%+ HPLC Verified',
+					'3rd-Party Tested Every Batch',
+					'COA Pre-Purchase',
+				],
 				hero_callout: 'READ THIS BEFORE YOU BUY RESEARCH COMPOUNDS FROM ANY OTHER COMPANY',
+				hero_cta_image: '/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp',
+				hero_cta_image_alt: 'Alyve research-grade peptide vials',
+				hero_cta_headline: 'Up to 40% Off — Verified Batches In Stock',
+				hero_cta_label: 'Shop Now — Check Availability',
+				hero_cta_href: '/shop',
 				intro: '',
 				items_headline: 'Here is why more research teams standardize on documented, batch-tested supply:',
 				closing: '<p>So why have more research teams switched to Alyve Peptides? Because documented purity, published COAs, and predictable domestic fulfillment are not extras—they are the baseline.</p>',
@@ -341,7 +347,7 @@
 					{
 						icon: 'shipping',
 						headline: 'Domestic Fulfillment, Direct to Your Lab',
-						body: '<p>Every Alyve order is fulfilled through our U.S. operations with an emphasis on transparency and dependable service. From sourcing to shipment, products are carefully handled and prepared under established quality practices to help maintain consistency. No unknown middlemen and no complicated fulfillment chains.</p>',
+						body: '<p>Every Alyve order is fulfilled through our U.S. operations with an emphasis on transparency and dependable service. From sourcing to shipment, products are carefully handled and prepared under established quality practices to help maintain consistency. No unknown middlemen and no complicated fulfillment chains.</p><div class="listicle__highlight-callout"><p>Orders placed before 2PM EST ship same day. Delivered in 2–3 business days via tracked carrier.</p></div>',
 						badges: ['Quality Standards', 'Supply Chain Transparency', 'Direct Fulfillment'],
 					},
 					{
@@ -1197,21 +1203,28 @@
 				setVal(container, '[data-field="lc_section_eyebrow"]', cfg.section_eyebrow || '');
 				setVal(container, '[data-field="lc_hero_layout"]', cfg.hero_layout || 'editorial');
 				setVal(container, '[data-field="lc_headline"]', cfg.headline || '');
-				setVal(container, '[data-field="lc_persona_name"]', cfg.persona_name || '');
-				setVal(container, '[data-field="lc_persona_image"]', cfg.persona_image || '');
-				setVal(container, '[data-field="lc_persona_image_alt"]', cfg.persona_image_alt || '');
-				setVal(container, '[data-field="lc_persona_badge"]', cfg.persona_badge || '');
-				setVal(container, '[data-field="lc_persona_updated"]', cfg.persona_updated || '');
+				setVal(container, '[data-field="lc_trust_brand"]', cfg.trust_brand || '');
+				setVal(container, '[data-field="lc_trust_items"]', listicleTrustItemsForInput(cfg.trust_items));
+				setVal(container, '[data-field="lc_hero_cta_image"]', cfg.hero_cta_image || '');
+				setVal(container, '[data-field="lc_hero_cta_image_alt"]', cfg.hero_cta_image_alt || '');
+				setVal(container, '[data-field="lc_hero_cta_headline"]', cfg.hero_cta_headline || '');
+				setVal(container, '[data-field="lc_hero_cta_label"]', cfg.hero_cta_label || '');
+				setVal(container, '[data-field="lc_hero_cta_href"]', cfg.hero_cta_href || '');
 				setVal(container, '[data-field="lc_hero_callout"]', cfg.hero_callout || '');
 				setVal(container, '[data-field="lc_hero_image"]', cfg.hero_image || '');
 				setVal(container, '[data-field="lc_hero_image_alt"]', cfg.hero_image_alt || '');
 				setVal(container, '[data-field="lc_intro"]', cfg.intro || '');
 				setVal(container, '[data-field="lc_items_headline"]', cfg.items_headline || '');
+				setVal(container, '[data-field="lc_coa_embed_image"]', cfg.coa_embed_image || '');
+				setVal(container, '[data-field="lc_coa_embed_image_alt"]', cfg.coa_embed_image_alt || '');
+				setVal(container, '[data-field="lc_coa_embed_href"]', cfg.coa_embed_href || '/coa-library');
+				setVal(container, '[data-field="lc_coa_embed_link_label"]', cfg.coa_embed_link_label || 'View COA Library →');
 				setVal(container, '[data-field="lc_closing"]', cfg.closing || '');
 				setVal(container, '[data-field="lc_cta_label"]', cfg.cta_label || '');
 				setVal(container, '[data-field="lc_cta_href"]', cfg.cta_href || '');
 				syncListicleHeroMedia(container);
-				syncListiclePersonaMedia(container);
+				syncListicleHeroCtaMedia(container);
+				syncListicleCoaEmbedMedia(container);
 				populateRepeaterItems(container, '.wchs-listicle-items', listicleItemsForAdmin(cfg), function (item, el) {
 					setVal(el, '[data-field="lc_item_number"]', item.number || '');
 					syncListicleItemIcon(el, item.icon || '');
@@ -1548,16 +1561,22 @@
 				cfg.section_eyebrow = getVal(container, '[data-field="lc_section_eyebrow"]') || '';
 				cfg.hero_layout = getVal(container, '[data-field="lc_hero_layout"]') || 'editorial';
 				cfg.headline = getVal(container, '[data-field="lc_headline"]') || '';
-				cfg.persona_name = getVal(container, '[data-field="lc_persona_name"]') || '';
-				cfg.persona_image = getVal(container, '[data-field="lc_persona_image"]') || '';
-				cfg.persona_image_alt = getVal(container, '[data-field="lc_persona_image_alt"]') || '';
-				cfg.persona_badge = getVal(container, '[data-field="lc_persona_badge"]') || '';
-				cfg.persona_updated = getVal(container, '[data-field="lc_persona_updated"]') || '';
+				cfg.trust_brand = getVal(container, '[data-field="lc_trust_brand"]') || '';
+				cfg.trust_items = listicleTrustItemsFromInput(getVal(container, '[data-field="lc_trust_items"]'));
+				cfg.hero_cta_image = getVal(container, '[data-field="lc_hero_cta_image"]') || '';
+				cfg.hero_cta_image_alt = getVal(container, '[data-field="lc_hero_cta_image_alt"]') || '';
+				cfg.hero_cta_headline = getVal(container, '[data-field="lc_hero_cta_headline"]') || '';
+				cfg.hero_cta_label = getVal(container, '[data-field="lc_hero_cta_label"]') || '';
+				cfg.hero_cta_href = getVal(container, '[data-field="lc_hero_cta_href"]') || '';
 				cfg.hero_callout = getVal(container, '[data-field="lc_hero_callout"]') || '';
 				cfg.hero_image = getVal(container, '[data-field="lc_hero_image"]') || '';
 				cfg.hero_image_alt = getVal(container, '[data-field="lc_hero_image_alt"]') || '';
 				cfg.intro = getVal(container, '[data-field="lc_intro"]') || '';
 				cfg.items_headline = getVal(container, '[data-field="lc_items_headline"]') || '';
+				cfg.coa_embed_image = getVal(container, '[data-field="lc_coa_embed_image"]') || '';
+				cfg.coa_embed_image_alt = getVal(container, '[data-field="lc_coa_embed_image_alt"]') || '';
+				cfg.coa_embed_href = getVal(container, '[data-field="lc_coa_embed_href"]') || '/coa-library';
+				cfg.coa_embed_link_label = getVal(container, '[data-field="lc_coa_embed_link_label"]') || 'View COA Library →';
 				cfg.closing = getVal(container, '[data-field="lc_closing"]') || '';
 				cfg.cta_label = getVal(container, '[data-field="lc_cta_label"]') || '';
 				cfg.cta_href = getVal(container, '[data-field="lc_cta_href"]') || '';
@@ -1892,6 +1911,16 @@
 		});
 	}
 
+	function listicleTrustItemsForInput(items) {
+		if (!items || !items.length) return '';
+		return items.join(', ');
+	}
+
+	function listicleTrustItemsFromInput(raw) {
+		if (!raw) return [];
+		return raw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+	}
+
 	function listicleBadgesForInput(badges) {
 		if (!badges) return '';
 		if (Array.isArray(badges)) return badges.filter(Boolean).join(', ');
@@ -1976,8 +2005,12 @@
 		syncListicleMediaField(ctx, '[data-field="lc_hero_image"]');
 	}
 
-	function syncListiclePersonaMedia(ctx) {
-		syncListicleMediaField(ctx, '[data-field="lc_persona_image"]');
+	function syncListicleHeroCtaMedia(ctx) {
+		syncListicleMediaField(ctx, '[data-field="lc_hero_cta_image"]');
+	}
+
+	function syncListicleCoaEmbedMedia(ctx) {
+		syncListicleMediaField(ctx, '[data-field="lc_coa_embed_image"]');
 	}
 
 	function syncListicleMediaField(ctx, selector) {

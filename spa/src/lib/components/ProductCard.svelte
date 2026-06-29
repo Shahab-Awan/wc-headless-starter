@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { pretext } from '$lib/pretext/engine';
-	import { onMount } from 'svelte';
 	import { formatPrice as fmt } from '$lib/utils/format';
 	import { config } from '$lib/config.svelte';
 	import { canPurchase, isOutOfStock } from '$lib/wc/stock';
+	import { noteProductStockStatus } from '$lib/wc/restock-badge.svelte';
+
+	type ProductAttributeTerm = { id?: number; name: string; slug?: string };
 
 	type Product = {
 		id: number;
@@ -23,6 +24,12 @@
 		has_options?: boolean;
 		on_sale?: boolean;
 		is_in_stock?: boolean;
+		short_description?: string;
+		attributes?: {
+			name: string;
+			has_variations?: boolean;
+			terms: ProductAttributeTerm[];
+		}[];
 		extensions?: {
 			wchs_cro?: {
 				regular_price: number;
@@ -32,13 +39,19 @@
 		};
 	};
 
-	let { product, cardWidth = 252, listingSource }: { product: Product; cardWidth?: number; listingSource?: string } = $props();
-	let fontsReady = $state(false);
+	let {
+		product,
+		cardWidth = 252,
+		listingSource,
+		highlightBadge,
+	}: {
+		product: Product;
+		cardWidth?: number;
+		listingSource?: string;
+		highlightBadge?: string;
+	} = $props();
 
-	onMount(async () => {
-		await pretext.ready();
-		fontsReady = true;
-	});
+	let showBackInStock = $state(false);
 
 	const cro = $derived(product.extensions?.wchs_cro);
 	const hasVariations = $derived(!!(product.has_options && product.prices.price_range));
@@ -55,6 +68,46 @@
 		return fmt(cents ?? product.prices.price, product.prices);
 	}
 
+	const DOSE_IN_TEXT = /\d+(?:\.\d+)?\s*(?:mg|mcg|iu|ml)\b/gi;
+
+	function uniqueDoseTokens(tokens: string[]): string[] {
+		const seen = new Set<string>();
+		const unique: string[] = [];
+		for (const raw of tokens) {
+			const key = raw.replace(/\s+/g, '').toLowerCase();
+			if (!key || seen.has(key)) continue;
+			seen.add(key);
+			unique.push(raw.trim().replace(/\s+/g, ''));
+		}
+		return unique;
+	}
+
+	function formatDoseLabel(tokens: string[]): string | null {
+		const values = uniqueDoseTokens(tokens);
+		if (!values.length) return null;
+		return `Dose: ${values.join(' / ')}`;
+	}
+
+	function dosesFromAttributes(prod: Product): string | null {
+		if (!prod.attributes?.length) return null;
+		const attr =
+			prod.attributes.find((a) => a.has_variations && a.terms.length > 0) ??
+			prod.attributes.find((a) => /size|dose|strength|amount/i.test(a.name) && a.terms.length > 0) ??
+			prod.attributes.find((a) => a.terms.length > 0);
+		if (!attr?.terms.length) return null;
+		return formatDoseLabel(attr.terms.map((t) => t.name));
+	}
+
+	function dosesFromText(prod: Product): string | null {
+		const hay = `${prod.name} ${prod.short_description ?? ''}`;
+		const matches = [...hay.matchAll(DOSE_IN_TEXT)].map((m) => m[0]);
+		return formatDoseLabel(matches);
+	}
+
+	function formatDosePill(prod: Product): string | null {
+		return dosesFromAttributes(prod) ?? dosesFromText(prod);
+	}
+
 	const displayPrice = $derived.by(() => {
 		if (hasVariations && product.prices.price_range) {
 			return `${formatPrice(product.prices.price_range.min_amount)} – ${formatPrice(product.prices.price_range.max_amount)}`;
@@ -67,6 +120,14 @@
 			return formatPrice(product.prices.regular_price);
 		}
 		return null;
+	});
+
+	const dosePill = $derived(formatDosePill(product));
+
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+		showBackInStock =
+			!outOfStock && !highlightBadge && noteProductStockStatus(product.id, outOfStock);
 	});
 
 	const salePercent = $derived.by(() => {
@@ -85,11 +146,6 @@
 			return tpl.replace('{percent}', String(salePercent));
 		}
 		return tpl;
-	});
-
-	const titleLayout = $derived.by(() => {
-		if (!fontsReady) return null;
-		return pretext.measure(product.name, 'title', cardWidth - 8, 20);
 	});
 
 	const ctaAria = $derived(`Select options for ${product.name}`);
@@ -113,8 +169,17 @@
 	}
 </script>
 
-<div class="store-card" class:is-oos={outOfStock}>
-	<a class="store-card__media-link" href={productHref} aria-label={product.name} onclick={reportProductLinkIntent}>
+<div class="store-card" class:is-oos={outOfStock} class:store-card--highlight={!!highlightBadge && !outOfStock}>
+	<a
+		class="store-card__media-link"
+		class:store-card__media-link--highlight={!!highlightBadge && !outOfStock}
+		href={productHref}
+		aria-label={product.name}
+		onclick={reportProductLinkIntent}
+	>
+		{#if highlightBadge && !outOfStock}
+			<span class="store-card__badge store-card__badge--highlight">{highlightBadge}</span>
+		{/if}
 		<div class="store-card__media">
 			{#if product.images[0]}
 				<img src={product.images[0].src} alt={product.images[0].alt || product.name} loading="lazy" />
@@ -138,18 +203,20 @@
 			{/if}
 			{#if outOfStock}
 				<span class="store-card__badge store-card__badge--oos">Out of stock</span>
-			{:else if product.on_sale}
+			{:else if showBackInStock}
+				<span class="store-card__badge store-card__badge--restock">Back in stock</span>
+			{:else if product.on_sale && !highlightBadge}
 				<span class="store-card__badge">{saleBadgeRendered}</span>
+			{/if}
+			{#if dosePill}
+				<span class="store-card__dose-pill">{dosePill}</span>
 			{/if}
 		</div>
 	</a>
 
 	<div class="store-card__body">
 		<a class="store-card__title-link" href={productHref} onclick={reportProductLinkIntent}>
-			<h3
-				class="store-card__title"
-				style={titleLayout && config.data.product_card?.title_lines === 'auto' ? `height: ${titleLayout.height}px` : ''}
-			>{product.name}</h3>
+			<h3 class="store-card__title">{product.name}</h3>
 		</a>
 
 		<div class="store-card__foot">
@@ -158,11 +225,13 @@
 					<span class="store-card__sold-out">Sold out</span>
 				</div>
 			{:else}
-				<div class="store-card__price-stack">
-					{#if compareAtPrice}
-						<span class="store-card__price-was tabular-nums">{compareAtPrice}</span>
-					{/if}
-					<span class="store-card__price tabular-nums">{displayPrice}</span>
+				<div class="store-card__price-block">
+					<div class="store-card__price-stack">
+						{#if compareAtPrice}
+							<span class="store-card__price-was tabular-nums">{compareAtPrice}</span>
+						{/if}
+						<span class="store-card__price tabular-nums">{displayPrice}</span>
+					</div>
 				</div>
 			{/if}
 
@@ -182,7 +251,7 @@
 		border-radius: 0;
 		color: var(--fg);
 		text-decoration: none;
-		min-height: 100%;
+		width: 100%;
 		overflow: visible;
 		container-type: inline-size;
 	}
@@ -215,6 +284,10 @@
 		display: block;
 		color: inherit;
 		text-decoration: none;
+	}
+
+	.store-card__media-link--highlight {
+		position: relative;
 	}
 
 	.store-card__media {
@@ -276,6 +349,68 @@
 	.store-card__badge--oos {
 		background: color-mix(in srgb, var(--fg) 82%, transparent);
 	}
+	.store-card__badge--highlight {
+		background: var(--accent);
+		color: var(--accent-fg, #fff);
+	}
+
+	.store-card--highlight .store-card__media {
+		border: 1px solid var(--accent);
+		box-shadow: 0 0 0 2px var(--bg);
+	}
+
+	@media (max-width: 820px) {
+		.store-card--highlight .store-card__media-link--highlight {
+			padding-top: 11px;
+		}
+
+		.store-card--highlight .store-card__badge--highlight {
+			top: 11px;
+			left: 50%;
+			right: auto;
+			transform: translate(-50%, -50%);
+			padding: 5px 12px 6px;
+			border-radius: var(--card-button-radius, 14px);
+			border: 2px solid var(--bg);
+			background: var(--accent);
+			color: var(--accent-fg, #fff);
+			font-size: 9px;
+			font-weight: 700;
+			letter-spacing: 0.08em;
+			line-height: 1.2;
+			z-index: 2;
+		}
+	}
+
+	.store-card__badge--restock {
+		background: #f59e0b;
+		color: #111827;
+	}
+	:global(html[data-theme='dark']) .store-card__badge--restock {
+		background: #fbbf24;
+		color: #111827;
+	}
+	.store-card__dose-pill {
+		position: absolute;
+		bottom: 10px;
+		left: 10px;
+		z-index: 1;
+		display: inline-block;
+		width: max-content;
+		max-width: calc(100% - 20px);
+		padding: 4px 9px 5px;
+		border-radius: 999px;
+		background: var(--accent);
+		color: var(--accent-fg);
+		font-size: 9px;
+		font-weight: 600;
+		line-height: 1.2;
+		letter-spacing: 0.03em;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		pointer-events: none;
+	}
 
 	:global(html[data-card-badge-position='top-left']) .store-card__badge {
 		right: auto;
@@ -318,8 +453,7 @@
 		padding: 0 2px;
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
-		flex: 1 1 auto;
+		gap: 7px;
 	}
 	.store-card__title {
 		margin: 0;
@@ -329,8 +463,14 @@
 		line-height: 1.25;
 		letter-spacing: -0.02em;
 		color: var(--fg);
-		min-height: 20px;
 		overflow: hidden;
+	}
+
+	:global(html[data-card-title-lines='auto']) .store-card__title {
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
 	}
 
 	:global(html[data-card-title-lines='1']) .store-card__title,
@@ -354,7 +494,12 @@
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
-		margin-top: auto;
+	}
+	.store-card__price-block {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 6px;
 	}
 	.store-card__price-stack {
 		display: inline-flex;

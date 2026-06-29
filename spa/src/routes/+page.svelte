@@ -17,6 +17,7 @@
 	import Spacer from '$lib/components/Spacer.svelte';
 	import LogoStrip from '$lib/components/LogoStrip.svelte';
 	import Video from '$lib/components/Video.svelte';
+	import TrustBar from '$lib/components/TrustBar.svelte';
 	import Listicle from '$lib/components/Listicle.svelte';
 	import PromoOffer from '$lib/components/PromoOffer.svelte';
 	import ReviewsListicle from '$lib/components/ReviewsListicle.svelte';
@@ -27,24 +28,18 @@
 		homepageModulesWithSplitValueAfterHero,
 		isHomepageModuleShown,
 	} from '$lib/config.svelte';
-	import { applyFathersDayHero } from '$lib/fathers-day-hero';
-
-	const fathersDayMode = $derived(config.data.homepage.fathers_day_mode !== false);
 
 	const hero = $derived.by(() => {
 		let h = config.data.homepage.hero;
 		if (h.variant === 'research-motion') {
 			h = { ...h, variant: 'webgl-variant-6' as const, layout: 'left' as const };
 		}
-		if (fathersDayMode) {
-			h = applyFathersDayHero(h);
-		}
 		return h;
 	});
 
 	const modules = $derived(
 		homepageModulesWithSplitValueAfterHero(config.data.homepage.modules).filter(
-			(m) => m.type !== 'trust_bar' && isHomepageModuleShown(m)
+			(m) => isHomepageModuleShown(m)
 		)
 	);
 
@@ -82,7 +77,7 @@
 />
 
 <AccessGate requires="products">
-<Hero hero={hero} {fathersDayMode} />
+<Hero hero={hero} />
 
 {#each modules as mod}
 	<div class="wchs-mod-wrap" data-module-type={mod.type} data-module-id={mod.id ?? ''} style="display: contents">
@@ -105,8 +100,23 @@
 			<Listicle config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 		{:else if mod.type === 'promo_offer'}
 			<PromoOffer config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
-		{:else if mod.type === 'reviews_listicle'}
-			<ReviewsListicle config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
+		{:else if mod.type === 'trust_bar'}
+			<TrustBar
+				config={mod.config}
+				resolved={mod.resolved}
+				spacing_v={mod.spacing_v || 'compact'}
+				spacing_h={mod.spacing_h || 'normal'}
+			/>
+		{:else if mod.type === 'reviews_listicle' && (mod.config.items?.length ?? 0) > 0}
+			<ReviewsListicle
+				config={mod.config}
+				resolved={mod.resolved}
+				spacing_v={mod.spacing_v || 'normal'}
+				spacing_h={mod.spacing_h || 'normal'}
+				variant="product"
+				visibleSlides={3}
+				showHeadline={true}
+			/>
 		{:else if mod.type === 'listicle_faqs'}
 			<ListicleFaqs config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 		{:else if mod.type === 'text_block'}

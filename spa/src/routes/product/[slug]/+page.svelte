@@ -537,6 +537,8 @@
 	}
 
 	let justAdded = $state(false);
+	let postAtcSignal = $state(0);
+	let specsSentinel = $state<HTMLElement | null>(null);
 
 	async function handleAdd() {
 		if (!product || !canAdd) return;
@@ -553,6 +555,7 @@
 				await cart.addItem(product.id, quantity, [], { clicked_from: 'product_page' });
 			}
 			justAdded = true;
+			postAtcSignal += 1;
 			setTimeout(() => (justAdded = false), 1500);
 		} finally {
 			adding = false;
@@ -668,6 +671,8 @@
 		/>
 	</article>
 
+	<div bind:this={specsSentinel} class="pdp__specs-sentinel" aria-hidden="true"></div>
+
 	{#each pdpModules as mod}
 		{#if mod.type === 'product_slider'}
 			<HomepageProductSlider config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
@@ -706,7 +711,12 @@
 		{/if}
 	{/each}
 
-	<PdpCrossSell products={crossSells} />
+	<PdpCrossSell
+		products={crossSells}
+		productId={product.id}
+		specsAnchor={specsSentinel}
+		{postAtcSignal}
+	/>
 {/if}
 </AccessGate>
 
@@ -849,6 +859,13 @@
 			gap: 32px;
 			padding: 32px 20px 32px;
 		}
+	}
+
+	.pdp__specs-sentinel {
+		height: 1px;
+		width: 100%;
+		pointer-events: none;
+		visibility: hidden;
 	}
 
 	.pdp__media {

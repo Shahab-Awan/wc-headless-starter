@@ -466,6 +466,10 @@ class AdminPage {
 			$saved['hero'] ?? [],
 			$defaults['hero']
 		);
+		$saved['hero']['precision'] = wp_parse_args(
+			$saved['hero']['precision'] ?? [],
+			$defaults['hero']['precision'] ?? self::hero_precision_defaults()
+		);
 		$h = $saved['hero'];
 		if (
 			( $h['headline'] ?? '' ) === 'Welcome'
@@ -488,11 +492,7 @@ class AdminPage {
 		if ( function_exists( 'wchs_homepage_ensure_order_handling_module' ) ) {
 			$saved['modules'] = wchs_homepage_ensure_order_handling_module( $saved['modules'] );
 		}
-		if ( ! array_key_exists( 'fathers_day_mode', $saved ) ) {
-			$saved['fathers_day_mode'] = $defaults['fathers_day_mode'];
-		} else {
-			$saved['fathers_day_mode'] = ! empty( $saved['fathers_day_mode'] );
-		}
+		unset( $saved['fathers_day_mode'] );
 		return $saved;
 	}
 
@@ -598,17 +598,19 @@ class AdminPage {
 				[ 'icon' => 'shipping', 'label' => 'Same Day Shipping' ],
 			],
 			'trust_badges'        => [
-				[ 'icon' => 'shipping', 'label' => 'Faster shipping' ],
-				[ 'icon' => 'shield', 'label' => '60-day guarantee' ],
-				[ 'icon' => 'lock', 'label' => 'Secure checkout' ],
+				[ 'icon' => 'shield', 'label' => '60-Day Money-Back Guarantee' ],
+				[ 'icon' => 'shipping', 'label' => 'Ships Today if Ordered Before 2PM' ],
+				[ 'icon' => 'lock', 'label' => 'Secure Checkout' ],
 			],
 			'bundle_bogo'         => [
 				'enabled'     => true,
 				'savings_pct' => 50,
 				'presets'     => [
-					[ 'paid_qty' => 1, 'free_qty' => 0, 'flag' => '' ],
-					[ 'paid_qty' => 2, 'free_qty' => 1, 'flag' => 'MOST POPULAR' ],
-					[ 'paid_qty' => 3, 'free_qty' => 2, 'flag' => 'BEST VALUE' ],
+					[ 'paid_qty' => 1, 'discount_pct' => 0, 'flag' => '' ],
+					[ 'paid_qty' => 3, 'discount_pct' => 15, 'flag' => 'POPULAR' ],
+					[ 'paid_qty' => 5, 'discount_pct' => 23, 'flag' => 'BEST VALUE' ],
+					[ 'paid_qty' => 10, 'discount_pct' => 31, 'flag' => 'BULK' ],
+					[ 'paid_qty' => 15, 'discount_pct' => 40, 'flag' => '', 'pdp_hidden' => true ],
 				],
 			],
 			'cross_sell'          => [
@@ -1132,9 +1134,29 @@ class AdminPage {
 		<?php
 	}
 
+	public static function hero_precision_defaults(): array {
+		return [
+			'badge'               => 'RESEARCH-GRADE PEPTIDES — USA MANUFACTURED',
+			'headline_primary'    => 'The Precision Standard for',
+			'headline_accent'     => 'Research Peptides',
+			'rating_label'        => 'Excellent',
+			'rating_subtext'      => '10,000+ verified researchers',
+			'stat_2_value'        => '99%+',
+			'stat_2_label'        => 'Guaranteed purity',
+			'stat_3_value'        => 'Same-Day',
+			'stat_3_label'        => 'USA fulfillment',
+			'body'                => 'Every compound we supply is synthesized in GMP-certified US facilities, verified by HPLC and Mass Spectrometry, and supported by fully transparent Certificates of Analysis — before it ships to your lab.',
+			'cta_primary_text'    => 'Shop All Peptides',
+			'cta_primary_link'    => '/shop',
+			'cta_secondary_text'  => 'View COA Reports',
+			'cta_secondary_link'  => '/coa-library',
+			'image_desktop'       => '',
+			'image_mobile'        => '',
+		];
+	}
+
 	public static function homepage_defaults(): array {
 		return [
-			'fathers_day_mode' => true,
 			'hero' => [
 				'headline'               => 'A leading grade provider of research peptides.',
 				'content_mode'           => 'text',
@@ -1159,7 +1181,8 @@ class AdminPage {
 					[ 'value' => '60+', 'label' => 'RESEARCH COMPOUNDS' ],
 				],
 				'variant'                => 'webgl-variant-6',
-				'layout'                 => 'left',
+				'layout'                 => 'precision',
+				'precision'              => self::hero_precision_defaults(),
 				'image_desktop'          => '',
 				'image_mobile'           => '',
 				'image_position_x'       => 50,
@@ -1176,6 +1199,38 @@ class AdminPage {
 				'trust_items'            => [],
 			],
 			'modules' => [
+				[
+					'type'       => 'trust_bar',
+					'visibility' => 'all',
+					'spacing_v'  => 'compact',
+					'spacing_h'  => 'normal',
+					'config'     => [
+						'title'       => '',
+						'icon_accent' => true,
+						'items'       => [
+							[
+								'icon'        => 'percent',
+								'headline'    => 'Price Below Market',
+								'description' => 'Research-grade pricing without inflated reseller markups.',
+							],
+							[
+								'icon'        => 'lab',
+								'headline'    => '1 Vial 3 Tests',
+								'description' => 'Purity, identity, and endotoxin verification on every batch.',
+							],
+							[
+								'icon'        => 'check',
+								'headline'    => 'COA Before Purchase',
+								'description' => 'Batch documentation published before you add to cart.',
+							],
+							[
+								'icon'        => 'shipping',
+								'headline'    => 'Same-Day US Fulfillment',
+								'description' => 'Orders placed before 2PM EST ship the same business day.',
+							],
+						],
+					],
+				],
 				[
 					'type'       => 'split_value',
 					'visibility' => 'all',
@@ -1206,39 +1261,88 @@ class AdminPage {
 					],
 				],
 				[
-					'type'       => 'feature_highlights',
+					'type'       => 'product_slider',
+					'visibility' => 'all',
+					'config'     => [
+						'title'       => 'Featured',
+						'source'      => 'all',
+						'category'    => null,
+						'product_ids' => [],
+					],
+				],
+				[
+					'type'          => 'reviews_listicle',
+					'visibility'    => 'all',
+					'spacing_v'     => 'normal',
+					'spacing_h'     => 'normal',
+					'center_header' => true,
+					'config'        => [
+						'headline'          => 'What researchers say after ordering',
+						'proof_subheadline' => '4.9 stars · 200+ verified orders.',
+						'items'             => [
+							[
+								'quote'   => 'COAs matched the batch numbers on our BPC-157 vials. Documentation was clear and easy to file for our lab records.',
+								'name'    => 'Vincent R.',
+								'product' => 'BPC-157 5mg',
+								'rating'  => 5,
+							],
+							[
+								'quote'   => 'TB-500 batch purity matched the published COA exactly. Reconstitution notes were clear and shipment arrived tracked within two days.',
+								'name'    => 'James T.',
+								'product' => 'TB-500 5mg',
+								'rating'  => 5,
+							],
+							[
+								'quote'   => 'Tirzepatide purity report was posted before checkout — exactly what our QC process requires.',
+								'name'    => 'Justin F.',
+								'product' => 'Tirzepatide 10mg',
+								'rating'  => 5,
+							],
+							[
+								'quote'   => 'Ipamorelin vials arrived cold-packed with batch COA attached. Purity matched the published report on the first HPLC rerun.',
+								'name'    => 'Sarah M.',
+								'product' => 'Ipamorelin 2mg',
+								'rating'  => 5,
+							],
+							[
+								'quote'   => 'Consistent Retatrutide quality across reorders — no surprises between batches. Support answered technical questions the same day.',
+								'name'    => 'Carlos B.',
+								'product' => 'Retatrutide 5mg',
+								'rating'  => 5,
+							],
+						],
+					],
+				],
+				[
+					'type'       => 'listicle_faqs',
 					'visibility' => 'all',
 					'spacing_v'  => 'normal',
 					'spacing_h'  => 'normal',
 					'config'     => [
-						'badge_text'      => 'Verified & Trusted',
-						'headline_prefix' => 'The Standard for ',
-						'headline_accent' => 'Verified Peptides',
-						'subheadline'     => 'Independent testing. Full batch documentation. Reliable, tracked delivery.',
-						'items'           => [
+						'eyebrow'  => 'PRODUCT QUESTIONS',
+						'headline' => 'FAQs by compound',
+						'items'    => [
 							[
-								'variant'     => 'pin',
-								'headline'    => 'USA Manufactured',
-								'description' => 'Synthesized and packaged domestically. No overseas sourcing.',
+								'q' => 'What purity should I expect from BPC-157 batches?',
+								'a' => '<p>Every BPC-157 batch is third-party tested for identity and purity via HPLC. Published COAs list the exact percentage for the batch tied to your vial — typically ≥99% on recent lots.</p>',
 							],
 							[
-								'variant'     => 'star',
-								'headline'    => '5-Star Reviewed',
-								'description' => 'Rated 5 stars by verified customers.',
+								'q' => 'Is the BPC-157 COA available before I order?',
+								'a' => '<p>Yes. Batch-specific Certificates of Analysis are posted on the product page and in our COA library before checkout, so your team can qualify material against protocol requirements in advance.</p>',
 							],
 							[
-								'variant'     => 'lab',
-								'headline'    => 'Third-Party Lab Tested',
-								'description' => 'Every batch independently verified before shipping.',
+								'q' => 'How is TB-500 tested before release?',
+								'a' => '<p>TB-500 undergoes independent laboratory testing for purity, identity, and endotoxin. Results are tied to a batch number printed on each vial and documented on the COA shipped with your order.</p>',
 							],
 							[
-								'variant'     => 'award',
-								'headline'    => 'Triple-Tested for Quality',
-								'description' => 'Purity, Content, and Endotoxin testing on every product.',
+								'q' => 'Can I match TB-500 batch numbers to the published COA?',
+								'a' => '<p>Every TB-500 vial label matches the batch identifier on its COA. Search by product name or batch number in the COA library to pull the exact report for the lot you received.</p>',
+							],
+							[
+								'q' => 'What documentation comes with Ipamorelin orders?',
+								'a' => '<p>Ipamorelin shipments include batch-linked COA PDFs with HPLC purity, identity confirmation, and storage guidance. Research-use labeling and batch traceability are included for lab filing.</p>',
 							],
 						],
-						'cta_label'       => 'Buy 1 Get 1 Free',
-						'cta_href'        => '/shop',
 					],
 				],
 				[
@@ -1280,16 +1384,6 @@ class AdminPage {
 							[ 'value' => '100%', 'label' => 'Verified Testing' ],
 							[ 'value' => '24/7', 'label' => 'Support Response' ],
 						],
-					],
-				],
-				[
-					'type'       => 'product_slider',
-					'visibility' => 'all',
-					'config'     => [
-						'title'       => 'Featured',
-						'source'      => 'all',
-						'category'    => null,
-						'product_ids' => [],
 					],
 				],
 			],
@@ -1844,7 +1938,7 @@ class AdminPage {
 			$hero['logo_size'] = 'large';
 		}
 
-		$valid_layouts = [ 'left', 'center', 'split', 'bottom' ];
+		$valid_layouts = [ 'left', 'center', 'split', 'bottom', 'precision' ];
 		if ( ! in_array( $hero['layout'], $valid_layouts, true ) ) {
 			$hero['layout'] = 'left';
 		}
@@ -1889,13 +1983,32 @@ class AdminPage {
 			$hero['research_stats'] = self::homepage_defaults()['hero']['research_stats'];
 		}
 
+		$precision_defaults = self::hero_precision_defaults();
+		$hero['precision']  = [
+			'badge'              => sanitize_text_field( wp_unslash( $_POST['precision_badge'] ?? $precision_defaults['badge'] ) ),
+			'headline_primary'   => sanitize_text_field( wp_unslash( $_POST['precision_headline_primary'] ?? $precision_defaults['headline_primary'] ) ),
+			'headline_accent'    => sanitize_text_field( wp_unslash( $_POST['precision_headline_accent'] ?? $precision_defaults['headline_accent'] ) ),
+			'rating_label'       => sanitize_text_field( wp_unslash( $_POST['precision_rating_label'] ?? $precision_defaults['rating_label'] ) ),
+			'rating_subtext'     => sanitize_text_field( wp_unslash( $_POST['precision_rating_subtext'] ?? $precision_defaults['rating_subtext'] ) ),
+			'stat_2_value'       => sanitize_text_field( wp_unslash( $_POST['precision_stat_2_value'] ?? $precision_defaults['stat_2_value'] ) ),
+			'stat_2_label'       => sanitize_text_field( wp_unslash( $_POST['precision_stat_2_label'] ?? $precision_defaults['stat_2_label'] ) ),
+			'stat_3_value'       => sanitize_text_field( wp_unslash( $_POST['precision_stat_3_value'] ?? $precision_defaults['stat_3_value'] ) ),
+			'stat_3_label'       => sanitize_text_field( wp_unslash( $_POST['precision_stat_3_label'] ?? $precision_defaults['stat_3_label'] ) ),
+			'body'               => sanitize_textarea_field( wp_unslash( $_POST['precision_body'] ?? $precision_defaults['body'] ) ),
+			'cta_primary_text'   => sanitize_text_field( wp_unslash( $_POST['precision_cta_primary_text'] ?? $precision_defaults['cta_primary_text'] ) ),
+			'cta_primary_link'   => sanitize_text_field( wp_unslash( $_POST['precision_cta_primary_link'] ?? $precision_defaults['cta_primary_link'] ) ),
+			'cta_secondary_text' => sanitize_text_field( wp_unslash( $_POST['precision_cta_secondary_text'] ?? $precision_defaults['cta_secondary_text'] ) ),
+			'cta_secondary_link' => sanitize_text_field( wp_unslash( $_POST['precision_cta_secondary_link'] ?? $precision_defaults['cta_secondary_link'] ) ),
+			'image_desktop'      => esc_url_raw( wp_unslash( $_POST['precision_image_desktop'] ?? '' ) ),
+			'image_mobile'       => esc_url_raw( wp_unslash( $_POST['precision_image_mobile'] ?? '' ) ),
+		];
+
 		$raw_json = json_decode( wp_unslash( $_POST['modules_json'] ?? '[]' ), true );
 		$modules  = self::parse_modules_from_post( is_array( $raw_json ) ? $raw_json : [], 'homepage' );
 
 		update_option( self::HOMEPAGE_OPTION, [
-			'fathers_day_mode' => ! empty( $_POST['fathers_day_mode'] ),
-			'hero'             => $hero,
-			'modules'          => $modules,
+			'hero'    => $hero,
+			'modules' => $modules,
 		] );
 	}
 
@@ -2363,7 +2476,7 @@ class AdminPage {
 			<?php elseif ( 'pages' === $tab ) : ?>
 				<?php $this->render_pages_tab( $pages_cfg['pages'] ); ?>
 			<?php else : ?>
-				<?php $this->render_homepage_tab( $hero, $modules, ! empty( $homepage['fathers_day_mode'] ) ); ?>
+				<?php $this->render_homepage_tab( $hero, $modules ); ?>
 			<?php endif; ?>
 
 			<?php if ( $has_canvas ) : ?>
@@ -3973,7 +4086,7 @@ class AdminPage {
 	}
 
 
-	private function render_homepage_tab( array $hero, array $modules, bool $fathers_day_mode = true ): void {
+	private function render_homepage_tab( array $hero, array $modules ): void {
 		$categories = get_terms( [ 'taxonomy' => 'product_cat', 'hide_empty' => false ] );
 		$hero_content_mode = $hero['content_mode'] ?? 'text';
 		$hero_logo_source  = $hero['logo_source'] ?? 'site_logo';
@@ -3986,21 +4099,9 @@ class AdminPage {
 			<input type="hidden" name="action" value="wchs_save_settings" />
 			<input type="hidden" name="wchs_tab" value="homepage" />
 
-			<div class="wchs-info" style="margin-bottom:20px;border-left:3px solid var(--wchs-accent,#14b8a6)">
-				<div class="wchs-field" style="margin:0">
-					<label class="wchs-toggle">
-						<input type="checkbox" name="fathers_day_mode" value="1" <?php checked( $fathers_day_mode ); ?> />
-						<span class="wchs-toggle__track"><span class="wchs-toggle__thumb"></span></span>
-						<span><strong>Father's Day mode</strong></span>
-					</label>
-					<p style="margin:10px 0 0;font-size:13px;opacity:0.85">
-						When on, the homepage hero shows Father's Day banner copy. Page structure and modules stay the same — only hero text changes. Turn off to restore your standard hero content.
-					</p>
-				</div>
-			</div>
-
 			<?php
 			$hero_layout    = $hero['layout'] ?? 'left';
+			$precision      = wp_parse_args( $hero['precision'] ?? [], self::hero_precision_defaults() );
 			$show_eyebrow   = $hero['show_eyebrow'] ?? true;
 			$show_rating    = $hero['show_rating'] ?? false;
 			$rating_text    = $hero['rating_text'] ?? '';
@@ -4014,7 +4115,9 @@ class AdminPage {
 			<div class="wchs-field">
 				<label>Text Layout</label>
 				<div class="wchs-radios">
-					<label class="wchs-radio"><input type="radio" name="hero_layout" value="left" <?php checked( $hero_layout, 'left' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Left-aligned (default)</span></label>
+					<label class="wchs-radio"><input type="radio" name="hero_layout" value="precision" <?php checked( $hero_layout, 'precision' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Precision — catalog hero (copy left, visual right)</span></label>
+					<label class="wchs-radio"><input type="radio" name="hero_layout" value="left" <?php checked( $hero_layout, 'left' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Left-aligned (WebGL / legacy)</span></label>
+					<label class="wchs-radio"><input type="radio" name="hero_layout" value="split" <?php checked( $hero_layout, 'split' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Split — copy left, image right</span></label>
 					<label class="wchs-radio"><input type="radio" name="hero_layout" value="center" <?php checked( $hero_layout, 'center' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Centered</span></label>
 					<label class="wchs-radio"><input type="radio" name="hero_layout" value="bottom" <?php checked( $hero_layout, 'bottom' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Bottom-anchored</span></label>
 				</div>
@@ -4022,7 +4125,104 @@ class AdminPage {
 			</div></div>
 
 			<div class="wchs-section wchs-section--collapsed">
-			<h2 class="wchs-section__toggle">Content</h2>
+			<h2 class="wchs-section__toggle">Precision hero <?php echo self::hint_icon( 'Used when Layout is Precision. Clean two-column catalog hero with its own copy, trust row, and right visual slot. Headline font and weight come from Typography below.' ); ?></h2>
+			<div class="wchs-section__body">
+			<div class="wchs-field">
+				<label>Badge</label>
+				<input type="text" name="precision_badge" value="<?php echo esc_attr( $precision['badge'] ); ?>" maxlength="120" />
+			</div>
+			<div class="wchs-field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+				<div>
+					<label>Headline (primary line)</label>
+					<input type="text" name="precision_headline_primary" value="<?php echo esc_attr( $precision['headline_primary'] ); ?>" maxlength="120" />
+				</div>
+				<div>
+					<label>Headline (accent line)</label>
+					<input type="text" name="precision_headline_accent" value="<?php echo esc_attr( $precision['headline_accent'] ); ?>" maxlength="80" />
+				</div>
+			</div>
+			<div class="wchs-field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+				<div>
+					<label>Rating label</label>
+					<input type="text" name="precision_rating_label" value="<?php echo esc_attr( $precision['rating_label'] ); ?>" maxlength="40" />
+				</div>
+				<div>
+					<label>Rating subtext</label>
+					<input type="text" name="precision_rating_subtext" value="<?php echo esc_attr( $precision['rating_subtext'] ); ?>" maxlength="80" />
+				</div>
+			</div>
+			<div class="wchs-field" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;">
+				<div>
+					<label>Stat 2 value</label>
+					<input type="text" name="precision_stat_2_value" value="<?php echo esc_attr( $precision['stat_2_value'] ); ?>" maxlength="24" />
+				</div>
+				<div>
+					<label>Stat 2 label</label>
+					<input type="text" name="precision_stat_2_label" value="<?php echo esc_attr( $precision['stat_2_label'] ); ?>" maxlength="60" />
+				</div>
+				<div>
+					<label>Stat 3 value</label>
+					<input type="text" name="precision_stat_3_value" value="<?php echo esc_attr( $precision['stat_3_value'] ); ?>" maxlength="24" />
+				</div>
+				<div>
+					<label>Stat 3 label</label>
+					<input type="text" name="precision_stat_3_label" value="<?php echo esc_attr( $precision['stat_3_label'] ); ?>" maxlength="60" />
+				</div>
+			</div>
+			<div class="wchs-field">
+				<label>Body paragraph</label>
+				<textarea name="precision_body" rows="4" maxlength="600"><?php echo esc_textarea( $precision['body'] ); ?></textarea>
+			</div>
+			<div class="wchs-field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+				<div>
+					<label>Primary CTA text</label>
+					<input type="text" name="precision_cta_primary_text" value="<?php echo esc_attr( $precision['cta_primary_text'] ); ?>" maxlength="40" />
+				</div>
+				<div>
+					<label>Primary CTA link</label>
+					<input type="text" name="precision_cta_primary_link" value="<?php echo esc_attr( $precision['cta_primary_link'] ); ?>" />
+				</div>
+			</div>
+			<div class="wchs-field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+				<div>
+					<label>Secondary CTA text</label>
+					<input type="text" name="precision_cta_secondary_text" value="<?php echo esc_attr( $precision['cta_secondary_text'] ); ?>" maxlength="40" />
+				</div>
+				<div>
+					<label>Secondary CTA link</label>
+					<input type="text" name="precision_cta_secondary_link" value="<?php echo esc_attr( $precision['cta_secondary_link'] ); ?>" />
+				</div>
+			</div>
+			<div class="wchs-field">
+				<label>Visual (desktop) <?php echo self::hint_icon( 'Optional hero graphic for the right column. Leave empty to show the placeholder grid at full size.' ); ?></label>
+				<div class="wchs-media-field">
+					<input type="text" name="precision_image_desktop" value="<?php echo esc_attr( $precision['image_desktop'] ); ?>" class="wchs-media-url" placeholder="No image selected" />
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="<?php echo empty( $precision['image_desktop'] ) ? 'display:none' : ''; ?>">Remove</button>
+				</div>
+				<?php if ( ! empty( $precision['image_desktop'] ) ) : ?>
+					<img class="wchs-media-preview" src="<?php echo esc_url( $precision['image_desktop'] ); ?>" alt="" />
+				<?php else : ?>
+					<img class="wchs-media-preview" src="" alt="" style="display:none" />
+				<?php endif; ?>
+			</div>
+			<div class="wchs-field">
+				<label>Visual (mobile)</label>
+				<div class="wchs-media-field">
+					<input type="text" name="precision_image_mobile" value="<?php echo esc_attr( $precision['image_mobile'] ); ?>" class="wchs-media-url" placeholder="No image selected" />
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="<?php echo empty( $precision['image_mobile'] ) ? 'display:none' : ''; ?>">Remove</button>
+				</div>
+				<?php if ( ! empty( $precision['image_mobile'] ) ) : ?>
+					<img class="wchs-media-preview" src="<?php echo esc_url( $precision['image_mobile'] ); ?>" alt="" />
+				<?php else : ?>
+					<img class="wchs-media-preview" src="" alt="" style="display:none" />
+				<?php endif; ?>
+			</div>
+			</div></div>
+
+			<div class="wchs-section wchs-section--collapsed">
+			<h2 class="wchs-section__toggle">Content (legacy layouts)</h2>
 			<div class="wchs-section__body">
 			<div class="wchs-field">
 				<label class="wchs-toggle">
@@ -4963,24 +5163,27 @@ class AdminPage {
 				<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Hero section</p>
 				<div class="wchs-field wchs-field--full"><label>Hero layout</label>
 					<select data-field="lc_hero_layout">
-						<option value="editorial">Editorial (headline + persona + callout)</option>
+						<option value="editorial">Editorial (headline + trust bar + callout)</option>
 						<option value="split">Split (hero image + copy)</option>
 					</select>
 				</div>
 				<div class="wchs-field wchs-field--full"><label>Headline</label><input type="text" data-field="lc_headline" placeholder="8 Reasons Researchers Choose Alyve…" /></div>
-				<div class="wchs-field wchs-field--full"><label>Persona photo</label>
+				<div class="wchs-field wchs-field--full"><label>Trust bar brand</label><input type="text" data-field="lc_trust_brand" placeholder="Alyve Peptides" /></div>
+				<div class="wchs-field wchs-field--full"><label>Trust bar claims <?php echo self::hint_icon( 'Comma-separated. Each claim shows with a checkmark in the editorial hero.' ); ?></label><input type="text" data-field="lc_trust_items" placeholder="99%+ HPLC Verified, 3rd-Party Tested Every Batch, COA Pre-Purchase" /></div>
+				<p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Hero CTA (editorial layout)</p>
+				<div class="wchs-field wchs-field--full"><label>Hero CTA image</label>
 					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
-						<input type="text" data-field="lc_persona_image" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<input type="text" data-field="lc_hero_cta_image" class="wchs-media-url" placeholder="Vial product image" style="flex:1;min-width:0" />
 						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
 						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
 					</div>
-					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:80px;margin-top:8px;border:1px solid #e0e0e0;border-radius:8px" />
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:120px;margin-top:8px;border:1px solid #e0e0e0;border-radius:8px" />
 				</div>
-				<div class="wchs-field wchs-field--full"><label>Persona photo alt text</label><input type="text" data-field="lc_persona_image_alt" /></div>
-				<div class="wchs-field wchs-field--full"><label>Persona name &amp; title</label><input type="text" data-field="lc_persona_name" placeholder="Jessica H, Biotech CEO" /></div>
-				<div class="wchs-field wchs-field--full"><label>Persona badge</label><input type="text" data-field="lc_persona_badge" placeholder="Verified" /></div>
-				<div class="wchs-field wchs-field--full"><label>Updated label</label><input type="text" data-field="lc_persona_updated" placeholder="UPDATED 2 DAYS AGO" /></div>
-				<div class="wchs-field wchs-field--full"><label>Callout subheadline <?php echo self::hint_icon( 'Highlighted box below the persona row.' ); ?></label><input type="text" data-field="lc_hero_callout" placeholder="READ THIS BEFORE YOU BUY…" /></div>
+				<div class="wchs-field wchs-field--full"><label>Hero CTA image alt text</label><input type="text" data-field="lc_hero_cta_image_alt" placeholder="Alyve research-grade peptide vials" /></div>
+				<div class="wchs-field wchs-field--full"><label>Hero CTA headline</label><input type="text" data-field="lc_hero_cta_headline" placeholder="Up to 40% Off — Verified Batches In Stock" /></div>
+				<div class="wchs-field wchs-field--full"><label>Hero CTA button label</label><input type="text" data-field="lc_hero_cta_label" placeholder="Shop Now — Check Availability" /></div>
+				<div class="wchs-field wchs-field--full"><label>Hero CTA link</label><input type="text" data-field="lc_hero_cta_href" placeholder="/shop" /></div>
+				<div class="wchs-field wchs-field--full"><label>Callout subheadline <?php echo self::hint_icon( 'Highlighted box below the hero CTA.' ); ?></label><input type="text" data-field="lc_hero_callout" placeholder="READ THIS BEFORE YOU BUY…" /></div>
 				<p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Split layout only (image left, copy right)</p>
 				<div class="wchs-field wchs-field--full"><label>Hero image (left column)</label>
 					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
@@ -4997,6 +5200,19 @@ class AdminPage {
 				<div class="wchs-field wchs-field--full"><label>CTA link</label><input type="text" data-field="lc_cta_href" placeholder="/shop" /></div>
 				<p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Points section</p>
 				<div class="wchs-field wchs-field--full"><label>Points section heading</label><input type="text" data-field="lc_items_headline" placeholder="Here is why more research teams…" /></div>
+				<p style="margin:12px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Reason #4 COA embed</p>
+				<div class="wchs-field wchs-field--full">
+					<label>COA thumbnail (optional) <?php echo self::hint_icon( 'Shown inside Reason #4. Leave blank for a styled document preview.' ); ?></label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="lc_coa_embed_image" class="wchs-media-url" placeholder="No image — styled preview used" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:140px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full"><label>COA thumbnail alt text</label><input type="text" data-field="lc_coa_embed_image_alt" placeholder="Sample Certificate of Analysis preview" /></div>
+				<div class="wchs-field wchs-field--full"><label>COA link URL</label><input type="text" data-field="lc_coa_embed_href" placeholder="/coa-library" /></div>
+				<div class="wchs-field wchs-field--full"><label>COA link label</label><input type="text" data-field="lc_coa_embed_link_label" placeholder="View COA Library →" /></div>
 				<div class="wchs-field wchs-field--full"><label>Closing paragraph (optional)</label><textarea rows="3" data-field="lc_closing" data-wysiwyg="1" placeholder="So why have researchers switched…"></textarea></div>
 				<div class="wchs-field wchs-field--full">
 					<label>List points <?php echo self::hint_icon( 'Odd rows: text left, image right. Even rows: image left, text right.' ); ?></label>
@@ -5539,6 +5755,7 @@ class AdminPage {
 					<label>Layout</label>
 					<select data-field="hero_layout">
 						<option value="left">Left-aligned (default)</option>
+						<option value="split">Split — copy left, image right</option>
 						<option value="center">Centered</option>
 						<option value="bottom">Bottom-anchored</option>
 					</select>

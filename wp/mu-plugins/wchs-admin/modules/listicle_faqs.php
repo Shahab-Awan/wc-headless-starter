@@ -17,36 +17,36 @@ return [
 		[
 			'id'      => 'eyebrow',
 			'type'    => 'text',
-			'default' => 'COMMON QUESTIONS',
+			'default' => 'PRODUCT QUESTIONS',
 		],
 		[
 			'id'      => 'headline',
 			'type'    => 'text',
-			'default' => 'What researchers ask before ordering',
+			'default' => 'FAQs by compound',
 		],
 		[
 			'id'      => 'items',
 			'type'    => 'repeater',
 			'default' => [
 				[
-					'q' => 'How much bacteriostatic water do I use to reconstitute?',
-					'a' => '<p>Follow the reconstitution guidance on your product label and COA. A common starting point for research vials is adding the volume of bacteriostatic water (BAC) that yields your target concentration—many protocols use 1–2 mL per vial, but always defer to the compound-specific instructions supplied with the batch.</p>',
+					'q' => 'What purity should I expect from BPC-157 batches?',
+					'a' => '<p>Every BPC-157 batch is third-party tested for identity and purity via HPLC. Published COAs list the exact percentage for the batch tied to your vial — typically ≥99% on recent lots.</p>',
 				],
 				[
-					'q' => 'Are COAs available before I purchase?',
-					'a' => '<p>Yes. Every batch is tested by independent third-party laboratories. Certificates of Analysis confirming purity are published on product pages and available before you add items to cart.</p>',
+					'q' => 'Is the BPC-157 COA available before I order?',
+					'a' => '<p>Yes. Batch-specific Certificates of Analysis are posted on the product page and in our COA library before checkout, so your team can qualify material against protocol requirements in advance.</p>',
 				],
 				[
-					'q' => 'What is your return policy?',
-					'a' => '<p>Unopened products in original packaging may be returned within 30 days of delivery. Opened or reconstituted materials cannot be accepted due to research-use handling requirements. Contact support with your order number to start a return.</p>',
+					'q' => 'How is TB-500 tested before release?',
+					'a' => '<p>TB-500 undergoes independent laboratory testing for purity, identity, and endotoxin. Results are tied to a batch number printed on each vial and documented on the COA shipped with your order.</p>',
 				],
 				[
-					'q' => 'How quickly does the order ship?',
-					'a' => '<p>Orders ship within 1–2 business days from our U.S. facility. You will receive tracking as soon as the carrier scans the package. Free shipping applies on qualifying order totals shown at checkout.</p>',
+					'q' => 'Can I match TB-500 batch numbers to the published COA?',
+					'a' => '<p>Every TB-500 vial label matches the batch identifier on its COA. Search by product name or batch number in the COA library to pull the exact report for the lot you received.</p>',
 				],
 				[
-					'q' => 'What testing methodology do you use to verify purity?',
-					'a' => '<p>Each batch undergoes third-party laboratory testing—including HPLC for purity and identity—with results documented on the COA. We publish methodology summaries and batch numbers so your team can align material qualification with your protocol.</p>',
+					'q' => 'What documentation comes with Ipamorelin orders?',
+					'a' => '<p>Ipamorelin shipments include batch-linked COA PDFs with HPLC purity, identity confirmation, and storage guidance. Research-use labeling and batch traceability are included for lab filing.</p>',
 				],
 			],
 			'item'          => [

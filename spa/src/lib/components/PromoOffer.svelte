@@ -8,11 +8,13 @@
 		resolved,
 		spacing_v = 'normal',
 		spacing_h = 'normal',
+		embedded = false,
 	}: {
 		config: PromoOfferModuleConfig;
 		resolved?: ModuleResolved;
 		spacing_v?: SpacingPreset;
 		spacing_h?: SpacingPreset;
+		embedded?: boolean;
 	} = $props();
 
 	const accentStyle = $derived(
@@ -68,6 +70,7 @@
 
 <section
 	class="promo-offer"
+	class:is-embedded={embedded}
 	class:is-v-compact={spacing_v === 'compact'}
 	class:is-v-spacious={spacing_v === 'spacious'}
 	class:is-h-compact={spacing_h === 'compact'}
@@ -75,7 +78,7 @@
 	style={accentStyle}
 >
 	<div class="promo-offer__wrap">
-		{#if config.intro_subheadline?.trim()}
+		{#if !embedded && config.intro_subheadline?.trim()}
 			<header class="promo-offer__intro">
 				<h2 class="promo-offer__intro-title">{config.intro_subheadline.trim()}</h2>
 			</header>
@@ -89,7 +92,7 @@
 			<div class="promo-offer__split">
 				<div class="promo-offer__media">
 					{#if config.image}
-						<img src={config.image} alt={config.image_alt || ''} loading="lazy" />
+						<img src={config.image} alt={config.image_alt || ''} loading={embedded ? 'eager' : 'lazy'} />
 					{:else}
 						<div class="promo-offer__media-placeholder" aria-hidden="true"></div>
 					{/if}
@@ -116,18 +119,17 @@
 					{#if config.cta_label?.trim() && config.cta_href?.trim()}
 						<a class="promo-offer__cta" href={bridgeAwareHref(config.cta_href.trim())}>
 							{config.cta_label.trim()}
-							<span aria-hidden="true">→</span>
 						</a>
 					{/if}
 
-					{#if config.show_countdown && endMs}
+					{#if !embedded && config.show_countdown && endMs}
 						<p class="promo-offer__countdown">
 							DEAL ENDING IN:
 							<strong class="promo-offer__countdown-digits">{countdownDisplay}</strong>
 						</p>
 					{/if}
 
-					{#if config.status_label?.trim() || config.status_note?.trim()}
+					{#if !embedded && (config.status_label?.trim() || config.status_note?.trim())}
 						<div class="promo-offer__status">
 							{#if config.status_label?.trim()}
 								<span>
@@ -146,7 +148,7 @@
 						</div>
 					{/if}
 
-					{#if config.footer_text?.trim()}
+					{#if !embedded && config.footer_text?.trim()}
 						<p class="promo-offer__footer">{config.footer_text.trim()}</p>
 					{/if}
 				</div>
@@ -179,6 +181,18 @@
 	}
 	.promo-offer.is-h-spacious {
 		--mod-px: 40px;
+	}
+
+	.promo-offer.is-embedded {
+		--mod-pt: 0;
+		--mod-pb: 0;
+		--mod-px: 0;
+		padding: 0;
+		background: transparent;
+	}
+
+	.promo-offer.is-embedded .promo-offer__wrap {
+		max-width: 100%;
 	}
 
 	.promo-offer__wrap {

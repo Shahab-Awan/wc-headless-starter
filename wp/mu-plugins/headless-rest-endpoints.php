@@ -1116,6 +1116,9 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 		if ( function_exists( 'wchs_cro_product_id_from_slug' ) ) {
 			$slide['shipping_protection_product_id'] = wchs_cro_product_id_from_slug( 'shipping-protection' );
 		}
+		if ( function_exists( 'wchs_bac_water_product_id' ) ) {
+			$slide['bac_water_product_id'] = wchs_bac_water_product_id();
+		}
 		if ( function_exists( 'wchs_shipping_protection_tiers' ) ) {
 			$minor = function_exists( 'wc_get_price_decimals' )
 				? pow( 10, (int) wc_get_price_decimals() )

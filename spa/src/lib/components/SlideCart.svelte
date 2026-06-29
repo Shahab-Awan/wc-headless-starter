@@ -11,12 +11,13 @@
 	 */
 	import { cart } from '$lib/wc/cart.svelte';
 	import { pretext } from '$lib/pretext/engine';
-	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	import CartCrossSellStrip from './CartCrossSellStrip.svelte';
+	import CartBacWaterPrompt from './CartBacWaterPrompt.svelte';
+	import CartCheckoutSocialProof from './CartCheckoutSocialProof.svelte';
+	import CartRewardsMilestones from './CartRewardsMilestones.svelte';
 	import { formatPrice } from '$lib/utils/format';
 	import { config } from '$lib/config.svelte';
-	import { FATHERS_DAY_HERO_CONTENT } from '$lib/fathers-day-hero';
 	import type { StoreApiCartItem } from '$lib/wc/cart.svelte';
 	import {
 		shippingProtectionFeeMajor,
@@ -27,10 +28,10 @@
 	let fontsReady = $state(false);
 	let checkouting = $state(false);
 	let shipProtectBusy = $state(false);
-	let shipProtectDeclined = $state(false);
+	let checkoutPlusOn = $state(true);
 
-	const SHIP_PROTECT_DECLINED_KEY = 'wchs_ship_protect_declined';
 	let shipProtectTierTracked = -1;
+	let checkoutPlusTipOpen = $state(false);
 
 	// Flash-on-mutation: when an item's quantity or total changes we
 	// briefly highlight it. Keyed by item.key → timestamp; CSS transition
@@ -82,28 +83,6 @@
 		await goToCheckout();
 	}
 
-	async function continueWithoutShippingProtection() {
-		if (shipProtectBusy || checkouting) return;
-		shipProtectBusy = true;
-		try {
-			if (shipProtectLine) {
-				await cart.removeItem(shipProtectLine.key);
-				shipProtectDeclined = true;
-				if (browser) {
-					try {
-						sessionStorage.setItem(SHIP_PROTECT_DECLINED_KEY, '1');
-					} catch {
-						// Safari private mode / storage quota
-					}
-				}
-			}
-			await cart.fetch().catch(() => {});
-		} finally {
-			shipProtectBusy = false;
-		}
-		await goToCheckout();
-	}
-
 	function resolvedQty(item: (typeof displayCartItems)[number], proposed: number): number {
 		const thresholds = item.extensions?.wchs_cro?.tier_qty_thresholds ?? [];
 		if (!thresholds.length) return Math.max(1, proposed);
@@ -146,12 +125,16 @@
 	}
 
 	// Overload for integer-minor-unit values emitted by the wchs_cro extension.
-	function formatMoneyInt(minorInt: number): string {
-		return formatPrice(minorInt, {
-			currency_minor_unit: cart.currencyMinorUnit,
-			currency_symbol: cart.currencySymbol,
-			currency_code: cart.currencyCode,
-		});
+	function formatMoneyInt(minorInt: number, appendCode = true): string {
+		return formatPrice(
+			minorInt,
+			{
+				currency_minor_unit: cart.currencyMinorUnit,
+				currency_symbol: cart.currencySymbol,
+				currency_code: cart.currencyCode,
+			},
+			appendCode
+		);
 	}
 
 	function toMinorInt(value: unknown): number {
@@ -183,6 +166,10 @@
 		return cart.cart.items.filter((i) => !isShipProtectLine(i));
 	});
 
+	const shipProtectAvailable = $derived(
+		(config.data.pdp?.slide_cart?.shipping_protection_product_id ?? 0) > 0
+	);
+
 	function lineSavingsMinor(item: StoreApiCartItem): number {
 		const cro = item.extensions?.wchs_cro;
 		if (typeof cro?.savings_line_total === 'number' && cro.savings_line_total > 0) {
@@ -199,11 +186,6 @@
 	const cartTotalSavings = $derived.by(() => {
 		return displayCartItems.reduce((sum, item) => sum + lineSavingsMinor(item), 0);
 	});
-
-	const fathersDayMode = $derived(config.data.homepage.fathers_day_mode !== false);
-	const cartSavingsLabel = $derived(
-		fathersDayMode ? FATHERS_DAY_HERO_CONTENT.cartSavingsLabel : 'You saved'
-	);
 
 	const visibleItemCount = $derived(
 		displayCartItems.reduce((n, i) => n + i.quantity, 0)
@@ -243,18 +225,17 @@
 			currency_minor_unit: cart.currencyMinorUnit,
 			currency_symbol: cart.currencySymbol,
 			currency_code: cart.currencyCode
-		});
+		}, false);
 	});
 
 	const checkoutDueLabel = $derived.by(() => {
 		if (checkouting) return 'Loading…';
-		// Button total intentionally excludes shipping so drawer math stays
-		// consistent with the pre-checkout subtotal + Checkout+ fee.
 		const itemsMinor = toMinorInt(cart.cart?.totals?.total_items ?? cart.subtotal);
 		const itemsTaxMinor = toMinorInt(cart.cart?.totals?.total_items_tax);
 		const checkoutDueMinor = Math.max(0, itemsMinor + itemsTaxMinor);
 		const formatted = formatMoney(checkoutDueMinor, cart.currencyMinorUnit, cart.currencySymbol);
-		return `Checkout+ | ${formatted}`;
+		const prefix = checkoutPlusOn ? 'Checkout+' : 'Checkout';
+		return `${prefix} | ${formatted}`;
 	});
 
 	async function addShippingProtection() {
@@ -263,7 +244,7 @@
 		shipProtectBusy = true;
 		try {
 			await cart.addItem(pid, 1, [], {
-				clicked_from: 'slide_cart_ship_protect_auto'
+				clicked_from: 'slide_cart_ship_protect_toggle'
 			});
 			await cart.fetch().catch(() => {});
 		} finally {
@@ -271,21 +252,41 @@
 		}
 	}
 
-	$effect(() => {
-		if (!browser || cart.itemCount === 0) {
-			shipProtectDeclined = false;
-			if (browser) sessionStorage.removeItem(SHIP_PROTECT_DECLINED_KEY);
-			return;
+	async function removeShippingProtection() {
+		if (shipProtectBusy || !shipProtectLine) return;
+		shipProtectBusy = true;
+		try {
+			await cart.removeItem(shipProtectLine.key);
+			await cart.fetch().catch(() => {});
+		} finally {
+			shipProtectBusy = false;
 		}
-		if (sessionStorage.getItem(SHIP_PROTECT_DECLINED_KEY) === '1') {
-			shipProtectDeclined = true;
+	}
+
+	async function setCheckoutPlusOn(on: boolean) {
+		if (shipProtectBusy || checkouting || checkoutPlusOn === on) return;
+		checkoutPlusOn = on;
+		if (on) {
+			await addShippingProtection();
+		} else {
+			await removeShippingProtection();
+		}
+	}
+
+	function toggleCheckoutPlusTip() {
+		checkoutPlusTipOpen = !checkoutPlusTipOpen;
+	}
+
+	$effect(() => {
+		if (cart.itemCount === 0) {
+			checkoutPlusOn = true;
 		}
 	});
 
 	$effect(() => {
-		if (!cart.open || hasShipProtect || shipProtectBusy) return;
-		if (!config.data.pdp?.slide_cart?.shipping_protection_product_id) return;
-		if (displayCartItems.length === 0 || shipProtectDeclined) return;
+		if (!cart.open || !checkoutPlusOn || hasShipProtect || shipProtectBusy) return;
+		if (!shipProtectAvailable) return;
+		if (displayCartItems.length === 0) return;
 		void addShippingProtection();
 	});
 
@@ -343,6 +344,13 @@
 		</button>
 	</header>
 
+	{#if cart.cart && visibleItemCount > 0}
+		<div class="fkcart-social-wrap">
+			<CartCheckoutSocialProof />
+			<CartRewardsMilestones />
+		</div>
+	{/if}
+
 	<div class="fkcart-body" class:has-zero-state={visibleItemCount === 0}>
 		{#if cart.loading && !cart.cart}
 			<p class="fkcart-state">Loading…</p>
@@ -364,7 +372,8 @@
 						(cro?.regular_unit_price ?? Number(item.prices.regular_price)) * item.quantity}
 					{@const lineMinor = cro?.line_total_minor ?? Number(item.totals.line_total)}
 					{@const showCompare = compareMinor > lineMinor}
-					<li class="fkcart-item" class:is-flashing={isFlashing}>
+					{@const isFreeGift = cro?.is_free_bac_gift === true}
+					<li class="fkcart-item" class:is-flashing={isFlashing} class:is-free-gift={isFreeGift}>
 						<div class="fkcart-item__media">
 							{#if item.images[0]}
 								<img
@@ -404,15 +413,22 @@
 								</div>
 
 								<div class="fkcart-item__price-col tabular-nums">
-									{#if showCompare}
-										<span class="fkcart-item__price-was">{formatMoneyInt(compareMinor)}</span>
+									{#if isFreeGift}
+										{#if showCompare}
+											<span class="fkcart-item__price-was">{formatMoneyInt(compareMinor)}</span>
+										{/if}
+										<span class="fkcart-item__price fkcart-item__price--free">FREE</span>
+									{:else}
+										{#if showCompare}
+											<span class="fkcart-item__price-was">{formatMoneyInt(compareMinor)}</span>
+										{/if}
+										<span class="fkcart-item__price">{formatMoneyInt(lineMinor)}</span>
 									{/if}
-									<span class="fkcart-item__price">{formatMoneyInt(lineMinor)}</span>
 								</div>
 							</div>
 
 							<div class="fkcart-item__foot">
-								{#if !item.sold_individually && item.quantity_limits.editable}
+								{#if !isFreeGift && !item.sold_individually && item.quantity_limits.editable}
 									<div class="fkcart-qty" role="group" aria-label="Quantity for {item.name}">
 										<button
 											type="button"
@@ -452,6 +468,8 @@
 					</li>
 				{/each}
 			</ul>
+
+			<CartBacWaterPrompt />
 		{/if}
 	</div>
 
@@ -491,19 +509,14 @@
 	{#if cart.cart && visibleItemCount > 0}
 		<footer class="fkcart-footer">
 			{#if cartTotalSavings > 0}
-				<dl class="fkcart-summary tabular-nums">
-					<div class="fkcart-summary__row fkcart-summary__row--savings">
-						<dt>{cartSavingsLabel}</dt>
-						{#key cartTotalSavings}
-							<dd class="fkcart-summary__value fkcart-summary__value--savings">
-								{formatMoneyInt(cartTotalSavings)}
-							</dd>
-						{/key}
-					</div>
-				</dl>
+				<p class="fkcart-savings tabular-nums">
+					{#key cartTotalSavings}
+						You're saving {formatMoneyInt(cartTotalSavings, false)} vs market retail.
+					{/key}
+				</p>
 			{/if}
 
-			{#if hasShipProtect && displayCartItems.length > 0}
+			{#if shipProtectAvailable && displayCartItems.length > 0}
 				<div class="fkcart-ship-protect" aria-live="polite">
 					<div class="fkcart-ship-protect__icon" aria-hidden="true">
 						<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
@@ -513,10 +526,45 @@
 						</svg>
 					</div>
 					<div class="fkcart-ship-protect__copy">
-						<span class="fkcart-ship-protect__title">Checkout+</span>
+						<div class="fkcart-ship-protect__title-row">
+							<span class="fkcart-ship-protect__title">Checkout+</span>
+							<span class="fkcart-ship-protect__help-wrap" class:is-open={checkoutPlusTipOpen}>
+								<button
+									type="button"
+									class="fkcart-ship-protect__help"
+									aria-label="What is Checkout+?"
+									aria-expanded={checkoutPlusTipOpen}
+									onclick={toggleCheckoutPlusTip}
+								>
+									?
+								</button>
+								<span class="fkcart-ship-protect__tooltip" role="tooltip">
+									<span class="fkcart-ship-protect__tooltip-q">What is Checkout+?</span>
+									<span class="fkcart-ship-protect__tooltip-a"
+										>It covers lost/damaged packages. Free returns within 30 days.</span
+									>
+								</span>
+							</span>
+						</div>
 						<p class="fkcart-ship-protect__desc">Free returns + package protection</p>
 					</div>
-					<span class="fkcart-ship-protect__price tabular-nums">{shipProtectPriceLabel}</span>
+					<div class="fkcart-ship-protect__aside">
+						<button
+							type="button"
+							class="fkcart-ship-protect__toggle"
+							class:is-on={checkoutPlusOn}
+							role="switch"
+							aria-checked={checkoutPlusOn}
+							aria-label="Toggle Checkout+ package protection"
+							disabled={shipProtectBusy || checkouting}
+							onclick={() => void setCheckoutPlusOn(!checkoutPlusOn)}
+						>
+							<span class="fkcart-ship-protect__toggle-track" aria-hidden="true">
+								<span class="fkcart-ship-protect__toggle-thumb"></span>
+							</span>
+						</button>
+						<span class="fkcart-ship-protect__price tabular-nums">{shipProtectPriceLabel}</span>
+					</div>
 				</div>
 			{/if}
 
@@ -529,17 +577,6 @@
 			>
 				{checkoutDueLabel}
 			</a>
-
-			{#if hasShipProtect && displayCartItems.length > 0}
-				<button
-					type="button"
-					class="fkcart-ship-protect__skip"
-					disabled={shipProtectBusy || checkouting}
-					onclick={continueWithoutShippingProtection}
-				>
-					Checkout without free returns &amp; package protection
-				</button>
-			{/if}
 
 			<div class="fkcart-trust" aria-label="Secure checkout">
 				<span class="fkcart-trust__secure">
@@ -768,6 +805,12 @@
 		font-weight: 450;
 		margin-left: 4px;
 	}
+	.fkcart-social-wrap {
+		flex-shrink: 0;
+		min-width: 0;
+		max-width: 100%;
+		padding: 12px 20px 4px;
+	}
 	.fkcart-close {
 		display: inline-flex;
 		align-items: center;
@@ -954,6 +997,15 @@
 		color: var(--fg);
 		letter-spacing: -0.2px;
 	}
+	.fkcart-item__price--free {
+		color: var(--accent);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		font-size: 13px;
+	}
+	.fkcart-item.is-free-gift {
+		background: color-mix(in srgb, var(--accent) 5%, var(--bg));
+	}
 	.fkcart-item__price-was {
 		font-size: 12px;
 		font-weight: 450;
@@ -1046,6 +1098,14 @@
 		margin-top: auto;
 		box-shadow: 0 -6px 20px color-mix(in srgb, var(--fg) 6%, transparent);
 	}
+	.fkcart-savings {
+		margin: 0 0 12px;
+		font-size: 14px;
+		font-weight: 500;
+		line-height: 1.35;
+		text-align: center;
+		color: var(--success, #5ba238);
+	}
 	.fkcart-summary {
 		margin: 0;
 		display: flex;
@@ -1063,14 +1123,6 @@
 	.fkcart-summary__row dd {
 		margin: 0;
 		color: var(--fg);
-		font-weight: 500;
-	}
-	.fkcart-summary__row--savings dt {
-		color: var(--success, #5ba238);
-		font-weight: 500;
-	}
-	.fkcart-summary__row--savings .fkcart-summary__value--savings {
-		color: var(--success, #5ba238);
 		font-weight: 500;
 	}
 	.fkcart-checkout {
@@ -1119,6 +1171,71 @@
 		flex: 1 1 auto;
 		min-width: 0;
 	}
+	.fkcart-ship-protect__title-row {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex-wrap: wrap;
+	}
+	.fkcart-ship-protect__help-wrap {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+	}
+	.fkcart-ship-protect__help {
+		width: 18px;
+		height: 18px;
+		padding: 0;
+		border: 1px solid var(--border);
+		border-radius: 50%;
+		background: transparent;
+		color: var(--fg-muted);
+		font: inherit;
+		font-size: 11px;
+		font-weight: 700;
+		line-height: 1;
+		cursor: pointer;
+	}
+	.fkcart-ship-protect__help:hover,
+	.fkcart-ship-protect__help:focus-visible {
+		border-color: var(--accent);
+		color: var(--accent);
+		outline: none;
+	}
+	.fkcart-ship-protect__tooltip {
+		display: none;
+		position: absolute;
+		left: 50%;
+		bottom: calc(100% + 8px);
+		transform: translateX(-50%);
+		width: max-content;
+		max-width: min(240px, 70vw);
+		padding: 8px 10px;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-sm, 6px);
+		background: var(--bg);
+		color: var(--fg);
+		font-size: 11px;
+		line-height: 1.4;
+		text-align: left;
+		box-shadow: 0 4px 16px color-mix(in srgb, var(--fg) 12%, transparent);
+		z-index: 2;
+		pointer-events: none;
+	}
+	.fkcart-ship-protect__tooltip-q {
+		display: block;
+		font-weight: 600;
+		margin-bottom: 4px;
+	}
+	.fkcart-ship-protect__tooltip-a {
+		display: block;
+		color: var(--fg-muted);
+	}
+	.fkcart-ship-protect__help-wrap:hover .fkcart-ship-protect__tooltip,
+	.fkcart-ship-protect__help-wrap:focus-within .fkcart-ship-protect__tooltip,
+	.fkcart-ship-protect__help-wrap.is-open .fkcart-ship-protect__tooltip {
+		display: block;
+	}
 	.fkcart-ship-protect__title {
 		display: block;
 		font-size: 14px;
@@ -1133,32 +1250,56 @@
 		line-height: 1.35;
 		color: var(--fg-muted);
 	}
+	.fkcart-ship-protect__aside {
+		flex-shrink: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 6px;
+	}
+	.fkcart-ship-protect__toggle {
+		padding: 0;
+		border: 0;
+		background: transparent;
+		cursor: pointer;
+		line-height: 0;
+	}
+	.fkcart-ship-protect__toggle:disabled {
+		opacity: 0.55;
+		cursor: wait;
+	}
+	.fkcart-ship-protect__toggle-track {
+		display: block;
+		width: 40px;
+		height: 22px;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--fg) 18%, var(--border));
+		position: relative;
+		transition: background 150ms var(--ease-out);
+	}
+	.fkcart-ship-protect__toggle.is-on .fkcart-ship-protect__toggle-track {
+		background: var(--accent);
+	}
+	.fkcart-ship-protect__toggle-thumb {
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: 18px;
+		height: 18px;
+		border-radius: 50%;
+		background: var(--bg);
+		box-shadow: 0 1px 2px color-mix(in srgb, var(--fg) 18%, transparent);
+		transition: transform 150ms var(--ease-out);
+	}
+	.fkcart-ship-protect__toggle.is-on .fkcart-ship-protect__toggle-thumb {
+		transform: translateX(18px);
+	}
 	.fkcart-ship-protect__price {
 		flex-shrink: 0;
 		font-size: 14px;
 		font-weight: 600;
 		color: var(--fg);
 		white-space: nowrap;
-	}
-	.fkcart-ship-protect__skip {
-		margin: 0;
-		padding: 0;
-		border: 0;
-		background: none;
-		font: inherit;
-		font-size: 12px;
-		color: var(--fg-muted);
-		text-decoration: underline;
-		text-underline-offset: 2px;
-		cursor: pointer;
-		align-self: center;
-	}
-	.fkcart-ship-protect__skip:hover:not(:disabled) {
-		color: var(--fg);
-	}
-	.fkcart-ship-protect__skip:disabled {
-		opacity: 0.6;
-		cursor: wait;
 	}
 
 	.fkcart-trust {

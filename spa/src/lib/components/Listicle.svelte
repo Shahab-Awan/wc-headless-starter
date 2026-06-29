@@ -3,22 +3,59 @@
 		ListicleItem,
 		ListicleModuleConfig,
 		ModuleResolved,
+		OrderHandlingModuleConfig,
+		PromoOfferModuleConfig,
+		ReviewsListicleModuleConfig,
 		SpacingPreset,
 	} from '$lib/config.svelte';
 	import { bridgeAwareHref } from '$lib/bridge-domain';
 	import { icons as listicleIcons } from '$lib/icons';
+	import PromoOffer from '$lib/components/PromoOffer.svelte';
+	import OrderHandling from '$lib/components/OrderHandling.svelte';
+	import ReviewsListicle from '$lib/components/ReviewsListicle.svelte';
+
+	const MID_PROMO_AFTER_INDEX = 3;
+	const REASON_FOUR_INDEX = 3;
 
 	let {
 		config,
 		resolved,
 		spacing_v = 'normal',
 		spacing_h = 'normal',
+		midPromo,
+		midReviews,
+		tailProcess,
 	}: {
 		config: ListicleModuleConfig;
 		resolved?: ModuleResolved;
 		spacing_v?: SpacingPreset;
 		spacing_h?: SpacingPreset;
+		midPromo?: {
+			config: PromoOfferModuleConfig;
+			resolved?: ModuleResolved;
+			spacing_v?: SpacingPreset;
+			spacing_h?: SpacingPreset;
+			afterIndex?: number;
+		};
+		midReviews?: {
+			config: ReviewsListicleModuleConfig;
+			resolved?: ModuleResolved;
+			spacing_v?: SpacingPreset;
+			spacing_h?: SpacingPreset;
+			afterIndex?: number;
+		};
+		tailProcess?: {
+			config: OrderHandlingModuleConfig;
+			resolved?: ModuleResolved;
+			spacing_v?: SpacingPreset;
+			spacing_h?: SpacingPreset;
+			center_header?: boolean;
+		};
 	} = $props();
+
+	const midBreakAfterIndex = $derived(
+		midPromo?.afterIndex ?? midReviews?.afterIndex ?? MID_PROMO_AFTER_INDEX
+	);
 
 	const accentStyle = $derived(
 		resolved?.accent_color ? `--accent: ${resolved.accent_color};` : ''
@@ -26,11 +63,19 @@
 
 	const EDITORIAL_DEFAULTS = {
 		headline: '8 Reasons Researchers Choose Alyve For their Research Compounds',
-		persona_name: 'Jessica H, Biotech CEO',
-		persona_badge: 'Verified',
-		persona_updated: 'UPDATED 2 DAYS AGO',
+		trust_brand: 'Alyve Peptides',
+		trust_items: [
+			'99%+ HPLC Verified',
+			'3rd-Party Tested Every Batch',
+			'COA Pre-Purchase',
+		],
 		hero_callout:
 			'READ THIS BEFORE YOU BUY RESEARCH COMPOUNDS FROM ANY OTHER COMPANY',
+		hero_cta_image: '/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp',
+		hero_cta_image_alt: 'Alyve research-grade peptide vials',
+		hero_cta_headline: 'Up to 40% Off — Verified Batches In Stock',
+		hero_cta_label: 'Shop Now — Check Availability',
+		hero_cta_href: '/shop',
 	} as const;
 
 	const isEditorialHero = $derived((config.hero_layout ?? 'editorial') === 'editorial');
@@ -39,7 +84,7 @@
 		{
 			icon: 'shipping',
 			headline: 'Domestic Fulfillment, Direct to Your Lab',
-			body: '<p>Every Alyve order is fulfilled through our U.S. operations with an emphasis on transparency and dependable service. From sourcing to shipment, products are carefully handled and prepared under established quality practices to help maintain consistency. No unknown middlemen and no complicated fulfillment chains.</p>',
+			body: '<p>Every Alyve order is fulfilled through our U.S. operations with an emphasis on transparency and dependable service. From sourcing to shipment, products are carefully handled and prepared under established quality practices to help maintain consistency. No unknown middlemen and no complicated fulfillment chains.</p><div class="listicle__highlight-callout"><p>Orders placed before 2PM EST ship same day. Delivered in 2–3 business days via tracked carrier.</p></div>',
 			badges: ['Quality Standards', 'Supply Chain Transparency', 'Direct Fulfillment'],
 		},
 		{
@@ -136,26 +181,72 @@
 	const heroHeadline = $derived(
 		config.headline?.trim() || EDITORIAL_DEFAULTS.headline
 	);
-	const personaName = $derived(
-		config.persona_name?.trim() || EDITORIAL_DEFAULTS.persona_name
+	const trustBrandId = $derived(
+		`listicle-trust-${heroHeadline.replace(/\s+/g, '-').slice(0, 40).toLowerCase()}`
 	);
-	const personaBadge = $derived(
-		config.persona_badge?.trim() || EDITORIAL_DEFAULTS.persona_badge
+
+	const trustBrand = $derived(
+		config.trust_brand?.trim() || EDITORIAL_DEFAULTS.trust_brand
 	);
-	const personaUpdated = $derived(
-		config.persona_updated?.trim() || EDITORIAL_DEFAULTS.persona_updated
-	);
+
+	const trustItems = $derived.by(() => {
+		const saved = (config.trust_items ?? []).map((item) => item.trim()).filter(Boolean);
+		return saved.length ? saved : [...EDITORIAL_DEFAULTS.trust_items];
+	});
+
 	const heroCallout = $derived(
 		config.hero_callout?.trim() || EDITORIAL_DEFAULTS.hero_callout
 	);
+
+	const heroCtaImage = $derived(
+		config.hero_cta_image?.trim() || EDITORIAL_DEFAULTS.hero_cta_image
+	);
+	const heroCtaImageAlt = $derived(
+		config.hero_cta_image_alt?.trim() || EDITORIAL_DEFAULTS.hero_cta_image_alt
+	);
+	const heroCtaHeadline = $derived(
+		config.hero_cta_headline?.trim() || EDITORIAL_DEFAULTS.hero_cta_headline
+	);
+	const heroCtaLabel = $derived(
+		config.hero_cta_label?.trim() || EDITORIAL_DEFAULTS.hero_cta_label
+	);
+	const heroCtaHref = $derived(
+		config.hero_cta_href?.trim() || EDITORIAL_DEFAULTS.hero_cta_href
+	);
+
+	const showHeroMidCta = $derived(
+		isEditorialHero &&
+			Boolean(
+				heroCtaImage ||
+					heroCtaHeadline ||
+					(heroCtaLabel && heroCtaHref)
+			)
+	);
+
+	const heroPromoConfig = $derived.by((): PromoOfferModuleConfig => {
+		const parts = heroCtaHeadline.split('—').map((part) => part.trim()).filter(Boolean);
+		return {
+			badge_text: '',
+			image: heroCtaImage,
+			image_alt: heroCtaImageAlt,
+			ribbon_text: config.hero_cta_ribbon?.trim() || '',
+			offer_primary: parts[0] || heroCtaHeadline,
+			offer_secondary: parts.slice(1).join(' — ') || '',
+			scarcity_text: config.hero_cta_scarcity?.trim() || '',
+			cta_label: heroCtaLabel,
+			cta_href: heroCtaHref,
+			show_countdown: false,
+		};
+	});
 
 	const showEditorialHero = $derived(
 		isEditorialHero &&
 			Boolean(
 				heroHeadline ||
-					personaName ||
-					heroCallout ||
-					config.persona_image?.trim()
+					trustBrand ||
+					trustItems.length ||
+					showHeroMidCta ||
+					heroCallout
 			)
 	);
 
@@ -170,12 +261,6 @@
 			)
 	);
 
-	function pointNumber(item: { number?: string }, index: number): string {
-		const raw = item.number?.trim();
-		if (raw) return raw.padStart(2, '0');
-		return String(index + 1).padStart(2, '0');
-	}
-
 	function reasonLabel(index: number, total: number): string {
 		return `Reason ${String(index + 1).padStart(2, '0')} of ${String(total).padStart(2, '0')}`;
 	}
@@ -185,6 +270,36 @@
 		const saved = item.badges ?? [];
 		if (saved.length >= 3) return saved.slice(0, 3);
 		return [...saved, ...Array(3 - saved.length).fill('')];
+	}
+
+	function coaEmbedVisible(index: number): boolean {
+		return index === REASON_FOUR_INDEX;
+	}
+
+	function coaEmbedImage(): string {
+		return config.coa_embed_image?.trim() || '';
+	}
+
+	function coaEmbedHref(): string {
+		const raw = config.coa_embed_href?.trim();
+		if (!raw) return '/coa-library';
+		return raw;
+	}
+
+	const LEGACY_COA_LINK_LABELS = new Set([
+		'View Sample COA →',
+		'View Sample COA',
+		'View sample COA →',
+	]);
+
+	function coaEmbedLinkLabel(): string {
+		const raw = config.coa_embed_link_label?.trim();
+		if (!raw || LEGACY_COA_LINK_LABELS.has(raw)) return 'View COA Library →';
+		return raw;
+	}
+
+	function coaEmbedImageAlt(): string {
+		return config.coa_embed_image_alt?.trim() || 'Sample Certificate of Analysis preview';
 	}
 </script>
 
@@ -207,40 +322,35 @@
 
 					<h1 class="listicle__editorial-headline">{heroHeadline}</h1>
 
-					{#if personaName || config.persona_image?.trim()}
-						<div class="listicle__persona">
-							<div class="listicle__persona-avatar" aria-hidden={!config.persona_image?.trim()}>
-								{#if config.persona_image?.trim()}
-									<img
-										src={config.persona_image.trim()}
-										alt={config.persona_image_alt?.trim() || personaName}
-										loading="eager"
-									/>
-								{:else}
-									<span class="listicle__persona-placeholder"></span>
-								{/if}
-							</div>
-							<div class="listicle__persona-meta">
-								<div class="listicle__persona-name-row">
-									{#if personaName}
-										<span class="listicle__persona-name">{personaName}</span>
-									{/if}
-									{#if personaBadge}
-										<span class="listicle__persona-badge">
-											<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-												<path
-													fill="currentColor"
-													d="M6.5 12 2 7.5l1.4-1.4L6.5 9.2 12.6 3 14 4.4z"
-												/>
-											</svg>
-											{personaBadge}
-										</span>
-									{/if}
-								</div>
-								{#if personaUpdated}
-									<p class="listicle__persona-updated">{personaUpdated}</p>
-								{/if}
-							</div>
+					{#if trustBrand || trustItems.length}
+						<div class="listicle__trust-bar" aria-labelledby={trustBrand ? `${trustBrandId}-brand` : undefined}>
+							{#if trustBrand}
+								<span class="listicle__trust-brand" id="{trustBrandId}-brand">{trustBrand}</span>
+							{/if}
+							{#each trustItems as item, i}
+								<span class="listicle__trust-sep" aria-hidden="true">·</span>
+								<span class="listicle__trust-item">
+									<svg class="listicle__trust-check" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+										<path
+											fill="currentColor"
+											d="M6.5 12 2 7.5l1.4-1.4L6.5 9.2 12.6 3 14 4.4z"
+										/>
+									</svg>
+									<span>{item}</span>
+								</span>
+							{/each}
+						</div>
+					{/if}
+
+					{#if showHeroMidCta}
+						<div class="listicle__hero-promo">
+							<PromoOffer
+								config={heroPromoConfig}
+								{resolved}
+								embedded
+								spacing_v="compact"
+								spacing_h="compact"
+							/>
 						</div>
 					{/if}
 
@@ -300,8 +410,6 @@
 							class:listicle__row--media-first={i % 2 === 1}
 						>
 							<div class="listicle__copy">
-								<span class="listicle__watermark" aria-hidden="true">{pointNumber(item, i)}</span>
-
 								<div class="listicle__reason-row">
 									{#if item.icon && listicleIcons[item.icon]}
 										<span class="listicle__icon-badge listicle__icon-badge--svg" aria-hidden="true">
@@ -333,6 +441,36 @@
 									<div class="listicle__point-body listicle__prose">{@html item.body}</div>
 								{/if}
 
+								{#if coaEmbedVisible(i)}
+									<figure class="listicle__coa">
+										<a
+											class="listicle__coa-card"
+											href={bridgeAwareHref(coaEmbedHref())}
+										>
+											<span class="listicle__coa-thumb">
+												{#if coaEmbedImage()}
+													<img src={coaEmbedImage()} alt={coaEmbedImageAlt()} loading="lazy" />
+												{:else}
+													<span class="listicle__coa-doc" aria-hidden="true">
+														<span class="listicle__coa-doc-title">Certificate of Analysis</span>
+														<span class="listicle__coa-doc-batch">Batch #AV-2026-0412</span>
+														<ul class="listicle__coa-doc-lines">
+															<li><span>HPLC Purity</span><strong>99.4%</strong></li>
+															<li><span>Identity</span><strong>Pass</strong></li>
+															<li><span>Endotoxin</span><strong>&lt;0.25 EU/mg</strong></li>
+														</ul>
+														<span class="listicle__coa-doc-pass">PASS</span>
+													</span>
+												{/if}
+											</span>
+											<span class="listicle__coa-copy">
+												<span class="listicle__coa-kicker">Sample batch documentation</span>
+												<span class="listicle__coa-link">{coaEmbedLinkLabel()}</span>
+											</span>
+										</a>
+									</figure>
+								{/if}
+
 								<ul class="listicle__badges" aria-label="Highlights">
 									{#each badgeSlots(item) as badge}
 										<li class="listicle__badge" class:is-empty={!badge.trim()}>
@@ -360,7 +498,46 @@
 								{/if}
 							</div>
 						</article>
+						{#if (midPromo || midReviews) && i === midBreakAfterIndex}
+							<div class="listicle__mid-promo">
+								{#if midPromo}
+									<PromoOffer
+										config={midPromo.config}
+										resolved={midPromo.resolved}
+										spacing_v={midPromo.spacing_v ?? 'normal'}
+										spacing_h={midPromo.spacing_h ?? 'normal'}
+									/>
+								{/if}
+								{#if midReviews}
+									<div class="listicle__mid-promo-reviews">
+										<ReviewsListicle
+											config={midReviews.config}
+											resolved={midReviews.resolved}
+											spacing_v={midReviews.spacing_v ?? 'compact'}
+											spacing_h={midReviews.spacing_h ?? 'normal'}
+											variant="product"
+											embedded
+											visibleSlides={3}
+											showHeadline={true}
+										/>
+									</div>
+								{/if}
+							</div>
+						{/if}
 					{/each}
+				</div>
+			{/if}
+
+			{#if tailProcess}
+				<div class="listicle__process">
+					<OrderHandling
+						config={tailProcess.config}
+						resolved={tailProcess.resolved}
+						spacing_v={tailProcess.spacing_v ?? 'normal'}
+						spacing_h={tailProcess.spacing_h ?? 'normal'}
+						center_header={tailProcess.center_header ?? true}
+						embedded
+					/>
 				</div>
 			{/if}
 
@@ -428,6 +605,27 @@
 		width: 100%;
 		margin-left: 0;
 		margin-right: 0;
+		align-items: center;
+		text-align: center;
+	}
+
+	.listicle__hero--editorial .listicle__hero-eyebrow {
+		width: 100%;
+	}
+
+	.listicle__hero--editorial .listicle__editorial-headline {
+		width: 100%;
+	}
+
+	.listicle__hero--editorial .listicle__trust-bar {
+		width: 100%;
+		justify-content: center;
+	}
+
+	.listicle__hero--editorial .listicle__hero-callout {
+		width: 100%;
+		margin-top: 14px;
+		padding: 18px 22px 18px 24px;
 	}
 
 	.listicle__editorial-headline {
@@ -441,79 +639,120 @@
 		text-wrap: balance;
 	}
 
-	.listicle__persona {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		margin-top: 4px;
-	}
-
-	.listicle__persona-avatar {
-		flex-shrink: 0;
-		width: 48px;
-		height: 48px;
-		border-radius: 10px;
-		overflow: hidden;
-		background: var(--bg-muted);
-		border: 1px solid var(--border);
-	}
-
-	.listicle__persona-avatar img {
-		display: block;
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-
-	.listicle__persona-placeholder {
-		display: block;
-		width: 100%;
-		height: 100%;
-		background: color-mix(in srgb, var(--listicle-teal) 14%, var(--bg-muted) 86%);
-	}
-
-	.listicle__persona-meta {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		min-width: 0;
-	}
-
-	.listicle__persona-name-row {
+	.listicle__trust-bar {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 8px;
+		gap: 8px 10px;
+		margin-top: 4px;
+		padding: 12px 16px;
+		border: 1px solid var(--listicle-teal-border);
+		border-radius: 10px;
+		background: var(--listicle-teal-soft);
 	}
 
-	.listicle__persona-name {
-		font-size: 15px;
-		font-weight: 700;
-		line-height: 1.25;
+	.listicle__trust-brand {
+		font-size: 14px;
+		font-weight: 800;
+		line-height: 1.3;
 		color: var(--fg);
+		white-space: nowrap;
 	}
 
-	.listicle__persona-badge {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		padding: 4px 10px 4px 8px;
-		border-radius: 999px;
-		border: 1px solid var(--border);
-		background: var(--bg);
-		font-size: 11px;
+	.listicle__trust-sep {
+		font-size: 16px;
 		font-weight: 700;
 		line-height: 1;
-		color: color-mix(in srgb, var(--fg) 72%, transparent);
+		color: color-mix(in srgb, var(--fg) 36%, transparent);
+		user-select: none;
 	}
 
-	.listicle__persona-updated {
-		margin: 0;
-		font-size: 11px;
-		font-weight: 700;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: color-mix(in srgb, var(--fg) 46%, transparent);
+	.listicle__trust-item {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 1.35;
+		color: color-mix(in srgb, var(--fg) 78%, transparent);
+	}
+
+	.listicle__trust-check {
+		flex-shrink: 0;
+		color: var(--listicle-teal);
+	}
+
+	.listicle__hero-promo {
+		margin: 16px auto 18px;
+		width: 100%;
+		max-width: min(700px, 100%);
+		--po-hero-panel: color-mix(in srgb, var(--listicle-teal) 9%, var(--bg) 91%);
+	}
+
+	.listicle__hero-promo :global(.promo-offer__wrap) {
+		max-width: 100%;
+	}
+
+	.listicle__hero-promo :global(.promo-offer__split) {
+		min-height: 280px;
+		gap: 0;
+		grid-template-columns: 1.08fr 0.92fr;
+		background: var(--po-hero-panel);
+	}
+
+	.listicle__hero-promo :global(.promo-offer__media) {
+		padding: 14px 0 14px 12px;
+		background: transparent;
+	}
+
+	.listicle__hero-promo :global(.promo-offer__media img) {
+		max-height: 240px;
+		width: auto;
+		max-width: 100%;
+	}
+
+	.listicle__hero-promo :global(.promo-offer__copy) {
+		padding: 20px 14px 28px 0;
+		gap: 14px;
+		background: transparent;
+	}
+
+	.listicle__hero-promo :global(.promo-offer__headline) {
+		font-size: clamp(18px, 2.6vw, 24px);
+	}
+
+	.listicle__hero-promo :global(.promo-offer__cta) {
+		padding: 12px 18px;
+	}
+
+	.listicle__mid-promo {
+		margin: clamp(36px, 6vw, 64px) calc(-1 * var(--mod-px, 28px));
+		width: calc(100% + 2 * var(--mod-px, 28px));
+		padding: clamp(28px, 5vw, 48px) var(--mod-px, 28px);
+		background: color-mix(in srgb, var(--listicle-teal) 6%, var(--bg) 94%);
+		box-sizing: border-box;
+	}
+
+	.listicle__mid-promo :global(.promo-offer) {
+		border-radius: 0;
+		padding: 0;
+		background: transparent;
+	}
+
+	.listicle__mid-promo-reviews {
+		margin-top: clamp(24px, 4vw, 36px);
+		padding-top: clamp(20px, 3.5vw, 28px);
+		border-top: 1px dashed color-mix(in srgb, var(--fg) 22%, transparent);
+	}
+
+	.listicle__mid-promo-reviews :global(.reviews-listicle.is-proof),
+	.listicle__mid-promo-reviews :global(.reviews-listicle.is-product) {
+		--rl-max: min(920px, 100%);
+	}
+
+	.listicle__process {
+		margin-top: clamp(36px, 6vw, 64px);
+		width: 100%;
 	}
 
 	.listicle__hero-callout {
@@ -613,11 +852,9 @@
 	}
 
 	.listicle.has-editorial-hero .listicle__items-headline {
-		margin-left: 0;
-		margin-right: 0;
-		max-width: none;
+		width: 100%;
 		padding: 0;
-		text-align: left;
+		text-align: center;
 		font-size: clamp(18px, 4.6vw, 22px);
 		font-weight: 600;
 		line-height: 1.4;
@@ -677,7 +914,6 @@
 	}
 
 	.listicle__copy {
-		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
@@ -687,24 +923,7 @@
 		padding-top: 8px;
 	}
 
-	.listicle__watermark {
-		position: absolute;
-		top: -0.12em;
-		right: 0;
-		font-family: var(--font-heading, var(--font-sans));
-		font-size: clamp(72px, 12vw, 120px);
-		font-weight: 700;
-		line-height: 1;
-		letter-spacing: -0.05em;
-		color: color-mix(in srgb, var(--fg) 8%, transparent);
-		pointer-events: none;
-		user-select: none;
-		z-index: 0;
-	}
-
 	.listicle__reason-row {
-		position: relative;
-		z-index: 1;
 		display: flex;
 		align-items: center;
 		gap: 12px;
@@ -749,8 +968,6 @@
 	}
 
 	.listicle__point-title {
-		position: relative;
-		z-index: 1;
 		margin: 0;
 		max-width: 16ch;
 		font-family: var(--font-heading, var(--font-sans));
@@ -772,8 +989,6 @@
 	}
 
 	.listicle__point-body {
-		position: relative;
-		z-index: 1;
 		max-width: 38rem;
 		margin: 0 0 24px;
 	}
@@ -787,9 +1002,193 @@
 		margin-bottom: 0;
 	}
 
-	.listicle__badges {
+	.listicle__point-body :global(.listicle__highlight-callout) {
+		margin: 18px 0 0;
+		padding: 16px 18px 16px 20px;
+		border-left: 6px solid var(--listicle-teal);
+		border-radius: 0 10px 10px 0;
+		background: var(--listicle-teal-soft);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--listicle-teal) 12%, transparent);
+	}
+
+	.listicle__point-body :global(.listicle__highlight-callout p) {
+		margin: 0;
+		font-size: clamp(14px, 3.8vw, 16px);
+		font-weight: 800;
+		line-height: 1.45;
+		letter-spacing: 0.01em;
+		color: var(--fg);
+		text-wrap: pretty;
+	}
+
+	.listicle__coa {
+		margin: 0 0 24px;
+		max-width: min(100%, 34rem);
+	}
+
+	.listicle__coa-card {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		padding: 12px 14px 12px 12px;
+		border-radius: 12px;
+		border: 1px solid color-mix(in srgb, var(--listicle-teal) 22%, var(--border) 78%);
+		background: color-mix(in srgb, var(--listicle-teal-soft) 65%, var(--bg) 35%);
+		box-shadow: 0 6px 20px color-mix(in srgb, black 5%, transparent);
+		text-decoration: none;
+		transition:
+			border-color 0.15s ease,
+			box-shadow 0.15s ease,
+			transform 0.15s ease;
+	}
+
+	.listicle__coa-card:hover {
+		border-color: color-mix(in srgb, var(--listicle-teal) 42%, var(--border) 58%);
+		box-shadow: 0 10px 28px color-mix(in srgb, var(--listicle-teal) 10%, transparent);
+		transform: translateY(-1px);
+	}
+
+	.listicle__coa-thumb {
+		flex: 0 0 120px;
+		width: 120px;
+		border-radius: 8px;
+		overflow: hidden;
+		border: 1px solid var(--listicle-teal-border);
+		background: var(--bg);
+		box-shadow: 0 4px 14px color-mix(in srgb, black 6%, transparent);
+	}
+
+	.listicle__coa-thumb img {
+		display: block;
+		width: 100%;
+		height: auto;
+	}
+
+	.listicle__coa-doc {
 		position: relative;
-		z-index: 1;
+		display: block;
+		padding: 11px 11px 13px;
+		min-height: 118px;
+		background: linear-gradient(
+			165deg,
+			color-mix(in srgb, var(--bg) 92%, white 8%) 0%,
+			color-mix(in srgb, var(--bg-muted) 70%, var(--bg) 30%) 100%
+		);
+	}
+
+	.listicle__coa-doc-title {
+		display: block;
+		margin: 0 0 4px;
+		padding-right: 2.75rem;
+		font-size: 9px;
+		font-weight: 800;
+		line-height: 1.35;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: color-mix(in srgb, var(--fg) 72%, transparent);
+	}
+
+	.listicle__coa-doc-batch {
+		display: block;
+		margin: 0 0 9px;
+		font-size: 10px;
+		font-weight: 600;
+		color: var(--fg-muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.listicle__coa-doc-lines {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 5px;
+	}
+
+	.listicle__coa-doc-lines li {
+		display: flex;
+		justify-content: space-between;
+		gap: 6px;
+		font-size: 9px;
+		line-height: 1.35;
+		color: var(--fg-muted);
+		border-bottom: 1px dashed color-mix(in srgb, var(--border) 80%, transparent);
+		padding-bottom: 4px;
+	}
+
+	.listicle__coa-doc-lines strong {
+		font-weight: 700;
+		color: var(--fg);
+	}
+
+	.listicle__coa-doc-pass {
+		position: absolute;
+		top: 9px;
+		right: 9px;
+		padding: 2px 7px;
+		border-radius: 999px;
+		font-size: 8px;
+		font-weight: 800;
+		letter-spacing: 0.06em;
+		color: hsl(152 55% 28%);
+		background: hsl(152 48% 92%);
+	}
+
+	.listicle__coa-copy {
+		display: flex;
+		flex-direction: column;
+		gap: 5px;
+		min-width: 0;
+		flex: 1;
+	}
+
+	.listicle__coa-kicker {
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: color-mix(in srgb, var(--fg) 48%, transparent);
+	}
+
+	.listicle__coa-link {
+		font-size: 14px;
+		font-weight: 700;
+		line-height: 1.35;
+		color: var(--listicle-teal);
+	}
+
+	@media (max-width: 520px) {
+		.listicle__coa-card {
+			align-items: flex-start;
+			padding: 12px;
+		}
+
+		.listicle__coa-thumb {
+			flex: 0 0 112px;
+			width: 112px;
+		}
+	}
+
+	@media (max-width: 380px) {
+		.listicle__coa-card {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 12px;
+		}
+
+		.listicle__coa-thumb {
+			flex: none;
+			width: min(100%, 200px);
+			align-self: center;
+		}
+
+		.listicle__coa-copy {
+			text-align: center;
+			align-items: center;
+		}
+	}
+
+	.listicle__badges {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 10px;
@@ -830,8 +1229,6 @@
 	}
 
 	.listicle__callout {
-		position: relative;
-		z-index: 1;
 		width: 100%;
 		max-width: 36rem;
 		margin: 20px 0 0;
@@ -905,6 +1302,83 @@
 	@media (max-width: 640px) {
 		.listicle.has-editorial-hero {
 			--mod-px: 14px;
+		}
+
+		.listicle__hero--editorial {
+			gap: 10px;
+		}
+
+		.listicle__editorial-headline {
+			font-size: clamp(24px, 6.4vw, 34px);
+		}
+
+		.listicle__hero-promo {
+			margin: 8px auto 14px;
+		}
+
+		.listicle__hero-promo :global(.promo-offer__split) {
+			min-height: 0;
+			grid-template-columns: 1fr;
+			background: var(--po-hero-panel);
+		}
+
+		.listicle__hero-promo :global(.promo-offer__media) {
+			min-height: 0;
+			max-height: 200px;
+			padding: 14px 14px 10px;
+			background: transparent;
+		}
+
+		.listicle__hero-promo :global(.promo-offer__media img) {
+			max-height: 168px;
+		}
+
+		.listicle__hero-promo :global(.promo-offer__copy) {
+			padding: 10px 16px 22px;
+			gap: 12px;
+			background: transparent;
+		}
+
+		.listicle__hero--editorial .listicle__hero-callout {
+			margin-top: 18px;
+			padding: 16px 18px 18px 20px;
+		}
+
+		.listicle__hero-promo :global(.promo-offer__headline) {
+			font-size: clamp(17px, 4.8vw, 21px);
+		}
+
+		.listicle__hero-promo :global(.promo-offer__scarcity) {
+			font-size: 12px;
+			line-height: 1.45;
+		}
+
+		.listicle__trust-bar {
+			flex-direction: row;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 4px 6px;
+			margin-top: 0;
+			padding: 10px 12px;
+		}
+
+		.listicle__trust-brand {
+			flex: 1 1 100%;
+		}
+
+		.listicle__trust-sep {
+			display: inline;
+			font-size: 13px;
+		}
+
+		.listicle__trust-item {
+			font-size: 11px;
+			gap: 4px;
+		}
+
+		.listicle__trust-check {
+			width: 12px;
+			height: 12px;
 		}
 	}
 
@@ -993,10 +1467,6 @@
 		.listicle__row--media-first .listicle__copy {
 			order: 1;
 			width: 100%;
-		}
-
-		.listicle__watermark {
-			font-size: clamp(56px, 18vw, 88px);
 		}
 
 		.listicle__point-title {

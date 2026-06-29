@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { CategoryGridModuleConfig, SpacingPreset } from '$lib/config.svelte';
+	import { decodeHtmlEntities } from '$lib/utils/text';
 
 	let { config, spacing_v = 'normal', spacing_h = 'normal', center_header = false }: {
 		config: CategoryGridModuleConfig;
@@ -39,7 +40,12 @@
 		try {
 			const res = await fetch('/wp-json/wc/store/v1/products/categories?per_page=50');
 			if (res.ok) {
-				categories = await res.json();
+				const rows: WcCategory[] = await res.json();
+				categories = rows.map((cat) => ({
+					...cat,
+					name: decodeHtmlEntities(cat.name),
+					description: cat.description ? decodeHtmlEntities(cat.description) : cat.description,
+				}));
 			}
 		} catch { /* non-critical */ }
 	});

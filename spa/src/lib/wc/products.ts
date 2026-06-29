@@ -1,5 +1,6 @@
 import { request } from './store-api';
-import { config, isCatalogHiddenProduct, SHIPPING_PROTECTION_SLUG } from '$lib/config.svelte';
+import { BAC_WATER_SLUG, config, isCatalogHiddenProduct, SHIPPING_PROTECTION_SLUG } from '$lib/config.svelte';
+import { decodeHtmlEntities } from '$lib/utils/text';
 import { canPurchase } from './stock';
 
 /** Drop shipping protection from shop/catalog product list responses. */
@@ -48,6 +49,31 @@ export type WchsCroProduct = {
 };
 
 export type StoreProductCategory = { id: number; name: string; slug: string };
+
+function normalizeCategoryName<T extends { name: string }>(row: T): T {
+	const name = decodeHtmlEntities(row.name);
+	return name === row.name ? row : { ...row, name };
+}
+
+function normalizeStoreCategory(cat: StoreCategory): StoreCategory {
+	return {
+		...normalizeCategoryName(cat),
+		...(cat.description !== undefined
+			? { description: decodeHtmlEntities(cat.description) }
+			: {}),
+	};
+}
+
+function normalizeProduct(product: StoreProduct): StoreProduct {
+	const categories = product.categories?.map((c) => normalizeCategoryName(c));
+	const tags = product.tags?.map((t) => normalizeCategoryName(t));
+	if (categories === product.categories && tags === product.tags) return product;
+	return {
+		...product,
+		...(categories ? { categories } : {}),
+		...(tags ? { tags } : {}),
+	};
+}
 
 export type StoreProduct = {
 	id: number;
@@ -121,7 +147,7 @@ export type ProductListParams = {
 
 export async function listProducts(params: ProductListParams = {}): Promise<StoreProduct[]> {
 	const rows = await request<StoreProduct[]>('/products', { query: params });
-	return filterCatalogProducts(rows);
+	return filterCatalogProducts(rows).map(normalizeProduct);
 }
 
 export type StoreCategory = {
@@ -136,14 +162,15 @@ export type StoreCategory = {
 export async function listCategories(opts?: { parent?: number }): Promise<StoreCategory[]> {
 	const query: Record<string, string | number> = { per_page: 100, orderby: 'name', order: 'asc' };
 	if (opts?.parent !== undefined) query.parent = opts.parent;
-	return request<StoreCategory[]>('/products/categories', { query });
+	const rows = await request<StoreCategory[]>('/products/categories', { query });
+	return rows.map(normalizeStoreCategory);
 }
 
 export async function getProduct(slug: string): Promise<StoreProduct | null> {
 	const results = await request<StoreProduct[]>('/products', { query: { slug } });
 	const product = results[0] ?? null;
 	if (product && isCatalogHiddenProduct(product.id, product.slug)) return null;
-	return product;
+	return product ? normalizeProduct(product) : null;
 }
 
 /** Hidden ancillary products (shipping protection, etc.) — not filtered from catalog rules. */
@@ -166,6 +193,18 @@ export async function getShippingProtectionProduct(): Promise<StoreProduct | nul
 	return getAncillaryProductBySlug(SHIPPING_PROTECTION_SLUG);
 }
 
+export async function getBacWaterProduct(): Promise<StoreProduct | null> {
+	const id = config.data.pdp?.slide_cart?.bac_water_product_id;
+	if (id && id > 0) {
+		const rows = await request<StoreProduct[]>('/products', {
+			query: { include: String(id), per_page: 1 }
+		});
+		const product = rows[0] ?? null;
+		if (product?.is_purchasable) return product;
+	}
+	return getAncillaryProductBySlug(BAC_WATER_SLUG);
+}
+
 /**
  * Fetch a set of products by ID. Used to render cross-sell strips where
  * we have an `extensions.wchs_cro.cross_sell_ids` list but need the full
@@ -176,7 +215,7 @@ export async function getProductsByIds(ids: number[]): Promise<StoreProduct[]> {
 	const rows = await request<StoreProduct[]>('/products', {
 		query: { include: ids.join(','), per_page: ids.length }
 	});
-	return filterCatalogProducts(rows);
+	return filterCatalogProducts(rows).map(normalizeProduct);
 }
 
 /**

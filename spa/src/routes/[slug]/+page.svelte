@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { config, isModuleVisibleNow } from '$lib/config.svelte';
+	import { config, isModuleVisibleNow, type HomepageModule } from '$lib/config.svelte';
 	import { auth } from '$lib/wc/auth.svelte';
 	import AccessGate from '$lib/components/AccessGate.svelte';
 	import Hero from '$lib/components/Hero.svelte';
@@ -40,6 +40,35 @@
 	const isWhyAlyvePage = $derived((page.params.slug ?? '').replace(/\/$/, '') === 'why-alyve');
 
 	const whyAlyveStickyCta = $derived(isWhyAlyvePage ? getWhyAlyveCta(config.data.pages) : null);
+
+	const whyAlyveMidPromoModule = $derived.by((): (HomepageModule & { type: 'promo_offer' }) | null => {
+		if (!isWhyAlyvePage || !pageData?.modules) return null;
+		const mod = pageData.modules.find((m) => m.type === 'promo_offer' && isModuleVisibleNow(m));
+		return mod?.type === 'promo_offer' ? mod : null;
+	});
+
+	const whyAlyveReviewsModule = $derived.by((): (HomepageModule & { type: 'reviews_listicle' }) | null => {
+		if (!isWhyAlyvePage || !pageData?.modules) return null;
+		const mod = pageData.modules.find((m) => m.type === 'reviews_listicle' && isModuleVisibleNow(m));
+		return mod?.type === 'reviews_listicle' ? mod : null;
+	});
+
+	const whyAlyveProcessModule = $derived.by((): (HomepageModule & { type: 'order_handling' }) | null => {
+		if (!isWhyAlyvePage || !pageData?.modules) return null;
+		const mod = pageData.modules.find((m) => m.type === 'order_handling' && isModuleVisibleNow(m));
+		return mod?.type === 'order_handling' ? mod : null;
+	});
+
+	const visiblePageModules = $derived(
+		(pageData?.modules ?? []).filter(
+			(m) =>
+				isModuleVisibleNow(m) &&
+				!(
+					isWhyAlyvePage &&
+					(m.type === 'promo_offer' || m.type === 'reviews_listicle' || m.type === 'order_handling')
+				)
+		)
+	);
 
 	// Derive a description from the first text/gallery/trust module if
 	// available; fall back to generic.
@@ -125,7 +154,7 @@
 			<h1 class="content-page__title">{pageData.title}</h1>
 		{/if}
 
-		{#each pageData.modules.filter(isModuleVisibleNow) as mod}
+		{#each visiblePageModules as mod}
 			<div class="wchs-mod-wrap" data-module-type={mod.type} data-module-id={mod.id ?? ''} style="display: contents">
 				{#if mod.type === 'product_slider'}
 					<HomepageProductSlider config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
@@ -138,12 +167,55 @@
 				{:else if mod.type === 'trust_bar'}
 					<TrustBar config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} resolved={mod.resolved} />
 				{:else if mod.type === 'listicle'}
-					<Listicle config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
+					<Listicle
+						config={mod.config}
+						resolved={mod.resolved}
+						spacing_v={mod.spacing_v || 'normal'}
+						spacing_h={mod.spacing_h || 'normal'}
+						midPromo={whyAlyveMidPromoModule
+							? {
+									config: whyAlyveMidPromoModule.config,
+									resolved: whyAlyveMidPromoModule.resolved,
+									spacing_v: whyAlyveMidPromoModule.spacing_v || 'normal',
+									spacing_h: whyAlyveMidPromoModule.spacing_h || 'normal',
+									afterIndex: 3,
+								}
+							: undefined}
+						midReviews={whyAlyveReviewsModule
+							? {
+									config: whyAlyveReviewsModule.config,
+									resolved: whyAlyveReviewsModule.resolved,
+									spacing_v: whyAlyveReviewsModule.spacing_v || 'normal',
+									spacing_h: whyAlyveReviewsModule.spacing_h || 'normal',
+									afterIndex: 3,
+								}
+							: undefined}
+						tailProcess={whyAlyveProcessModule
+							? {
+									config: whyAlyveProcessModule.config,
+									resolved: whyAlyveProcessModule.resolved,
+									spacing_v: whyAlyveProcessModule.spacing_v || 'normal',
+									spacing_h: whyAlyveProcessModule.spacing_h || 'normal',
+									center_header: whyAlyveProcessModule.center_header ?? true,
+								}
+							: undefined}
+					/>
 				{:else if mod.type === 'promo_offer'}
 					<PromoOffer config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 				{:else if mod.type === 'reviews_listicle'}
 					<ReviewsListicle config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 				{:else if mod.type === 'listicle_faqs'}
+					{#if isWhyAlyvePage && whyAlyveReviewsModule && (whyAlyveReviewsModule.config.proof_items?.length ?? 0) > 0}
+						<ReviewsListicle
+							config={whyAlyveReviewsModule.config}
+							resolved={whyAlyveReviewsModule.resolved}
+							spacing_v={whyAlyveReviewsModule.spacing_v || 'normal'}
+							spacing_h={whyAlyveReviewsModule.spacing_h || 'normal'}
+							variant="proof"
+							visibleSlides={3}
+							showHeadline={true}
+						/>
+					{/if}
 					<ListicleFaqs config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 				{:else if mod.type === 'text_block'}
 					<TextBlock config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
@@ -231,6 +303,12 @@
 		.content-page--listicle > :global(section.reviews-listicle) {
 			--rl-max: min(1180px, 100%);
 		}
+
+		.content-page--listicle > :global(section.reviews-listicle.is-proof),
+		.content-page--listicle > :global(section.reviews-listicle.is-product),
+		.content-page--listicle > :global(section.reviews-listicle.is-marquee) {
+			--rl-max: min(1120px, calc(100% - 48px));
+		}
 		.content-page--listicle > :global(section.listicle-faqs) {
 			--lf-max: min(980px, 100%);
 		}
@@ -255,10 +333,28 @@
 			--wchs-page-section-half: 24px;
 			--wchs-page-section-bottom: 48px;
 		}
+
+		.content-page--listicle > :global(section:first-child) {
+			--mod-pt: 8px;
+		}
 	}
 
 	.content-page--why-alyve {
 		padding-bottom: var(--wchs-page-section-bottom, 72px);
+	}
+
+	/* Section headings — match Why Alyve comparison title; skip listicle H1 + reason titles */
+	.content-page--why-alyve :global(.reviews-listicle__headline),
+	.content-page--why-alyve :global(.listicle-faqs__headline),
+	.content-page--why-alyve :global(.compare__headline),
+	.content-page--why-alyve :global(.compare__title) {
+		text-align: center;
+	}
+
+	.content-page--why-alyve :global(.reviews-listicle__subheadline) {
+		text-align: center;
+		max-width: 42ch;
+		margin-inline: auto;
 	}
 	@media (max-width: 639px) {
 		.content-page--why-alyve {

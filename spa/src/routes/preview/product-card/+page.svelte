@@ -29,14 +29,14 @@
 	});
 
 	const productDefault = {
-		id: 1001, name: 'Baseline Product', slug: 'baseline', permalink: '#',
+		id: 1001, name: 'Baseline Product 5mg', slug: 'baseline', permalink: '#',
 		images: [{ src: IMG_A, thumbnail: IMG_A, alt: 'Baseline' }],
 		prices: prices('2499'),
 		is_in_stock: true,
 	};
 
 	const productSale = {
-		id: 1002, name: 'Sale Item', slug: 'sale', permalink: '#',
+		id: 1002, name: 'Sale Item 10mg', slug: 'sale', permalink: '#',
 		images: [{ src: IMG_B, thumbnail: IMG_B, alt: 'Sale' }],
 		prices: { ...prices('1999'), regular_price: '2999' },
 		is_in_stock: true,
@@ -62,10 +62,11 @@
 		is_in_stock: true,
 		attributes: [{
 			name: 'Size',
+			has_variations: true,
 			terms: [
-				{ id: 1, name: 'Small', slug: 'small' },
-				{ id: 2, name: 'Medium', slug: 'medium' },
-				{ id: 3, name: 'Large', slug: 'large' },
+				{ id: 1, name: '5mg', slug: '5mg' },
+				{ id: 2, name: '10mg', slug: '10mg' },
+				{ id: 3, name: '20mg', slug: '20mg' },
 			],
 		}],
 		variations: [
@@ -76,14 +77,14 @@
 	};
 
 	const productOOS = {
-		id: 1005, name: 'Out of Stock Example', slug: 'oos', permalink: '#',
+		id: 1005, name: 'Out of Stock Example 5mg', slug: 'oos', permalink: '#',
 		images: [{ src: IMG_E, thumbnail: IMG_E, alt: 'OOS' }],
 		prices: prices('8999'),
 		is_in_stock: false,
 	};
 
 	const productSecondary = {
-		id: 1006, name: 'Has Hover-swap Image', slug: 'secondary', permalink: '#',
+		id: 1006, name: 'Has Hover-swap Image 10mg', slug: 'secondary', permalink: '#',
 		images: [
 			{ src: IMG_F, thumbnail: IMG_F, alt: 'Primary' },
 			{ src: IMG_A, thumbnail: IMG_A, alt: 'Secondary' },

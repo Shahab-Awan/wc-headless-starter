@@ -14,12 +14,14 @@
 		spacing_v = 'normal',
 		spacing_h = 'normal',
 		center_header = true,
+		embedded = false,
 	}: {
 		config: OrderHandlingModuleConfig;
 		resolved?: ModuleResolved;
 		spacing_v?: SpacingPreset;
 		spacing_h?: SpacingPreset;
 		center_header?: boolean;
+		embedded?: boolean;
 	} = $props();
 
 	function normVariant(raw: string): StepVariant {
@@ -60,11 +62,13 @@
 	const headline = $derived(config.headline?.trim() || '');
 	const sub = $derived(config.subheadline?.trim() || '');
 	const metricsTitle = $derived(config.metrics_title?.trim() || 'Quality Metrics');
+	const showHead = $derived(Boolean(badge || headline || sub));
 </script>
 
 {#if steps.length}
 	<section
 		class="oh"
+		class:is-embedded={embedded}
 		class:is-v-compact={spacing_v === 'compact'}
 		class:is-v-spacious={spacing_v === 'spacious'}
 		class:is-h-compact={spacing_h === 'compact'}
@@ -73,17 +77,19 @@
 		style={sectionStyle}
 		aria-label={headline || 'Order handling'}
 	>
-		<header class="oh__head">
-			{#if badge}
-				<p class="oh__badge">{badge}</p>
-			{/if}
-			{#if headline}
-				<h2 class="oh__title wchs-section-heading">{headline}</h2>
-			{/if}
-			{#if sub}
-				<p class="oh__sub">{sub}</p>
-			{/if}
-		</header>
+		{#if showHead}
+			<header class="oh__head">
+				{#if badge}
+					<p class="oh__badge">{badge}</p>
+				{/if}
+				{#if headline}
+					<h2 class="oh__title wchs-section-heading">{headline}</h2>
+				{/if}
+				{#if sub}
+					<p class="oh__sub">{sub}</p>
+				{/if}
+			</header>
+		{/if}
 
 		<div class="oh__flow">
 			{#each steps as step, i (step.headline)}
@@ -175,6 +181,15 @@
 	.oh.is-h-spacious {
 		--mod-max-w: 920px;
 		--mod-px: 40px;
+	}
+
+	.oh.is-embedded {
+		--mod-pt: clamp(32px, 5vw, 48px);
+		--mod-pb: 0;
+		max-width: none;
+		margin: 0;
+		padding-left: 0;
+		padding-right: 0;
 	}
 
 	.oh__head {

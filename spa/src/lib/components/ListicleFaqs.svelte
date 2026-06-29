@@ -52,7 +52,7 @@
 					<p class="listicle-faqs__eyebrow">{config.eyebrow.trim()}</p>
 				{/if}
 				{#if headline}
-					<h2 class="listicle-faqs__headline">{headline}</h2>
+					<h2 class="listicle-faqs__headline wchs-section-heading">{headline}</h2>
 				{/if}
 			</header>
 
@@ -126,13 +126,7 @@
 	}
 
 	.listicle-faqs__headline {
-		margin: 0;
-		font-family: var(--font-heading, var(--font-sans));
-		font-size: clamp(24px, 3.5vw, 34px);
-		font-weight: var(--heading-weight, 700);
-		line-height: 1.15;
-		letter-spacing: -0.02em;
-		color: var(--fg);
+		text-align: center;
 	}
 
 	.listicle-faqs__list {

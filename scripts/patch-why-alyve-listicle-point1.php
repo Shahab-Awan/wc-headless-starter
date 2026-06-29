@@ -14,7 +14,7 @@ if ( ! is_array( $cfg['pages'] ?? null ) ) {
 $point_one = [
 	'icon'     => 'shipping',
 	'headline' => 'Domestic Fulfillment, Direct to Your Lab',
-	'body'     => '<p>Every Alyve order is fulfilled through our U.S. operations with an emphasis on transparency and dependable service. From sourcing to shipment, products are carefully handled and prepared under established quality practices to help maintain consistency. No unknown middlemen and no complicated fulfillment chains.</p>',
+	'body'     => '<p>Every Alyve order is fulfilled through our U.S. operations with an emphasis on transparency and dependable service. From sourcing to shipment, products are carefully handled and prepared under established quality practices to help maintain consistency. No unknown middlemen and no complicated fulfillment chains.</p><div class="listicle__highlight-callout"><p>Orders placed before 2PM EST ship same day. Delivered in 2–3 business days via tracked carrier.</p></div>',
 	'badges'   => [ 'Quality Standards', 'Supply Chain Transparency', 'Direct Fulfillment' ],
 ];
 
@@ -53,12 +53,24 @@ foreach ( $cfg['pages'] as $pi => $page ) {
 			$config['headline'] = '8 Reasons Researchers Choose Alyve For their Research Compounds';
 		}
 
-		$config['hero_layout']      = 'editorial';
-		$config['persona_name']   = 'Jessica H, Biotech CEO';
-		$config['persona_badge']    = 'Verified';
-		$config['persona_updated']  = 'UPDATED 2 DAYS AGO';
-		$config['hero_callout']     = 'READ THIS BEFORE YOU BUY RESEARCH COMPOUNDS FROM ANY OTHER COMPANY';
-		$config['intro']            = '';
+		$config['hero_layout']   = 'editorial';
+		$config['trust_brand']   = 'Alyve Peptides';
+		$config['trust_items']    = [
+			'99%+ HPLC Verified',
+			'3rd-Party Tested Every Batch',
+			'COA Pre-Purchase',
+		];
+		unset( $config['persona_name'], $config['persona_image'], $config['persona_image_alt'], $config['persona_badge'], $config['persona_updated'] );
+		$config['hero_callout']         = 'READ THIS BEFORE YOU BUY RESEARCH COMPOUNDS FROM ANY OTHER COMPANY';
+		$config['hero_cta_image']       = '/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp';
+		$config['hero_cta_image_alt']   = 'Alyve research-grade peptide vials';
+		$config['hero_cta_headline']    = 'Up to 40% Off — Verified Batches In Stock';
+		$config['hero_cta_label']       = 'Shop Now — Check Availability';
+		$config['hero_cta_href']        = '/shop';
+		$config['intro']                = '';
+		$config['coa_embed_href']       = '/coa-library';
+		$config['coa_embed_link_label'] = 'View COA Library →';
+		$config['coa_embed_image_alt']  = 'Sample Certificate of Analysis preview';
 
 		$config['items']                   = $items;
 		$modules[ $mi ]['config']          = $config;

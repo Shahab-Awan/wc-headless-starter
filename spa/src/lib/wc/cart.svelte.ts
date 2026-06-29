@@ -48,6 +48,7 @@ export type WchsCroCartItem = {
 	active_bundle_min_qty?: number;
 	cross_sell_ids: number[];
 	is_shipping_protection?: boolean;
+	is_free_bac_gift?: boolean;
 	fee_minor?: number;
 };
 
@@ -57,10 +58,21 @@ export type WchsCroShippingProtection = {
 	tiers?: { up_to: number | null; fee: number }[];
 };
 
+export type WchsCroCartRewards = {
+	subtotal_minor: number;
+	shipping_threshold_minor: number;
+	bac_water_threshold_minor: number;
+	track_max_minor: number;
+	shipping_unlocked: boolean;
+	bac_water_unlocked: boolean;
+	bac_water_product_id: number;
+};
+
 export type WchsCroCartTop = {
 	total_savings: number;
 	cross_sell_ids: number[];
 	shipping_protection?: WchsCroShippingProtection;
+	rewards?: WchsCroCartRewards;
 };
 
 export type StoreApiCartItem = {
