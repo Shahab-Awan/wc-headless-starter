@@ -5230,8 +5230,8 @@ class AdminPage {
 							<input type="text" data-field="lc_item_headline" placeholder="Headline for this point" />
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Body</label>
 							<textarea rows="4" data-field="lc_item_body" placeholder="Supporting copy" data-wysiwyg="1"></textarea>
-							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Pill badges <?php echo self::hint_icon( 'Comma-separated, e.g. GMP Conditions, Full Traceability, No Repackaging. Leave empty for dot-only placeholders.' ); ?></label>
-							<input type="text" data-field="lc_item_badges" placeholder="Badge one, Badge two, Badge three" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Pill badge <?php echo self::hint_icon( 'One pill per reason, e.g. GMP Conditions or Quality Standards.' ); ?></label>
+							<input type="text" data-field="lc_item_badges" placeholder="e.g. Quality Standards" />
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Callout box (optional)</label>
 							<textarea rows="3" data-field="lc_item_callout" placeholder="Highlighted summary line…" data-wysiwyg="1"></textarea>
 							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Image</label>

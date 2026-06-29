@@ -1211,6 +1211,23 @@ function wchs_enrich_why_alyve_listicle_config( array $cfg ): array {
 			'COA Pre-Purchase',
 		];
 	}
+	if ( is_array( $cfg['items'] ?? null ) ) {
+		foreach ( $cfg['items'] as $i => $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+			$badges = is_array( $item['badges'] ?? null ) ? $item['badges'] : [];
+			$first  = '';
+			foreach ( $badges as $badge ) {
+				$t = trim( (string) $badge );
+				if ( $t !== '' ) {
+					$first = $t;
+					break;
+				}
+			}
+			$cfg['items'][ $i ]['badges'] = $first !== '' ? [ $first ] : [];
+		}
+	}
 	return $cfg;
 }
 

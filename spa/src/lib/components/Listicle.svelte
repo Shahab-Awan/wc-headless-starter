@@ -85,7 +85,7 @@
 			icon: 'shipping',
 			headline: 'Domestic Fulfillment, Direct to Your Lab',
 			body: '<p>Every Alyve order is fulfilled through our U.S. operations with an emphasis on transparency and dependable service. From sourcing to shipment, products are carefully handled and prepared under established quality practices to help maintain consistency. No unknown middlemen and no complicated fulfillment chains.</p><div class="listicle__highlight-callout"><p>Orders placed before 2PM EST ship same day. Delivered in 2–3 business days via tracked carrier.</p></div>',
-			badges: ['Quality Standards', 'Supply Chain Transparency', 'Direct Fulfillment'],
+			badges: ['Quality Standards'],
 		},
 		{
 			icon: 'lab',
@@ -265,11 +265,11 @@
 		return `Reason ${String(index + 1).padStart(2, '0')} of ${String(total).padStart(2, '0')}`;
 	}
 
-	/** Always show three pill slots — empty text renders dot-only placeholders. */
+	/** One pill per reason — first non-empty badge only. */
 	function badgeSlots(item: ListicleItem): string[] {
 		const saved = item.badges ?? [];
-		if (saved.length >= 3) return saved.slice(0, 3);
-		return [...saved, ...Array(3 - saved.length).fill('')];
+		const first = saved.map((b) => b.trim()).find(Boolean);
+		return first ? [first] : [];
 	}
 
 	function coaEmbedVisible(index: number): boolean {
@@ -471,16 +471,16 @@
 									</figure>
 								{/if}
 
-								<ul class="listicle__badges" aria-label="Highlights">
-									{#each badgeSlots(item) as badge}
-										<li class="listicle__badge" class:is-empty={!badge.trim()}>
-											<span class="listicle__badge-dot" aria-hidden="true"></span>
-											{#if badge.trim()}
-												<span class="listicle__badge-text">{badge.trim()}</span>
-											{/if}
-										</li>
-									{/each}
-								</ul>
+								{#if badgeSlots(item).length}
+									<ul class="listicle__badges" aria-label="Highlights">
+										{#each badgeSlots(item) as badge}
+											<li class="listicle__badge">
+												<span class="listicle__badge-dot" aria-hidden="true"></span>
+												<span class="listicle__badge-text">{badge}</span>
+											</li>
+										{/each}
+									</ul>
+								{/if}
 
 								{#if item.callout?.trim()}
 									<aside class="listicle__callout listicle__prose">{@html item.callout}</aside>
@@ -1159,13 +1159,17 @@
 
 	@media (max-width: 520px) {
 		.listicle__coa-card {
-			align-items: flex-start;
+			align-items: center;
 			padding: 12px;
 		}
 
 		.listicle__coa-thumb {
 			flex: 0 0 112px;
 			width: 112px;
+		}
+
+		.listicle__coa-copy {
+			justify-content: center;
 		}
 	}
 
@@ -1206,10 +1210,6 @@
 		border-radius: 999px;
 		border: 1px solid var(--listicle-teal-border);
 		background: var(--listicle-teal-soft);
-	}
-	.listicle__badge.is-empty {
-		min-width: 52px;
-		padding-right: 16px;
 	}
 
 	.listicle__badge-dot {

@@ -127,7 +127,7 @@ return [
 					'icon'     => 'shipping',
 					'headline' => 'Domestic Fulfillment, Direct to Your Lab',
 					'body'     => '<p>Every Alyve order is fulfilled through our U.S. operations with an emphasis on transparency and dependable service. From sourcing to shipment, products are carefully handled and prepared under established quality practices to help maintain consistency. No unknown middlemen and no complicated fulfillment chains.</p><div class="listicle__highlight-callout"><p>Orders placed before 2PM EST ship same day. Delivered in 2–3 business days via tracked carrier.</p></div>',
-					'badges'   => [ 'Quality Standards', 'Supply Chain Transparency', 'Direct Fulfillment' ],
+					'badges'   => [ 'Quality Standards' ],
 				],
 				[
 					'icon'     => 'lab',
