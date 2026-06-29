@@ -14,7 +14,7 @@ return [
 	],
 	'fields'   => [
 		[ 'id' => 'title',       'type' => 'text',    'default' => '' ],
-		[ 'id' => 'icon_accent', 'type' => 'boolean', 'default' => false ],
+		[ 'id' => 'icon_accent', 'type' => 'boolean', 'default' => true ],
 		[
 			'id'      => 'items',
 			'type'    => 'repeater',

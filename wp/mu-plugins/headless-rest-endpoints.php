@@ -1183,31 +1183,11 @@ function wchs_homepage_trust_bar_defaults(): array {
 }
 
 function wchs_enrich_trust_bar_config( array $cfg ): array {
-	$items = is_array( $cfg['items'] ?? null ) ? $cfg['items'] : [];
-	$valid = array_values(
-		array_filter(
-			$items,
-			static function ( $item ) {
-				return is_array( $item ) && trim( (string) ( $item['headline'] ?? '' ) ) !== '';
-			}
-		)
-	);
-	if ( empty( $valid ) ) {
-		$cfg['items'] = wchs_homepage_trust_bar_defaults();
-	} else {
-		$first_desc = (string) ( $valid[0]['description'] ?? '' );
-		$first_head = (string) ( $valid[0]['headline'] ?? '' );
-		$is_legacy  = str_contains( $first_desc, 'inflated reseller markups' )
-			|| $first_head === '1 Vial 3 Tests'
-			|| str_contains( $first_desc, 'same business day' );
-		if ( $is_legacy ) {
-			$cfg['items'] = wchs_homepage_trust_bar_defaults();
-		}
-	}
-	if ( ! isset( $cfg['icon_accent'] ) ) {
-		$cfg['icon_accent'] = true;
-	}
-	return $cfg;
+	return [
+		'title'       => '',
+		'icon_accent' => true,
+		'items'       => wchs_homepage_trust_bar_defaults(),
+	];
 }
 
 function wchs_enrich_why_alyve_listicle_config( array $cfg ): array {
@@ -1318,8 +1298,10 @@ function wchs_enrich_homepage_modules( array $modules ): array {
 		if ( ! is_array( $mod ) || ( $mod['type'] ?? '' ) !== 'trust_bar' ) {
 			continue;
 		}
-		$cfg = is_array( $mod['config'] ?? null ) ? $mod['config'] : [];
-		$modules[ $i ]['config'] = wchs_enrich_trust_bar_config( $cfg );
+		$modules[ $i ]['config']     = wchs_enrich_trust_bar_config( [] );
+		$modules[ $i ]['spacing_v']  = 'compact';
+		$modules[ $i ]['spacing_h']  = $modules[ $i ]['spacing_h'] ?? 'normal';
+		$modules[ $i ]['visibility'] = $modules[ $i ]['visibility'] ?? 'all';
 	}
 	return $modules;
 }

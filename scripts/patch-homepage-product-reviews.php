@@ -124,12 +124,8 @@ foreach ( $modules as $i => $mod ) {
 	}
 	$type = $mod['type'] ?? '';
 	if ( 'trust_bar' === $type ) {
-		$modules[ $i ]['config'] = array_merge(
-			is_array( $mod['config'] ?? null ) ? $mod['config'] : [],
-			$trust_bar['config']
-		);
-		$modules[ $i ]['spacing_v'] = 'compact';
-		$has_trust                  = true;
+		$modules[ $i ] = $trust_bar;
+		$has_trust     = true;
 	}
 	if ( 'reviews_listicle' === $type ) {
 		$modules[ $i ]['config']        = array_merge(
@@ -198,6 +194,19 @@ if ( ! $has_faqs ) {
 	} else {
 		$modules[] = $insert;
 	}
+}
+
+$tb_idx = null;
+foreach ( $modules as $i => $mod ) {
+	if ( is_array( $mod ) && ( $mod['type'] ?? '' ) === 'trust_bar' ) {
+		$tb_idx = $i;
+		break;
+	}
+}
+if ( null !== $tb_idx && $tb_idx > 0 ) {
+	$tb = $modules[ $tb_idx ];
+	array_splice( $modules, $tb_idx, 1 );
+	array_unshift( $modules, $tb );
 }
 
 $homepage['modules'] = \WCHS\Admin\SchemaSanitizer::sanitize_modules( $modules, 'homepage' );

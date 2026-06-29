@@ -415,8 +415,8 @@
 			grid-template-columns: 1fr;
 			grid-template-areas:
 				'lead'
-				'visual'
-				'rest';
+				'rest'
+				'visual';
 			row-gap: clamp(24px, 6vw, 36px);
 			align-items: stretch;
 		}

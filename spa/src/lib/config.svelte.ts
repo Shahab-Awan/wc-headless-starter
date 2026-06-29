@@ -1324,6 +1324,24 @@ function legacyTrustBarInsertIndex(modules: HomepageModule[]): number {
 	return sliderIdx >= 0 ? sliderIdx : 0;
 }
 
+function mergeHomepageTrustBar(modules: HomepageModule[]): HomepageModule[] {
+	const seed = DEFAULTS.homepage.modules.find((m) => m.type === 'trust_bar');
+	if (!seed || seed.type !== 'trust_bar') return modules;
+	return modules.map((m) => {
+		if (m.type !== 'trust_bar') return m;
+		return {
+			...m,
+			spacing_v: 'compact',
+			config: {
+				...seed.config,
+				title: '',
+				icon_accent: true,
+				items: seed.config.items.map((item) => ({ ...item })),
+			},
+		};
+	});
+}
+
 function mergeHomepageModulesWithDefaultSplitValue(modules: HomepageModule[]): HomepageModule[] {
 	const list = Array.isArray(modules) ? [...modules] : [];
 	if (
@@ -1452,8 +1470,10 @@ function mergeFetchedHomepage(incoming: HomepageConfig | undefined): HomepageCon
 				...(rawHero.precision ?? {}),
 			},
 		},
-		modules: mergeHomepageModulesWithDefaultOrderHandling(
-			mergeHomepageModulesWithDefaultSplitValue(rawModules)
+		modules: mergeHomepageTrustBar(
+			mergeHomepageModulesWithDefaultOrderHandling(
+				mergeHomepageModulesWithDefaultSplitValue(rawModules)
+			)
 		),
 	};
 }

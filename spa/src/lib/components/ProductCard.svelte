@@ -369,15 +369,18 @@
 			left: 50%;
 			right: auto;
 			transform: translate(-50%, -50%);
-			padding: 5px 12px 6px;
+			padding: 5px 18px 6px;
 			border-radius: var(--card-button-radius, 14px);
 			border: 2px solid var(--bg);
 			background: var(--accent);
 			color: var(--accent-fg, #fff);
 			font-size: 9px;
 			font-weight: 700;
-			letter-spacing: 0.08em;
+			letter-spacing: 0.06em;
 			line-height: 1.2;
+			white-space: nowrap;
+			width: max-content;
+			max-width: calc(100% - 12px);
 			z-index: 2;
 		}
 	}

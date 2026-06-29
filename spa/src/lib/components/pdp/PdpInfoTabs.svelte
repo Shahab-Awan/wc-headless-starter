@@ -1,10 +1,6 @@
 <script lang="ts">
 	import { config } from '$lib/config.svelte';
-	import {
-		coaDownloadFilename,
-		downloadCoaFile,
-		resolveCoaDownloadUrl,
-	} from '$lib/wc/coa';
+	import { resolveCoaDownloadUrl } from '$lib/wc/coa';
 	import type { PdpFeatureItem } from '$lib/config.svelte';
 	import type { StoreProduct, WchsCoaMetric, WchsCroProduct } from '$lib/wc/products';
 
@@ -63,7 +59,6 @@
 	});
 
 	let activeTab = $state<TabId>('overview');
-	let downloading = $state(false);
 
 	$effect(() => {
 		product.id;
@@ -93,21 +88,6 @@
 
 	function metricShortLabel(label: string): string {
 		return label.replace(/^(HPLC|LC-MS|RP-HPLC)\s+/i, '').trim() || label;
-	}
-
-	async function handleViewCoa() {
-		if (!coaUrl || downloading) return;
-		downloading = true;
-		try {
-			await downloadCoaFile(
-				coaUrl,
-				coaDownloadFilename(product.slug, batch, coaUrl)
-			);
-		} catch {
-			window.open(coaUrl, '_blank', 'noopener,noreferrer');
-		} finally {
-			downloading = false;
-		}
 	}
 </script>
 
@@ -259,15 +239,14 @@
 						</div>
 						<div class="pdp-coa-card__action">
 							{#if coaUrl}
-								<button
-									type="button"
+								<a
 									class="pdp-coa-card__view"
-									onclick={handleViewCoa}
-									disabled={downloading}
-									aria-busy={downloading}
+									href={coaUrl}
+									target="_blank"
+									rel="noopener noreferrer"
 								>
-									{downloading ? 'Opening…' : 'View COA'}
-								</button>
+									View COA
+								</a>
 							{:else}
 								<button type="button" class="pdp-coa-card__view" disabled>
 									View COA
@@ -692,6 +671,7 @@
 		font: inherit;
 		font-size: 14px;
 		font-weight: 700;
+		text-decoration: none;
 		cursor: pointer;
 		transition: opacity var(--dur-fast) var(--ease);
 	}
