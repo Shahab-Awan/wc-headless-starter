@@ -73,6 +73,11 @@
 
 	const docMetrics = $derived(metrics.slice(0, 3));
 
+	const coaThumbnail = $derived(section?.thumbnail?.trim() || '');
+	const coaThumbnailAlt = $derived(
+		section?.thumbnail_alt?.trim() || 'Certificate of Analysis preview'
+	);
+
 	const coaSubtitle = $derived.by(() => {
 		const lot = batch ? `Lot ${batch}` : '';
 		if (product.name && lot) return `${product.name} • ${lot}`;
@@ -218,24 +223,33 @@
 					{/if}
 
 					<div class="pdp-coa-card__footer">
-						<div class="pdp-coa-card__thumb" aria-hidden="true">
-							<span class="pdp-coa-card__thumb-doc">
-								<span class="pdp-coa-card__thumb-title">Certificate of Analysis</span>
-								{#if batch}
-									<span class="pdp-coa-card__thumb-batch">Batch #{batch}</span>
-								{/if}
-								{#if docMetrics.length}
-									<ul class="pdp-coa-card__thumb-lines">
-										{#each docMetrics as row}
-											<li>
-												<span>{metricShortLabel(row.label)}</span>
-												<strong>{row.value}</strong>
-											</li>
-										{/each}
-									</ul>
-								{/if}
-								<span class="pdp-coa-card__thumb-pass">PASS</span>
-							</span>
+						<div class="pdp-coa-card__thumb" aria-hidden={!!coaThumbnail}>
+							{#if coaThumbnail}
+								<img
+									class="pdp-coa-card__thumb-img"
+									src={coaThumbnail}
+									alt={coaThumbnailAlt}
+									loading="lazy"
+								/>
+							{:else}
+								<span class="pdp-coa-card__thumb-doc">
+									<span class="pdp-coa-card__thumb-title">Certificate of Analysis</span>
+									{#if batch}
+										<span class="pdp-coa-card__thumb-batch">Batch #{batch}</span>
+									{/if}
+									{#if docMetrics.length}
+										<ul class="pdp-coa-card__thumb-lines">
+											{#each docMetrics as row}
+												<li>
+													<span>{metricShortLabel(row.label)}</span>
+													<strong>{row.value}</strong>
+												</li>
+											{/each}
+										</ul>
+									{/if}
+									<span class="pdp-coa-card__thumb-pass">PASS</span>
+								</span>
+							{/if}
 						</div>
 						<div class="pdp-coa-card__action">
 							{#if coaUrl}
@@ -564,6 +578,15 @@
 		border: 1px solid var(--coa-border);
 		background: var(--bg);
 		box-shadow: 0 4px 12px color-mix(in srgb, var(--fg) 6%, transparent);
+	}
+
+	.pdp-coa-card__thumb-img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		min-height: 108px;
+		object-fit: cover;
+		object-position: top center;
 	}
 
 	@media (max-width: 420px) {

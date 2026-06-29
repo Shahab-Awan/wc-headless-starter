@@ -629,6 +629,8 @@ class AdminPage {
 				'title'           => 'Certificate of Analysis',
 				'subtitle'        => 'Every batch independently verified by third-party laboratories.',
 				'disclaimer'      => 'Certificates of Analysis are provided for informational purposes. Results apply to the specific batch tested. Products are sold for research use only.',
+				'thumbnail'       => '',
+				'thumbnail_alt'   => 'Certificate of Analysis preview',
 				'default_lab'     => 'Analytical Laboratories Inc.',
 				'default_metrics' => [
 					[ 'label' => 'HPLC Purity', 'value' => '≥99.4%' ],
@@ -645,6 +647,10 @@ class AdminPage {
 			return $defaults;
 		}
 		$config = wp_parse_args( $saved, $defaults );
+		if ( is_array( $defaults['coa_section'] ?? null ) ) {
+			$saved_coa = is_array( $config['coa_section'] ?? null ) ? $config['coa_section'] : [];
+			$config['coa_section'] = array_merge( $defaults['coa_section'], $saved_coa );
+		}
 		if ( function_exists( 'wchs_cro_bogo_repair_presets' ) ) {
 			$raw_presets = is_array( $config['bundle_bogo']['presets'] ?? null )
 				? $config['bundle_bogo']['presets']
@@ -2031,6 +2037,14 @@ class AdminPage {
 		if ( ! is_array( $existing ) ) {
 			$existing = [];
 		}
+		$existing_coa = is_array( $existing['coa_section'] ?? null ) ? $existing['coa_section'] : [];
+		$coa_section  = array_merge(
+			$existing_coa,
+			[
+				'thumbnail'     => esc_url_raw( wp_unslash( $_POST['pdp_coa_thumbnail'] ?? '' ) ),
+				'thumbnail_alt' => sanitize_text_field( wp_unslash( $_POST['pdp_coa_thumbnail_alt'] ?? '' ) ),
+			]
+		);
 		update_option(
 			self::PDP_OPTION,
 			array_merge(
@@ -2039,6 +2053,7 @@ class AdminPage {
 					'show_reviews'    => ! empty( $_POST['pdp_show_reviews'] ),
 					'cross_sell_mode' => $xsell_mode,
 					'modules'         => $modules,
+					'coa_section'     => $coa_section,
 					'slide_cart'      => [
 						'cross_sell_exclude_product_ids' => $exclude_ids,
 						'cross_sell_exclude_slugs'       => array_values(
@@ -4666,6 +4681,9 @@ class AdminPage {
 		$modules      = $config['modules'] ?? [];
 		$show_reviews = $config['show_reviews'] ?? true;
 		$slide_cart   = is_array( $config['slide_cart'] ?? null ) ? $config['slide_cart'] : [];
+		$coa_section  = is_array( $config['coa_section'] ?? null ) ? $config['coa_section'] : [];
+		$coa_thumbnail = (string) ( $coa_section['thumbnail'] ?? '' );
+		$coa_thumbnail_alt = (string) ( $coa_section['thumbnail_alt'] ?? 'Certificate of Analysis preview' );
 		$exclude_ids  = array_values(
 			array_unique(
 				array_filter( array_map( 'intval', (array) ( $slide_cart['cross_sell_exclude_product_ids'] ?? [] ) ) )
@@ -4722,6 +4740,22 @@ class AdminPage {
 						</li>
 						<?php endforeach; ?>
 					</ul>
+				</div>
+			</div>
+
+			<h2>COA section <?php echo self::hint_icon( 'Product page COA tab — generic thumbnail used on every PDP. Leave blank for the built-in document preview.' ); ?></h2>
+			<div class="wchs-grid" style="max-width:640px">
+				<div class="wchs-field wchs-field--full">
+					<label>COA thumbnail</label>
+					<div class="wchs-media-field">
+						<input type="text" name="pdp_coa_thumbnail" value="<?php echo esc_attr( $coa_thumbnail ); ?>" class="wchs-media-url" placeholder="No image — styled preview used" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="<?php echo $coa_thumbnail === '' ? 'display:none' : ''; ?>">Remove</button>
+					</div>
+				</div>
+				<div class="wchs-field wchs-field--full">
+					<label>COA thumbnail alt text</label>
+					<input type="text" name="pdp_coa_thumbnail_alt" value="<?php echo esc_attr( $coa_thumbnail_alt ); ?>" placeholder="Certificate of Analysis preview" />
 				</div>
 			</div>
 

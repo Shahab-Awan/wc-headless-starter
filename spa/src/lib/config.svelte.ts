@@ -568,6 +568,9 @@ export type PdpCoaSectionConfig = {
 	title?: string;
 	subtitle?: string;
 	disclaimer?: string;
+	/** Site-wide COA preview image for the PDP COA tab card. */
+	thumbnail?: string;
+	thumbnail_alt?: string;
 	default_batch?: string;
 	default_lab?: string;
 	default_metrics?: PdpCoaMetric[];
@@ -1229,6 +1232,8 @@ const DEFAULTS: SiteConfig = {
 			subtitle: 'Every batch independently verified by third-party laboratories.',
 			disclaimer:
 				'Certificates of Analysis are provided for informational purposes. Results apply to the specific batch tested. Products are sold for research use only.',
+			thumbnail: '',
+			thumbnail_alt: 'Certificate of Analysis preview',
 			default_lab: 'Analytical Laboratories Inc.',
 			default_metrics: [
 				{ label: 'HPLC Purity', value: '≥99.4%' },
@@ -1448,6 +1453,10 @@ function mergeFetchedPdp(incoming: PdpConfig | undefined): PdpConfig {
 				...base.slide_cart?.rewards,
 				...slide.rewards,
 			},
+		},
+		coa_section: {
+			...base.coa_section,
+			...pdp.coa_section,
 		},
 	};
 }
