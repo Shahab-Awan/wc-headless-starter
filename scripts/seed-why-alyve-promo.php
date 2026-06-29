@@ -236,6 +236,49 @@ foreach ( $cfg['pages'] as $i => $page ) {
 		$modules[] = $listicle_faqs_defaults;
 	}
 
+	$process_defaults = [
+		'type'          => 'order_handling',
+		'visibility'    => 'all',
+		'spacing_v'     => 'normal',
+		'spacing_h'     => 'normal',
+		'center_header' => true,
+		'config'        => [
+			'badge_text'    => '',
+			'headline'      => 'Order Process',
+			'subheadline'   => '',
+			'bg_color'      => '',
+			'steps'         => [
+				[
+					'variant'     => 'verified',
+					'headline'    => 'Browse & Verify',
+					'description' => 'Browse the catalog. Every product has a downloadable COA. Verify purity before you buy.',
+				],
+				[
+					'variant'     => 'lab',
+					'headline'    => 'Order — Discount Auto-Applied',
+					'description' => 'Add to cart. Your discount applies automatically at checkout. No code needed.',
+				],
+				[
+					'variant'     => 'shipping',
+					'headline'    => 'Fast-Track Fulfillment',
+					'description' => 'Orders before 2PM EST ship same day. Tracked, discreet, 2-3 business days.',
+				],
+			],
+			'metrics_title' => '',
+			'metrics'       => [],
+		],
+	];
+	$has_process = false;
+	foreach ( $modules as $m ) {
+		if ( ( $m['type'] ?? '' ) === 'order_handling' ) {
+			$has_process = true;
+			break;
+		}
+	}
+	if ( ! $has_process ) {
+		$modules[] = $process_defaults;
+	}
+
 	$cfg['pages'][ $i ]['modules'] = \WCHS\Admin\SchemaSanitizer::sanitize_modules( $modules, 'pages' );
 	break;
 }

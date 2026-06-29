@@ -21,22 +21,22 @@ $trust_bar = [
 			[
 				'icon'        => 'percent',
 				'headline'    => 'Price Below Market',
-				'description' => 'Research-grade pricing without inflated reseller markups.',
+				'description' => 'Research-grade peptides at verified pricing — no grey-market markups.',
 			],
 			[
 				'icon'        => 'lab',
-				'headline'    => '1 Vial 3 Tests',
-				'description' => 'Purity, identity, and endotoxin verification on every batch.',
+				'headline'    => '1 Vial · 3 Tests',
+				'description' => 'Purity, identity, and endotoxin testing on every batch before release.',
 			],
 			[
-				'icon'        => 'check',
+				'icon'        => 'shield',
 				'headline'    => 'COA Before Purchase',
-				'description' => 'Batch documentation published before you add to cart.',
+				'description' => 'Full Certificate of Analysis published for every batch before you order.',
 			],
 			[
 				'icon'        => 'shipping',
 				'headline'    => 'Same-Day US Fulfillment',
-				'description' => 'Orders placed before 2PM EST ship the same business day.',
+				'description' => 'Orders placed before 2PM EST ship same day via tracked domestic carrier.',
 			],
 		],
 	],

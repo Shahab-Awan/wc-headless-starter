@@ -104,7 +104,11 @@
 					</div>
 				{/if}
 				<article class="oh-card oh-card--{step.variant}">
-					<span class="oh-card__num" aria-hidden="true">{step.step}</span>
+					{#if embedded}
+						<p class="oh-card__step-tag">STEP {step.step} —</p>
+					{:else}
+						<span class="oh-card__num" aria-hidden="true">{step.step}</span>
+					{/if}
 					<div class="oh-card__icon" aria-hidden="true">
 						{#if step.iconUrl}
 							<img class="oh-card__icon-img" src={step.iconUrl} alt="" />
@@ -296,6 +300,15 @@
 		font-weight: 700;
 		color: var(--fg-muted);
 		background: var(--bg-muted);
+	}
+
+	.oh-card__step-tag {
+		margin: 0 0 10px;
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--oh-accent);
 	}
 
 	.oh-card__icon {

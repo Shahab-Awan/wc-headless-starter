@@ -29,6 +29,7 @@
 	import SEO from '$lib/components/SEO.svelte';
 	import { getWhyAlyveCta } from '$lib/why-alyve-cta';
 	import { mergeWhyAlyveReviewsConfig } from '$lib/why-alyve-reviews';
+	import { mergeWhyAlyveProcessConfig } from '$lib/why-alyve-process';
 
 	const pageData = $derived(
 		config.data.pages?.find(p => p.slug === (page.params.slug ?? '')) ?? null
@@ -77,7 +78,28 @@
 	const whyAlyveProcessModule = $derived.by((): (HomepageModule & { type: 'order_handling' }) | null => {
 		if (!isWhyAlyvePage || !pageData?.modules) return null;
 		const mod = pageData.modules.find((m) => m.type === 'order_handling' && isModuleVisibleNow(m));
-		return mod?.type === 'order_handling' ? mod : null;
+		const hiddenProcess = pageData.modules.some(
+			(m) => m.type === 'order_handling' && !isModuleVisibleNow(m),
+		);
+		if (hiddenProcess) return null;
+		const mergedConfig = mergeWhyAlyveProcessConfig(
+			mod?.type === 'order_handling' ? mod.config : null,
+		);
+		if (mod?.type === 'order_handling') {
+			return { ...mod, config: mergedConfig };
+		}
+		const hasListicle = pageData.modules.some(
+			(m) => m.type === 'listicle' && isModuleVisibleNow(m),
+		);
+		if (!hasListicle) return null;
+		return {
+			type: 'order_handling',
+			visibility: 'all',
+			spacing_v: 'normal',
+			spacing_h: 'normal',
+			center_header: true,
+			config: mergedConfig,
+		};
 	});
 
 	const visiblePageModules = $derived(

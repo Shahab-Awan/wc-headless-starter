@@ -1157,14 +1157,188 @@ function wchs_enrich_reviews_listicle_config( array $cfg, bool $why_alyve = fals
 	return $cfg;
 }
 
-function wchs_enrich_page_modules( array $modules, string $page_slug ): array {
-	$why_alyve = $page_slug === 'why-alyve';
+function wchs_homepage_trust_bar_defaults(): array {
+	return [
+		[
+			'icon'        => 'percent',
+			'headline'    => 'Price Below Market',
+			'description' => 'Research-grade peptides at verified pricing — no grey-market markups.',
+		],
+		[
+			'icon'        => 'lab',
+			'headline'    => '1 Vial · 3 Tests',
+			'description' => 'Purity, identity, and endotoxin testing on every batch before release.',
+		],
+		[
+			'icon'        => 'shield',
+			'headline'    => 'COA Before Purchase',
+			'description' => 'Full Certificate of Analysis published for every batch before you order.',
+		],
+		[
+			'icon'        => 'shipping',
+			'headline'    => 'Same-Day US Fulfillment',
+			'description' => 'Orders placed before 2PM EST ship same day via tracked domestic carrier.',
+		],
+	];
+}
+
+function wchs_enrich_trust_bar_config( array $cfg ): array {
+	$items = is_array( $cfg['items'] ?? null ) ? $cfg['items'] : [];
+	$valid = array_values(
+		array_filter(
+			$items,
+			static function ( $item ) {
+				return is_array( $item ) && trim( (string) ( $item['headline'] ?? '' ) ) !== '';
+			}
+		)
+	);
+	if ( empty( $valid ) ) {
+		$cfg['items'] = wchs_homepage_trust_bar_defaults();
+	} else {
+		$first_desc = (string) ( $valid[0]['description'] ?? '' );
+		$first_head = (string) ( $valid[0]['headline'] ?? '' );
+		$is_legacy  = str_contains( $first_desc, 'inflated reseller markups' )
+			|| $first_head === '1 Vial 3 Tests'
+			|| str_contains( $first_desc, 'same business day' );
+		if ( $is_legacy ) {
+			$cfg['items'] = wchs_homepage_trust_bar_defaults();
+		}
+	}
+	if ( ! isset( $cfg['icon_accent'] ) ) {
+		$cfg['icon_accent'] = true;
+	}
+	return $cfg;
+}
+
+function wchs_enrich_why_alyve_listicle_config( array $cfg ): array {
+	unset( $cfg['trust_pillars'] );
+	if ( trim( (string) ( $cfg['trust_brand'] ?? '' ) ) === '' ) {
+		$cfg['trust_brand'] = 'Alyve Peptides';
+	}
+	$trust_items = is_array( $cfg['trust_items'] ?? null ) ? $cfg['trust_items'] : [];
+	$trust_items = array_values(
+		array_filter(
+			array_map(
+				static fn( $item ) => trim( (string) $item ),
+				$trust_items
+			)
+		)
+	);
+	if ( empty( $trust_items ) ) {
+		$cfg['trust_items'] = [
+			'99%+ HPLC Verified',
+			'3rd-Party Tested Every Batch',
+			'COA Pre-Purchase',
+		];
+	}
+	return $cfg;
+}
+
+function wchs_why_alyve_process_defaults(): array {
+	return [
+		'badge_text'    => '',
+		'headline'      => 'Order Process',
+		'subheadline'   => '',
+		'bg_color'      => '',
+		'steps'         => [
+			[
+				'variant'     => 'verified',
+				'headline'    => 'Browse & Verify',
+				'description' => 'Browse the catalog. Every product has a downloadable COA. Verify purity before you buy.',
+			],
+			[
+				'variant'     => 'lab',
+				'headline'    => 'Order — Discount Auto-Applied',
+				'description' => 'Add to cart. Your discount applies automatically at checkout. No code needed.',
+			],
+			[
+				'variant'     => 'shipping',
+				'headline'    => 'Fast-Track Fulfillment',
+				'description' => 'Orders before 2PM EST ship same day. Tracked, discreet, 2-3 business days.',
+			],
+		],
+		'metrics_title' => '',
+		'metrics'       => [],
+	];
+}
+
+function wchs_enrich_why_alyve_order_handling_config( array $cfg ): array {
+	$defaults = wchs_why_alyve_process_defaults();
+	$steps    = is_array( $cfg['steps'] ?? null ) ? $cfg['steps'] : [];
+	$valid    = array_values(
+		array_filter(
+			$steps,
+			static function ( $step ) {
+				return is_array( $step ) && trim( (string) ( $step['headline'] ?? '' ) ) !== '';
+			}
+		)
+	);
+
+	$has_why_alyve = false;
+	foreach ( $valid as $step ) {
+		if ( trim( (string) ( $step['headline'] ?? '' ) ) === 'Browse & Verify' ) {
+			$has_why_alyve = true;
+			break;
+		}
+	}
+
+	$legacy_headlines = [
+		'Verified Batches',
+		'3rd Party Testing',
+		'Ships Same Day',
+		'24/7 Support',
+	];
+	$is_legacy = false;
+	foreach ( $valid as $step ) {
+		if ( in_array( trim( (string) ( $step['headline'] ?? '' ) ), $legacy_headlines, true ) ) {
+			$is_legacy = true;
+			break;
+		}
+	}
+
+	if ( empty( $valid ) || $is_legacy || ! $has_why_alyve ) {
+		$cfg = array_merge( $cfg, $defaults );
+	} else {
+		$cfg['badge_text']      = '';
+		$cfg['subheadline']     = '';
+		$cfg['metrics_title']   = '';
+		$cfg['metrics']         = [];
+	}
+
+	$headline = trim( (string) ( $cfg['headline'] ?? '' ) );
+	if ( $headline === '' || $headline === 'How Every Order Is Handled' ) {
+		$cfg['headline'] = 'Order Process';
+	}
+
+	return $cfg;
+}
+
+function wchs_enrich_homepage_modules( array $modules ): array {
 	foreach ( $modules as $i => $mod ) {
-		if ( ! is_array( $mod ) || ( $mod['type'] ?? '' ) !== 'reviews_listicle' ) {
+		if ( ! is_array( $mod ) || ( $mod['type'] ?? '' ) !== 'trust_bar' ) {
 			continue;
 		}
 		$cfg = is_array( $mod['config'] ?? null ) ? $mod['config'] : [];
-		$modules[ $i ]['config'] = wchs_enrich_reviews_listicle_config( $cfg, $why_alyve );
+		$modules[ $i ]['config'] = wchs_enrich_trust_bar_config( $cfg );
+	}
+	return $modules;
+}
+
+function wchs_enrich_page_modules( array $modules, string $page_slug ): array {
+	$why_alyve = $page_slug === 'why-alyve';
+	foreach ( $modules as $i => $mod ) {
+		if ( ! is_array( $mod ) ) {
+			continue;
+		}
+		$type = $mod['type'] ?? '';
+		$cfg  = is_array( $mod['config'] ?? null ) ? $mod['config'] : [];
+		if ( 'reviews_listicle' === $type ) {
+			$modules[ $i ]['config'] = wchs_enrich_reviews_listicle_config( $cfg, $why_alyve );
+		} elseif ( 'listicle' === $type && $why_alyve ) {
+			$modules[ $i ]['config'] = wchs_enrich_why_alyve_listicle_config( $cfg );
+		} elseif ( 'order_handling' === $type && $why_alyve ) {
+			$modules[ $i ]['config'] = wchs_enrich_why_alyve_order_handling_config( $cfg );
+		}
 	}
 	return $modules;
 }
@@ -1219,6 +1393,7 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 		return $mods;
 	};
 	$homepage['modules'] = $_migrate_mods( $homepage['modules'] ?? [] );
+	$homepage['modules'] = wchs_enrich_homepage_modules( $homepage['modules'] );
 	$homepage['modules'] = wchs_homepage_ensure_feature_highlights_module( $homepage['modules'] );
 	$homepage['modules'] = wchs_homepage_ensure_order_handling_module( $homepage['modules'] );
 

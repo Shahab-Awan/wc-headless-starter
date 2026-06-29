@@ -55,12 +55,12 @@ foreach ( $cfg['pages'] as $pi => $page ) {
 
 		$config['hero_layout']   = 'editorial';
 		$config['trust_brand']   = 'Alyve Peptides';
-		$config['trust_items']    = [
+		$config['trust_items']   = [
 			'99%+ HPLC Verified',
 			'3rd-Party Tested Every Batch',
 			'COA Pre-Purchase',
 		];
-		unset( $config['persona_name'], $config['persona_image'], $config['persona_image_alt'], $config['persona_badge'], $config['persona_updated'] );
+		unset( $config['trust_pillars'], $config['persona_name'], $config['persona_image'], $config['persona_image_alt'], $config['persona_badge'], $config['persona_updated'] );
 		$config['hero_callout']         = 'READ THIS BEFORE YOU BUY RESEARCH COMPOUNDS FROM ANY OTHER COMPANY';
 		$config['hero_cta_image']       = '/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp';
 		$config['hero_cta_image_alt']   = 'Alyve research-grade peptide vials';
