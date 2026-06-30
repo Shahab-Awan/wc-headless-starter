@@ -25,6 +25,8 @@
 	import PromoOffer from '$lib/components/PromoOffer.svelte';
 	import ReviewsListicle from '$lib/components/ReviewsListicle.svelte';
 	import ListicleFaqs from '$lib/components/ListicleFaqs.svelte';
+	import VaultHero from '$lib/components/VaultHero.svelte';
+	import VaultQualityTabs from '$lib/components/VaultQualityTabs.svelte';
 	import WhyAlyveStickyCta from '$lib/components/WhyAlyveStickyCta.svelte';
 	import SEO from '$lib/components/SEO.svelte';
 	import { getWhyAlyveCta } from '$lib/why-alyve-cta';
@@ -35,9 +37,12 @@
 		config.data.pages?.find(p => p.slug === (page.params.slug ?? '')) ?? null
 	);
 
-	const hidePageTitle = $derived(
-		(pageData?.modules?.filter(isModuleVisibleNow) ?? [])[0]?.type === 'listicle'
-	);
+	const hidePageTitle = $derived.by(() => {
+		const first = (pageData?.modules?.filter(isModuleVisibleNow) ?? [])[0]?.type;
+		return first === 'listicle' || first === 'vault_hero';
+	});
+
+	const isVaultPage = $derived((page.params.slug ?? '').replace(/\/$/, '') === 'vault');
 
 	const isWhyAlyvePage = $derived((page.params.slug ?? '').replace(/\/$/, '') === 'why-alyve');
 
@@ -192,7 +197,7 @@
 
 <AccessGate requires="products">
 {#if pageData}
-	<article class="content-page" class:content-page--listicle={hidePageTitle} class:content-page--why-alyve={isWhyAlyvePage}>
+	<article class="content-page" class:content-page--listicle={hidePageTitle} class:content-page--why-alyve={isWhyAlyvePage} class:content-page--vault={isVaultPage}>
 		{#if !hidePageTitle}
 			<h1 class="content-page__title">{pageData.title}</h1>
 		{/if}
@@ -260,6 +265,20 @@
 						/>
 					{/if}
 					<ListicleFaqs config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
+				{:else if mod.type === 'vault_hero'}
+					<VaultHero
+						config={mod.config}
+						resolved={mod.resolved}
+						spacing_v={mod.spacing_v || 'normal'}
+						spacing_h={mod.spacing_h || 'normal'}
+					/>
+				{:else if mod.type === 'vault_quality_tabs'}
+					<VaultQualityTabs
+						config={mod.config}
+						resolved={mod.resolved}
+						spacing_v={mod.spacing_v || 'normal'}
+						spacing_h={mod.spacing_h || 'normal'}
+					/>
 				{:else if mod.type === 'text_block'}
 					<TextBlock config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 				{:else if mod.type === 'gallery'}
@@ -380,6 +399,25 @@
 		.content-page--listicle > :global(section:first-child) {
 			--mod-pt: 8px;
 		}
+	}
+
+	.content-page--vault {
+		padding-top: 0;
+		padding-inline: 0;
+		max-width: none;
+	}
+
+	.content-page--vault > :global(.vault-hero:first-child) {
+		--mod-pt: 0;
+		--mod-pb: 0;
+	}
+
+	.content-page--vault > :global(.vault-hero + .vault-quality-tabs) {
+		margin-top: 0;
+	}
+
+	.content-page--vault > :global(.vault-quality-tabs) {
+		--mod-pt: 0;
 	}
 
 	.content-page--why-alyve {

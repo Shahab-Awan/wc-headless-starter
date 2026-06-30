@@ -124,6 +124,26 @@
 		},
 	];
 
+	const WHY_ALYVE_POINT_ONE_CALLOUT =
+		'<div class="listicle__highlight-callout"><p>Orders placed before 2PM EST ship same day. Delivered in 2–3 business days via tracked carrier.</p></div>';
+
+	function mergeListicleItemBody(
+		index: number,
+		savedBody: string | undefined,
+		baseBody: string | undefined
+	): string {
+		const saved = savedBody?.trim() ?? '';
+		const base = baseBody?.trim() ?? '';
+		if (index !== 0 || !base.includes('listicle__highlight-callout')) {
+			return saved || base;
+		}
+		if (saved.includes('listicle__highlight-callout')) {
+			return saved;
+		}
+		if (!saved) return base;
+		return saved + WHY_ALYVE_POINT_ONE_CALLOUT;
+	}
+
 	const items = $derived.by(() => {
 		const saved = (config.items ?? []).filter((it) => (it.headline ?? '').trim());
 		if (!saved.length) return DEFAULT_LISTICLE_ITEMS;
@@ -139,6 +159,7 @@
 				...base,
 				...savedItem,
 				icon: savedItem.icon?.trim() || base.icon,
+				body: mergeListicleItemBody(i, savedItem.body, base.body),
 				badges: savedItem.badges?.length ? savedItem.badges : base.badges,
 			});
 		}

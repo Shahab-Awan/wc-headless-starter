@@ -185,7 +185,9 @@
 		feature_highlights: 'Feature highlights',
 		order_handling: 'Order handling',
 		cta: 'CTA button', spacer: 'Spacer', logo_strip: 'Logo strip',
-		video: 'Video / embed'
+		video: 'Video / embed',
+		vault_hero: 'Vault hero',
+		vault_quality_tabs: 'Vault quality tabs'
 	};
 
 	var TYPE_CATEGORY = {
@@ -198,6 +200,8 @@
 		order_handling: 'content',
 		cta: 'content', spacer: 'content',
 		video: 'content',
+		vault_hero: 'branding',
+		vault_quality_tabs: 'branding',
 		contact_form: 'engagement'
 	};
 
@@ -224,6 +228,8 @@
 		spacer: ['homepage','shop','pdp','pages'],
 		logo_strip: ['homepage','shop','pdp','pages'],
 		video: ['homepage','shop','pdp','pages'],
+		vault_hero: ['pages'],
+		vault_quality_tabs: ['pages'],
 		shop_grid: ['homepage', 'shop'],
 		category_grid: ['homepage','pages'],
 		contact_form: ['pages']
@@ -280,6 +286,74 @@
 			return {
 				title: '', source_url: '', poster_url: '',
 				aspect_ratio: '16/9', autoplay: false, muted: true, loop: false, controls: true,
+			};
+		}
+		if (type === 'vault_hero') {
+			return {
+				headline: 'Quality You Can Verify, Not Just Trust',
+				stats: [
+					{ label: '99%+ Purity Guaranteed' },
+					{ label: '5 Quality Checks' },
+					{ label: '100% US Verified' },
+				],
+				cta_text: 'Browse the Vault →',
+				cta_href: '/shop',
+				bg_image: '',
+				vial_primary: '',
+				vial_primary_alt: '',
+				vial_secondary: '',
+				vial_secondary_alt: '',
+				vial_tertiary: '',
+				vial_tertiary_alt: '',
+			};
+		}
+		if (type === 'vault_quality_tabs') {
+			return {
+				section_title: 'The Alyve Vault Guarantee',
+				section_subtitle: 'Every batch is independently verified — purity, identity, endotoxin, stability, and consistency.',
+				product_image: '',
+				product_image_alt: '',
+				image_badge: '99.4% Purity — Verified by HPLC',
+				panel_bg: '#ebe6f5',
+				detail_cta_text: 'See the Proof → View COA Library',
+				detail_cta_href: '/coa-library',
+				tabs: [
+					{
+						title: 'Purity',
+						summary: 'HPLC ≥99%',
+						body: '<p>Every batch is verified by High-Performance Liquid Chromatography (HPLC) to confirm peptide purity meets or exceeds 99%.</p>',
+						why_matters: 'Impurities can skew receptor binding and invalidate your study data.',
+						chart_image: '',
+					},
+					{
+						title: 'Identity',
+						summary: 'Mass Spec confirmed',
+						body: '<p>Mass spectrometry confirms the molecular weight and sequence identity of each peptide lot before release.</p>',
+						why_matters: 'Ensures you receive the exact compound specified — not a mislabeled analog.',
+						chart_image: '',
+					},
+					{
+						title: 'Endotoxin',
+						summary: 'LAL tested, pharma-grade low',
+						body: '<p>Limulus Amebocyte Lysate (LAL) testing verifies endotoxin levels meet pharmaceutical-grade thresholds.</p>',
+						why_matters: 'Elevated endotoxins can trigger immune responses that confound in vitro and in vivo results.',
+						chart_image: '',
+					},
+					{
+						title: 'Stability',
+						summary: 'Lyophilized for shelf life',
+						body: '<p>Peptides are lyophilized under controlled conditions to maximize stability during storage and transit.</p>',
+						why_matters: 'Proper lyophilization preserves bioactivity from synthesis to your bench.',
+						chart_image: '',
+					},
+					{
+						title: 'Consistency',
+						summary: 'Batch-to-batch variance data',
+						body: '<p>We publish lot-to-lot analytical data so you can compare batches across your study timeline.</p>',
+						why_matters: 'Reproducible research requires predictable material from order to order.',
+						chart_image: '',
+					},
+				],
 			};
 		}
 		if (type === 'split_value') {
@@ -1399,6 +1473,46 @@
 					});
 				})();
 				break;
+			case 'vault_hero':
+				setVal(container, '[data-field="vh_headline"]', cfg.headline || '');
+				populateVhStats(container, cfg.stats || []);
+				setVal(container, '[data-field="vh_cta_text"]', cfg.cta_text || '');
+				setVal(container, '[data-field="vh_cta_href"]', cfg.cta_href || '');
+				setVal(container, '[data-field="vh_bg_image"]', cfg.bg_image || '');
+				setVal(container, '[data-field="vh_vial_primary"]', cfg.vial_primary || '');
+				setVal(container, '[data-field="vh_vial_primary_alt"]', cfg.vial_primary_alt || '');
+				setVal(container, '[data-field="vh_vial_secondary"]', cfg.vial_secondary || '');
+				setVal(container, '[data-field="vh_vial_secondary_alt"]', cfg.vial_secondary_alt || '');
+				setVal(container, '[data-field="vh_vial_tertiary"]', cfg.vial_tertiary || '');
+				setVal(container, '[data-field="vh_vial_tertiary_alt"]', cfg.vial_tertiary_alt || '');
+				container.querySelectorAll('.wchs-media-url').forEach(function (input) {
+					var field = input.closest('.wchs-field');
+					var preview = field && field.querySelector('.wchs-media-preview');
+					var removeBtn = field && field.querySelector('.wchs-media-remove');
+					if (input.value && preview) { preview.src = input.value; preview.style.display = ''; }
+					else if (preview) { preview.src = ''; preview.style.display = 'none'; }
+					if (removeBtn) removeBtn.style.display = input.value ? '' : 'none';
+				});
+				break;
+			case 'vault_quality_tabs':
+				setVal(container, '[data-field="vqt_title"]', cfg.section_title || '');
+				setVal(container, '[data-field="vqt_subtitle"]', cfg.section_subtitle || '');
+				setVal(container, '[data-field="vqt_product_image"]', cfg.product_image || '');
+				setVal(container, '[data-field="vqt_product_alt"]', cfg.product_image_alt || '');
+				setVal(container, '[data-field="vqt_image_badge"]', cfg.image_badge || '');
+				setVal(container, '[data-field="vqt_panel_bg"]', cfg.panel_bg || '');
+				setVal(container, '[data-field="vqt_detail_cta_text"]', cfg.detail_cta_text || '');
+				setVal(container, '[data-field="vqt_detail_cta_href"]', cfg.detail_cta_href || '');
+				populateVqtTabs(container, cfg.tabs || []);
+				container.querySelectorAll('.wchs-media-url').forEach(function (input) {
+					var field = input.closest('.wchs-field, .wchs-accordion-item');
+					var preview = field && field.querySelector('.wchs-media-preview');
+					var removeBtn = field && field.querySelector('.wchs-media-remove');
+					if (input.value && preview) { preview.src = input.value; preview.style.display = ''; }
+					else if (preview) { preview.src = ''; preview.style.display = 'none'; }
+					if (removeBtn) removeBtn.style.display = input.value ? '' : 'none';
+				});
+				break;
 			case 'split_value':
 				setVal(container, '[data-field="sv_rating_line"]', cfg.rating_line || '');
 				setVal(container, '[data-field="sv_headline_prefix"]', cfg.headline_prefix || '');
@@ -1705,6 +1819,32 @@
 				cfg.brand_logo = getVal(container, '[data-field="sf_brand_logo"]') || '';
 				cfg.competitor_logo = getVal(container, '[data-field="sf_competitor_logo"]') || '';
 				cfg.items = readSplitItems(container);
+				break;
+			case 'vault_hero':
+				cfg.headline = getVal(container, '[data-field="vh_headline"]') || '';
+				cfg.stats = readVhStats(container);
+				cfg.cta_text = getVal(container, '[data-field="vh_cta_text"]') || '';
+				cfg.cta_href = getVal(container, '[data-field="vh_cta_href"]') || '';
+				cfg.bg_image = getVal(container, '[data-field="vh_bg_image"]') || '';
+				cfg.vial_primary = getVal(container, '[data-field="vh_vial_primary"]') || '';
+				cfg.vial_primary_alt = getVal(container, '[data-field="vh_vial_primary_alt"]') || '';
+				cfg.vial_secondary = getVal(container, '[data-field="vh_vial_secondary"]') || '';
+				cfg.vial_secondary_alt = getVal(container, '[data-field="vh_vial_secondary_alt"]') || '';
+				cfg.vial_tertiary = getVal(container, '[data-field="vh_vial_tertiary"]') || '';
+				cfg.vial_tertiary_alt = getVal(container, '[data-field="vh_vial_tertiary_alt"]') || '';
+				delete cfg.title;
+				break;
+			case 'vault_quality_tabs':
+				cfg.section_title = getVal(container, '[data-field="vqt_title"]') || '';
+				cfg.section_subtitle = getVal(container, '[data-field="vqt_subtitle"]') || '';
+				cfg.product_image = getVal(container, '[data-field="vqt_product_image"]') || '';
+				cfg.product_image_alt = getVal(container, '[data-field="vqt_product_alt"]') || '';
+				cfg.image_badge = getVal(container, '[data-field="vqt_image_badge"]') || '';
+				cfg.panel_bg = getVal(container, '[data-field="vqt_panel_bg"]') || '';
+				cfg.detail_cta_text = getVal(container, '[data-field="vqt_detail_cta_text"]') || '';
+				cfg.detail_cta_href = getVal(container, '[data-field="vqt_detail_cta_href"]') || '';
+				cfg.tabs = readVqtTabs(container);
+				delete cfg.title;
 				break;
 			case 'split_value':
 				cfg.rating_line = getVal(container, '[data-field="sv_rating_line"]') || '';
@@ -2219,6 +2359,32 @@
 		return items;
 	}
 
+	function readVhStats(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-vh-stats .wchs-accordion-item').forEach(function (el) {
+			var inp = el.querySelector('input[type="text"]');
+			var label = inp ? inp.value.trim() : '';
+			if (label) items.push({ label: label });
+		});
+		return items;
+	}
+
+	function readVqtTabs(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-vqt-tabs .wchs-accordion-item').forEach(function (el) {
+			var title = getVal(el, '[data-field="vqt_tab_title"]') || '';
+			if (!title.trim()) return;
+			items.push({
+				title: title.trim(),
+				summary: getVal(el, '[data-field="vqt_tab_summary"]') || '',
+				body: getVal(el, '[data-field="vqt_tab_body"]') || '',
+				why_matters: getVal(el, '[data-field="vqt_tab_why"]') || '',
+				chart_image: getVal(el, '[data-field="vqt_tab_chart"]') || '',
+			});
+		});
+		return items;
+	}
+
 	function readSvStats(ctx) {
 		var items = [];
 		ctx.querySelectorAll('.wchs-sv-stats .wchs-accordion-item').forEach(function (el) {
@@ -2384,6 +2550,51 @@
 			var el = div.firstElementChild;
 			var inp = el.querySelector('input[type="text"]');
 			if (inp) inp.value = item.text || '';
+			container.appendChild(el);
+		});
+	}
+
+	function populateVhStats(ctx, items) {
+		var container = ctx.querySelector('.wchs-vh-stats');
+		if (!container) return;
+		var tpl = container.querySelector('.wchs-accordion-item');
+		if (!tpl) return;
+		var tplHtml = tpl.outerHTML;
+		container.innerHTML = '';
+		(items.length ? items : [{ label: '' }]).forEach(function (item) {
+			var div = document.createElement('div');
+			div.innerHTML = tplHtml;
+			var el = div.firstElementChild;
+			var inp = el.querySelector('input[type="text"]');
+			if (inp) inp.value = item.label || '';
+			container.appendChild(el);
+		});
+	}
+
+	function populateVqtTabs(ctx, items) {
+		var container = ctx.querySelector('.wchs-vqt-tabs');
+		if (!container) return;
+		var tpl = container.querySelector('.wchs-accordion-item');
+		if (!tpl) return;
+		var tplHtml = tpl.outerHTML;
+		container.innerHTML = '';
+		(items.length ? items : [{ title: '', summary: '', body: '', why_matters: '', chart_image: '' }]).forEach(function (item) {
+			var div = document.createElement('div');
+			div.innerHTML = tplHtml;
+			var el = div.firstElementChild;
+			setVal(el, '[data-field="vqt_tab_title"]', item.title || '');
+			setVal(el, '[data-field="vqt_tab_summary"]', item.summary || '');
+			setVal(el, '[data-field="vqt_tab_body"]', item.body || '');
+			setVal(el, '[data-field="vqt_tab_why"]', item.why_matters || '');
+			setVal(el, '[data-field="vqt_tab_chart"]', item.chart_image || '');
+			var chartInput = el.querySelector('[data-field="vqt_tab_chart"]');
+			if (chartInput) {
+				var preview = el.querySelector('.wchs-media-preview');
+				var removeBtn = el.querySelector('.wchs-media-remove');
+				if (chartInput.value && preview) { preview.src = chartInput.value; preview.style.display = ''; }
+				else if (preview) { preview.src = ''; preview.style.display = 'none'; }
+				if (removeBtn) removeBtn.style.display = chartInput.value ? '' : 'none';
+			}
 			container.appendChild(el);
 		});
 	}
@@ -2930,6 +3141,31 @@
 				+ '<input type="text" placeholder="Label" />'
 				+ '<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>';
 			sCont.appendChild(div);
+		}
+		var addVhStatModal = e.target.closest('.wchs-add-vh-stat-modal');
+		if (addVhStatModal) {
+			var vCont = addVhStatModal.previousElementSibling;
+			if (!vCont || !vCont.classList.contains('wchs-vh-stats')) return;
+			var vTpl = vCont.querySelector('.wchs-accordion-item');
+			if (!vTpl) return;
+			var vClone = vTpl.cloneNode(true);
+			vClone.querySelectorAll('input[type="text"]').forEach(function (el) { el.value = ''; });
+			vCont.appendChild(vClone);
+		}
+
+		var addVqtTabModal = e.target.closest('.wchs-add-vqt-tab-modal');
+		if (addVqtTabModal) {
+			var tCont = addVqtTabModal.previousElementSibling;
+			if (!tCont || !tCont.classList.contains('wchs-vqt-tabs')) return;
+			var tTpl = tCont.querySelector('.wchs-accordion-item');
+			if (!tTpl) return;
+			var tClone = tTpl.cloneNode(true);
+			tClone.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
+			var tPreview = tClone.querySelector('.wchs-media-preview');
+			var tRemove = tClone.querySelector('.wchs-media-remove');
+			if (tPreview) { tPreview.src = ''; tPreview.style.display = 'none'; }
+			if (tRemove) tRemove.style.display = 'none';
+			tCont.appendChild(tClone);
 		}
 
 		var removeItemBtn = e.target.closest('.wchs-accordion-item__remove');

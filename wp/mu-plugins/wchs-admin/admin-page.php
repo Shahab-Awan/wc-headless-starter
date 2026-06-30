@@ -700,10 +700,13 @@ class AdminPage {
 	public static function get_pages_config(): array {
 		$saved = get_option( self::PAGES_OPTION, [] );
 		if ( ! is_array( $saved ) || empty( $saved ) ) {
-			return [ 'pages' => [] ];
+			$saved = [ 'pages' => [] ];
 		}
 		if ( ! isset( $saved['pages'] ) || ! is_array( $saved['pages'] ) ) {
 			$saved['pages'] = [];
+		}
+		if ( function_exists( 'wchs_maybe_persist_vault_page_config' ) ) {
+			$saved = wchs_maybe_persist_vault_page_config( $saved );
 		}
 		return $saved;
 	}
@@ -5645,6 +5648,122 @@ class AdminPage {
 				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
 					Accent color override
 					<?php echo self::hint_icon('Comparison table: highlighted column background. Alternating layout ignores this.' ); ?>
+				</label>
+				<?php echo self::accent_override_swatches(); ?>
+			</div>
+			<?php $this->render_module_common_fields(); ?>
+		</div>
+
+		<!-- Vault hero -->
+		<div id="wchs-mod-tpl-vault_hero" style="display:none">
+			<div class="wchs-module__fields">
+				<div class="wchs-field wchs-field--full"><label>Headline</label><input type="text" data-field="vh_headline" placeholder="Quality You Can Verify, Not Just Trust" /></div>
+				<div class="wchs-field wchs-field--full">
+					<label>Stats row <?php echo self::hint_icon( 'Inline with dot separators, e.g. purity · checks · verified.' ); ?></label>
+					<div class="wchs-vh-stats">
+						<div class="wchs-accordion-item" style="display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid #ddd;background:#fafafa">
+							<input type="text" style="flex:1" placeholder="e.g. 99%+ Purity Guaranteed" />
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-vh-stat-modal" style="margin-top:8px">+ Add stat</button>
+				</div>
+				<div class="wchs-field"><label>CTA text</label><input type="text" data-field="vh_cta_text" placeholder="Browse the Vault →" /></div>
+				<div class="wchs-field"><label>CTA link</label><input type="text" data-field="vh_cta_href" placeholder="/shop" /></div>
+				<div class="wchs-field wchs-field--full" style="margin-top:12px">
+					<label>Visual background <?php echo self::hint_icon( 'Right column backdrop — soft gradient or photo.' ); ?></label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="vh_bg_image" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:140px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full">
+					<label>Primary vial (large, center) <?php echo self::hint_icon( 'Foreground floating vial — PNG with transparency works best.' ); ?></label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="vh_vial_primary" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:100px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Primary vial alt</label><input type="text" data-field="vh_vial_primary_alt" /></div>
+				<div class="wchs-field wchs-field--full">
+					<label>Secondary vial (top right)</label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="vh_vial_secondary" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:100px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Secondary vial alt</label><input type="text" data-field="vh_vial_secondary_alt" /></div>
+				<div class="wchs-field wchs-field--full">
+					<label>Tertiary vial (bottom right)</label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="vh_vial_tertiary" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:100px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Tertiary vial alt</label><input type="text" data-field="vh_vial_tertiary_alt" /></div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+					Accent color override
+					<?php echo self::hint_icon( 'Optional — tints the visual backdrop gradient.' ); ?>
+				</label>
+				<?php echo self::accent_override_swatches(); ?>
+			</div>
+			<?php $this->render_module_common_fields(); ?>
+		</div>
+
+		<!-- Vault quality tabs -->
+		<div id="wchs-mod-tpl-vault_quality_tabs" style="display:none">
+			<div class="wchs-module__fields">
+				<div class="wchs-field wchs-field--full"><label>Section title</label><input type="text" data-field="vqt_title" placeholder="The Alyve Vault Guarantee" /></div>
+				<div class="wchs-field wchs-field--full"><label>Section subtitle</label><input type="text" data-field="vqt_subtitle" /></div>
+				<div class="wchs-field wchs-field--full">
+					<label>Product image (left panel) <?php echo self::hint_icon( 'Single vial photo — no floating overlays. Connects to hero above.' ); ?></label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="vqt_product_image" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:140px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Product image alt</label><input type="text" data-field="vqt_product_alt" /></div>
+				<div class="wchs-field wchs-field--full"><label>Image badge overlay</label><input type="text" data-field="vqt_image_badge" placeholder="99.4% Purity — Verified by HPLC" /></div>
+				<div class="wchs-field"><label>Left panel background</label><input type="text" data-field="vqt_panel_bg" placeholder="#ebe6f5" /></div>
+				<div class="wchs-field"><label>Detail CTA text</label><input type="text" data-field="vqt_detail_cta_text" placeholder="See the Proof → View COA Library" /></div>
+				<div class="wchs-field"><label>Detail CTA link</label><input type="text" data-field="vqt_detail_cta_href" placeholder="/coa-library" /></div>
+				<div class="wchs-field wchs-field--full" style="margin-top:12px">
+					<label>Quality tabs</label>
+					<div class="wchs-vqt-tabs" style="display:flex;flex-direction:column;gap:10px">
+						<div class="wchs-accordion-item wchs-vqt-tab-item" style="padding:10px;border:1px solid #ddd;background:#fafafa;display:flex;flex-direction:column;gap:8px">
+							<input type="text" data-field="vqt_tab_title" placeholder="Tab title (e.g. Purity)" />
+							<input type="text" data-field="vqt_tab_summary" placeholder="Short summary (e.g. HPLC ≥99%)" />
+							<textarea data-field="vqt_tab_body" rows="3" placeholder="Explanation" data-wysiwyg="1"></textarea>
+							<input type="text" data-field="vqt_tab_why" placeholder="Why it matters" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Chart / diagram image (optional)</label>
+							<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+								<input type="text" data-field="vqt_tab_chart" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+								<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+								<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+							</div>
+							<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:120px;margin-top:4px;border:1px solid #e0e0e0" />
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-vqt-tab-modal" style="margin-top:8px">+ Add tab</button>
+				</div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+					Accent color override
+					<?php echo self::hint_icon( 'Tints tab icons and active states.' ); ?>
 				</label>
 				<?php echo self::accent_override_swatches(); ?>
 			</div>

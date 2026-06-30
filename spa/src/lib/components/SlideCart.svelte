@@ -23,7 +23,7 @@
 		shippingProtectionFeeMajor,
 		shippingProtectionTierIndex
 	} from '$lib/shipping-protection';
-	import { resolveCartLineQty } from '$lib/cart/bundle-qty';
+	import { clampCartLineQty } from '$lib/cart/bundle-qty';
 
 	let fontsReady = $state(false);
 	let checkouting = $state(false);
@@ -84,9 +84,7 @@
 	}
 
 	function resolvedQty(item: (typeof displayCartItems)[number], proposed: number): number {
-		const thresholds = item.extensions?.wchs_cro?.tier_qty_thresholds ?? [];
-		if (!thresholds.length) return Math.max(1, proposed);
-		return resolveCartLineQty(thresholds, item.quantity, proposed);
+		return clampCartLineQty(proposed, item.quantity_limits);
 	}
 
 	function decrement(key: string, current: number) {

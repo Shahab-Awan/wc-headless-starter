@@ -30,7 +30,15 @@ export const DEFAULT_VOLUME_PRESETS: BogoBundlePreset[] = [
 	{ paid_qty: 1, discount_pct: 0, flag: '' },
 	{ paid_qty: 3, discount_pct: 15, flag: 'POPULAR' },
 	{ paid_qty: 5, discount_pct: 23, flag: 'BEST VALUE' },
+	{ paid_qty: 6, discount_pct: 25, flag: '', pdp_hidden: true },
+	{ paid_qty: 7, discount_pct: 27, flag: '', pdp_hidden: true },
+	{ paid_qty: 8, discount_pct: 29, flag: '', pdp_hidden: true },
+	{ paid_qty: 9, discount_pct: 30, flag: '', pdp_hidden: true },
 	{ paid_qty: 10, discount_pct: 31, flag: 'BULK' },
+	{ paid_qty: 11, discount_pct: 33, flag: '', pdp_hidden: true },
+	{ paid_qty: 12, discount_pct: 35, flag: '', pdp_hidden: true },
+	{ paid_qty: 13, discount_pct: 37, flag: '', pdp_hidden: true },
+	{ paid_qty: 14, discount_pct: 38, flag: '', pdp_hidden: true },
 	{ paid_qty: 15, discount_pct: 40, flag: '', pdp_hidden: true },
 ];
 
@@ -140,7 +148,7 @@ export function repairBundlePresets(presets: BogoBundlePreset[]): BogoBundlePres
 	if (!normalized.length) return DEFAULT_VOLUME_PRESETS;
 
 	if (normalized.some(presetUsesVolumeDiscount)) {
-		return normalized;
+		return mergeCanonicalVolumeTiers(normalized);
 	}
 
 	const hasBundleFree = normalized.some((p) => (p.free_qty ?? 0) > 0);
@@ -167,6 +175,44 @@ export function repairBundlePresets(presets: BogoBundlePreset[]): BogoBundlePres
 	}
 
 	return normalized.length ? normalized : DEFAULT_VOLUME_PRESETS;
+}
+
+/** Ensure cart/pricing tiers 6–14 exist; keep admin flags on visible tiers. */
+function mergeCanonicalVolumeTiers(presets: BogoBundlePreset[]): BogoBundlePreset[] {
+	const byQty = new Map<number, BogoBundlePreset>();
+	for (const preset of presets) {
+		byQty.set(preset.paid_qty, preset);
+	}
+	for (const canonical of DEFAULT_VOLUME_PRESETS) {
+		const existing = byQty.get(canonical.paid_qty);
+		if (!existing) {
+			byQty.set(canonical.paid_qty, { ...canonical });
+			continue;
+		}
+		byQty.set(canonical.paid_qty, {
+			...existing,
+			discount_pct: canonical.discount_pct,
+			pdp_hidden: existing.pdp_hidden ?? canonical.pdp_hidden,
+		});
+	}
+	return [...byQty.values()].sort((a, b) => a.paid_qty - b.paid_qty);
+}
+
+export function unitPriceAtLineQty(
+	lineQty: number,
+	regularMinor: number,
+	presets: BogoBundlePreset[]
+): number {
+	if (lineQty < 1 || regularMinor <= 0) return regularMinor;
+	const repaired = repairBundlePresets(presets);
+	let unit = regularMinor;
+	for (const preset of repaired) {
+		if (!presetUsesVolumeDiscount(preset)) continue;
+		if (lineQty < preset.paid_qty) continue;
+		const pct = clampDiscountPct(preset.discount_pct ?? 0);
+		unit = Math.round(regularMinor * (1 - pct / 100));
+	}
+	return unit;
 }
 
 export function buildBogoBundleRows(

@@ -1190,6 +1190,29 @@ function wchs_enrich_trust_bar_config( array $cfg ): array {
 	];
 }
 
+function wchs_why_alyve_listicle_callout_html(): string {
+	return '<div class="listicle__highlight-callout"><p>Orders placed before 2PM EST ship same day. Delivered in 2–3 business days via tracked carrier.</p></div>';
+}
+
+function wchs_why_alyve_listicle_point_one_body(): string {
+	return '<p>Every Alyve order is fulfilled through our U.S. operations with an emphasis on transparency and dependable service. From sourcing to shipment, products are carefully handled and prepared under established quality practices to help maintain consistency. No unknown middlemen and no complicated fulfillment chains.</p>'
+		. wchs_why_alyve_listicle_callout_html();
+}
+
+function wchs_enrich_why_alyve_listicle_item_body( string $body, int $index ): string {
+	if ( 0 !== $index ) {
+		return $body;
+	}
+	if ( str_contains( $body, 'listicle__highlight-callout' ) ) {
+		return $body;
+	}
+	$trimmed = trim( $body );
+	if ( '' === $trimmed ) {
+		return wchs_why_alyve_listicle_point_one_body();
+	}
+	return $trimmed . wchs_why_alyve_listicle_callout_html();
+}
+
 function wchs_enrich_why_alyve_listicle_config( array $cfg ): array {
 	unset( $cfg['trust_pillars'] );
 	if ( trim( (string) ( $cfg['trust_brand'] ?? '' ) ) === '' ) {
@@ -1226,6 +1249,20 @@ function wchs_enrich_why_alyve_listicle_config( array $cfg ): array {
 				}
 			}
 			$cfg['items'][ $i ]['badges'] = $first !== '' ? [ $first ] : [];
+			if ( 0 === $i ) {
+				$body = trim( (string) ( $item['body'] ?? '' ) );
+				$cfg['items'][ $i ]['body'] = wchs_enrich_why_alyve_listicle_item_body( $body, 0 );
+				if ( trim( (string) ( $cfg['items'][ $i ]['headline'] ?? '' ) ) === '' ) {
+					$cfg['items'][ $i ]['headline'] = 'Domestic Fulfillment, Direct to Your Lab';
+				}
+				if ( empty( $cfg['items'][ $i ]['icon'] ) ) {
+					$cfg['items'][ $i ]['icon'] = 'shipping';
+				}
+				$badges_after = is_array( $cfg['items'][ $i ]['badges'] ?? null ) ? $cfg['items'][ $i ]['badges'] : [];
+				if ( empty( $badges_after ) ) {
+					$cfg['items'][ $i ]['badges'] = [ 'Quality Standards' ];
+				}
+			}
 		}
 	}
 	return $cfg;
@@ -1324,6 +1361,9 @@ function wchs_enrich_homepage_modules( array $modules ): array {
 }
 
 function wchs_enrich_page_modules( array $modules, string $page_slug ): array {
+	if ( $page_slug === 'vault' ) {
+		$modules = wchs_ensure_vault_page_modules( $modules );
+	}
 	$why_alyve = $page_slug === 'why-alyve';
 	foreach ( $modules as $i => $mod ) {
 		if ( ! is_array( $mod ) ) {
@@ -1337,9 +1377,264 @@ function wchs_enrich_page_modules( array $modules, string $page_slug ): array {
 			$modules[ $i ]['config'] = wchs_enrich_why_alyve_listicle_config( $cfg );
 		} elseif ( 'order_handling' === $type && $why_alyve ) {
 			$modules[ $i ]['config'] = wchs_enrich_why_alyve_order_handling_config( $cfg );
+		} elseif ( 'vault_hero' === $type ) {
+			$modules[ $i ]['config'] = wchs_enrich_vault_hero_config( $cfg );
+		} elseif ( 'vault_quality_tabs' === $type ) {
+			$modules[ $i ]['config'] = wchs_enrich_vault_quality_tabs_config( $cfg );
 		}
 	}
 	return $modules;
+}
+
+function wchs_vault_hero_defaults(): array {
+	return [
+		'headline'           => 'Quality You Can Verify, Not Just Trust',
+		'stats'              => [
+			[ 'label' => '99%+ Purity Guaranteed' ],
+			[ 'label' => '5 Quality Checks' ],
+			[ 'label' => '100% US Verified' ],
+		],
+		'cta_text'           => 'Browse the Vault →',
+		'cta_href'           => '/shop',
+		'bg_image'           => '',
+		'vial_primary'       => '',
+		'vial_primary_alt'   => '',
+		'vial_secondary'     => '',
+		'vial_secondary_alt' => '',
+		'vial_tertiary'      => '',
+		'vial_tertiary_alt'  => '',
+	];
+}
+
+function wchs_enrich_vault_hero_config( array $cfg ): array {
+	$defaults = wchs_vault_hero_defaults();
+	$merged   = array_merge( $defaults, $cfg );
+	$stats    = is_array( $merged['stats'] ?? null ) ? $merged['stats'] : [];
+	$valid    = array_values(
+		array_filter(
+			array_map(
+				static function ( $row ) {
+					if ( ! is_array( $row ) ) {
+						return null;
+					}
+					$label = trim( (string) ( $row['label'] ?? '' ) );
+					if ( '' === $label ) {
+						return null;
+					}
+					return [
+						'label' => $label,
+					];
+				},
+				$stats
+			)
+		)
+	);
+	if ( empty( $valid ) ) {
+		$merged['stats'] = $defaults['stats'];
+	} else {
+		$merged['stats'] = $valid;
+	}
+	return $merged;
+}
+
+function wchs_vault_quality_tabs_defaults(): array {
+	return [
+		'section_title'    => 'The Alyve Vault Guarantee',
+		'section_subtitle' => 'Every batch is independently verified — purity, identity, endotoxin, stability, and consistency.',
+		'product_image'    => '',
+		'product_image_alt'=> '',
+		'image_badge'      => '99.4% Purity — Verified by HPLC',
+		'panel_bg'         => '#ebe6f5',
+		'detail_cta_text'  => 'See the Proof → View COA Library',
+		'detail_cta_href'  => '/coa-library',
+		'tabs'             => [
+			[
+				'title'       => 'Purity',
+				'summary'     => 'HPLC ≥99%',
+				'body'        => '<p>Every batch is verified by High-Performance Liquid Chromatography (HPLC) to confirm peptide purity meets or exceeds 99%.</p>',
+				'why_matters' => 'Impurities can skew receptor binding and invalidate your study data.',
+				'chart_image' => '',
+			],
+			[
+				'title'       => 'Identity',
+				'summary'     => 'Mass Spec confirmed',
+				'body'        => '<p>Mass spectrometry confirms the molecular weight and sequence identity of each peptide lot before release.</p>',
+				'why_matters' => 'Ensures you receive the exact compound specified — not a mislabeled analog.',
+				'chart_image' => '',
+			],
+			[
+				'title'       => 'Endotoxin',
+				'summary'     => 'LAL tested, pharma-grade low',
+				'body'        => '<p>Limulus Amebocyte Lysate (LAL) testing verifies endotoxin levels meet pharmaceutical-grade thresholds.</p>',
+				'why_matters' => 'Elevated endotoxins can trigger immune responses that confound in vitro and in vivo results.',
+				'chart_image' => '',
+			],
+			[
+				'title'       => 'Stability',
+				'summary'     => 'Lyophilized for shelf life',
+				'body'        => '<p>Peptides are lyophilized under controlled conditions to maximize stability during storage and transit.</p>',
+				'why_matters' => 'Proper lyophilization preserves bioactivity from synthesis to your bench.',
+				'chart_image' => '',
+			],
+			[
+				'title'       => 'Consistency',
+				'summary'     => 'Batch-to-batch variance data',
+				'body'        => '<p>We publish lot-to-lot analytical data so you can compare batches across your study timeline.</p>',
+				'why_matters' => 'Reproducible research requires predictable material from order to order.',
+				'chart_image' => '',
+			],
+		],
+	];
+}
+
+function wchs_enrich_vault_quality_tabs_config( array $cfg ): array {
+	$defaults = wchs_vault_quality_tabs_defaults();
+	$merged   = array_merge( $defaults, $cfg );
+	$tabs     = is_array( $merged['tabs'] ?? null ) ? $merged['tabs'] : [];
+	$valid    = array_values(
+		array_filter(
+			array_map(
+				static function ( $row ) {
+					if ( ! is_array( $row ) ) {
+						return null;
+					}
+					$title = trim( (string) ( $row['title'] ?? '' ) );
+					if ( '' === $title ) {
+						return null;
+					}
+					return [
+						'title'       => $title,
+						'summary'     => trim( (string) ( $row['summary'] ?? '' ) ),
+						'body'        => trim( (string) ( $row['body'] ?? '' ) ),
+						'why_matters' => trim( (string) ( $row['why_matters'] ?? '' ) ),
+						'chart_image' => trim( (string) ( $row['chart_image'] ?? '' ) ),
+					];
+				},
+				$tabs
+			)
+		)
+	);
+	$merged['tabs'] = empty( $valid ) ? $defaults['tabs'] : $valid;
+	return $merged;
+}
+
+function wchs_vault_quality_tabs_module_seed(): array {
+	return [
+		'type'       => 'vault_quality_tabs',
+		'visibility' => 'all',
+		'spacing_v'  => 'normal',
+		'spacing_h'  => 'normal',
+		'config'     => wchs_vault_quality_tabs_defaults(),
+	];
+}
+
+function wchs_vault_hero_module_seed(): array {
+	return [
+		'type'       => 'vault_hero',
+		'visibility' => 'all',
+		'spacing_v'  => 'normal',
+		'spacing_h'  => 'normal',
+		'config'     => wchs_vault_hero_defaults(),
+	];
+}
+
+function wchs_ensure_vault_page_modules( array $modules ): array {
+	$has_hero = false;
+	$has_tabs = false;
+	foreach ( $modules as $mod ) {
+		if ( ! is_array( $mod ) ) {
+			continue;
+		}
+		$type = $mod['type'] ?? '';
+		if ( 'vault_hero' === $type ) {
+			$has_hero = true;
+		}
+		if ( 'vault_quality_tabs' === $type ) {
+			$has_tabs = true;
+		}
+	}
+	if ( ! $has_hero ) {
+		array_unshift( $modules, wchs_vault_hero_module_seed() );
+	}
+	if ( ! $has_tabs ) {
+		$insert_at = 1;
+		foreach ( $modules as $i => $mod ) {
+			if ( is_array( $mod ) && ( $mod['type'] ?? '' ) === 'vault_hero' ) {
+				$insert_at = $i + 1;
+				break;
+			}
+		}
+		array_splice( $modules, $insert_at, 0, [ wchs_vault_quality_tabs_module_seed() ] );
+	}
+	return $modules;
+}
+
+function wchs_vault_page_needs_sync( array $modules ): bool {
+	$has_hero = false;
+	$has_tabs = false;
+	foreach ( $modules as $mod ) {
+		if ( ! is_array( $mod ) ) {
+			continue;
+		}
+		$type = $mod['type'] ?? '';
+		if ( 'vault_hero' === $type ) {
+			$has_hero = true;
+		}
+		if ( 'vault_quality_tabs' === $type ) {
+			$has_tabs = true;
+		}
+	}
+	return ! $has_hero || ! $has_tabs;
+}
+
+function wchs_maybe_persist_vault_page_config( array $pages_cfg ): array {
+	$pages   = is_array( $pages_cfg['pages'] ?? null ) ? $pages_cfg['pages'] : [];
+	$changed = false;
+	$vault_i = null;
+
+	foreach ( $pages as $i => $page ) {
+		if ( ! is_array( $page ) || ( $page['slug'] ?? '' ) !== 'vault' ) {
+			continue;
+		}
+		$vault_i = $i;
+		$modules = is_array( $page['modules'] ?? null ) ? $page['modules'] : [];
+		if ( ! wchs_vault_page_needs_sync( $modules ) ) {
+			break;
+		}
+		$modules = wchs_ensure_vault_page_modules( $modules );
+		if ( class_exists( '\\WCHS\\Admin\\SchemaSanitizer' ) ) {
+			$modules = \WCHS\Admin\SchemaSanitizer::sanitize_modules( $modules, 'pages' );
+		}
+		$pages[ $i ]['title']   = trim( (string) ( $page['title'] ?? '' ) ) ?: 'Vault';
+		$pages[ $i ]['slug']    = 'vault';
+		$pages[ $i ]['modules'] = $modules;
+		$changed                = true;
+		break;
+	}
+
+	if ( null === $vault_i ) {
+		$modules = wchs_ensure_vault_page_modules( [] );
+		if ( class_exists( '\\WCHS\\Admin\\SchemaSanitizer' ) ) {
+			$modules = \WCHS\Admin\SchemaSanitizer::sanitize_modules( $modules, 'pages' );
+		}
+		$pages[] = [
+			'title'   => 'Vault',
+			'slug'    => 'vault',
+			'modules' => $modules,
+		];
+		$changed = true;
+	}
+
+	if ( ! $changed ) {
+		return $pages_cfg;
+	}
+
+	$pages_cfg['pages'] = $pages;
+	update_option( 'wchs_pages_config', $pages_cfg );
+	if ( function_exists( 'wp_cache_flush' ) ) {
+		wp_cache_flush();
+	}
+	return $pages_cfg;
 }
 
 function wchs_rest_config( \WP_REST_Request $request ) {

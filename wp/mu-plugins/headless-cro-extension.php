@@ -122,7 +122,7 @@ function wchs_cro_bogo_normalize_preset_row( array $row ): ?array {
 }
 
 /**
- * 1 · 3 · 5 · 10 vials (% off) + hidden 15 @ 40% cap tier.
+ * Volume discount tiers: 1–15 vials (% off) + hidden 6–14 for cart stepping.
  *
  * @return list<array<string, mixed>>
  */
@@ -131,9 +131,44 @@ function wchs_cro_bogo_canonical_presets(): array {
 		[ 'paid_qty' => 1, 'discount_pct' => 0, 'flag' => '' ],
 		[ 'paid_qty' => 3, 'discount_pct' => 15, 'flag' => 'POPULAR' ],
 		[ 'paid_qty' => 5, 'discount_pct' => 23, 'flag' => 'BEST VALUE' ],
+		[ 'paid_qty' => 6, 'discount_pct' => 25, 'flag' => '', 'pdp_hidden' => true ],
+		[ 'paid_qty' => 7, 'discount_pct' => 27, 'flag' => '', 'pdp_hidden' => true ],
+		[ 'paid_qty' => 8, 'discount_pct' => 29, 'flag' => '', 'pdp_hidden' => true ],
+		[ 'paid_qty' => 9, 'discount_pct' => 30, 'flag' => '', 'pdp_hidden' => true ],
 		[ 'paid_qty' => 10, 'discount_pct' => 31, 'flag' => 'BULK' ],
+		[ 'paid_qty' => 11, 'discount_pct' => 33, 'flag' => '', 'pdp_hidden' => true ],
+		[ 'paid_qty' => 12, 'discount_pct' => 35, 'flag' => '', 'pdp_hidden' => true ],
+		[ 'paid_qty' => 13, 'discount_pct' => 37, 'flag' => '', 'pdp_hidden' => true ],
+		[ 'paid_qty' => 14, 'discount_pct' => 38, 'flag' => '', 'pdp_hidden' => true ],
 		[ 'paid_qty' => 15, 'discount_pct' => 40, 'flag' => '', 'pdp_hidden' => true ],
 	];
+}
+
+/**
+ * Fill missing 6–14 tiers and sync discount_pct from canonical volume table.
+ *
+ * @param list<array<string, mixed>> $presets
+ * @return list<array<string, mixed>>
+ */
+function wchs_cro_bogo_merge_canonical_volume_tiers( array $presets ): array {
+	$canonical = wchs_cro_bogo_canonical_presets();
+	$by_qty    = [];
+	foreach ( $presets as $row ) {
+		$by_qty[ (int) $row['paid_qty'] ] = $row;
+	}
+	foreach ( $canonical as $row ) {
+		$qty = (int) $row['paid_qty'];
+		if ( ! isset( $by_qty[ $qty ] ) ) {
+			$by_qty[ $qty ] = $row;
+			continue;
+		}
+		$by_qty[ $qty ]['discount_pct'] = $row['discount_pct'];
+		if ( ! empty( $row['pdp_hidden'] ) ) {
+			$by_qty[ $qty ]['pdp_hidden'] = true;
+		}
+	}
+	ksort( $by_qty, SORT_NUMERIC );
+	return array_values( $by_qty );
 }
 
 /**
@@ -170,7 +205,7 @@ function wchs_cro_bogo_repair_presets( array $presets ): array {
 	);
 
 	if ( wchs_cro_bogo_uses_volume_presets( $normalized ) ) {
-		return $normalized;
+		return wchs_cro_bogo_merge_canonical_volume_tiers( $normalized );
 	}
 
 	$has_bundle_free = false;
@@ -317,8 +352,9 @@ function wchs_cro_get_tier_rules( \WC_Product $product ): array {
 		}
 		ksort( $rules, SORT_NUMERIC );
 		return [
-			'type'  => 'percentage',
-			'rules' => $rules,
+			'type'              => 'percentage',
+			'rules'             => $rules,
+			'volume_discount'   => true,
 		];
 	}
 	$rules = [];
@@ -469,10 +505,16 @@ function wchs_cro_line_total_minor_for_qty( \WC_Product $product, int $qty, arra
 		return max( 0, $regular_minor * max( 0, $qty ) );
 	}
 
-	$cap = wchs_cro_volume_discount_cap_qty();
-	if ( $qty > $cap && wchs_cro_bogo_settings()['enabled'] && wchs_cro_bogo_uses_volume_presets( wchs_cro_bogo_settings()['presets'] ) ) {
+	$volume = ! empty( $rules_data['volume_discount'] );
+	$cap    = wchs_cro_volume_discount_cap_qty();
+	if ( $volume && $qty > $cap ) {
 		return wchs_cro_line_total_minor_for_qty( $product, $cap, $rules_data )
 			+ ( ( $qty - $cap ) * $regular_minor );
+	}
+
+	if ( $volume ) {
+		$unit_minor = wchs_cro_unit_price_for_qty( $product, $qty, $rules_data );
+		return $unit_minor * $qty;
 	}
 
 	$anchor = wchs_cro_active_bundle_min_qty( $qty, $rules_data );
@@ -488,48 +530,12 @@ function wchs_cro_line_total_minor_for_qty( \WC_Product $product, int $qty, arra
 }
 
 /**
- * Snap cart qty on +/- so partial steps between bundles resolve to the next/previous tier.
+ * Clamp cart qty to valid bounds. Tier/bundle pricing still applies via CRO line math;
+ * steppers always move ±1 (no snap to 3/5/10/15 thresholds).
  */
 function wchs_cro_resolve_cart_qty_change( int $current_qty, int $proposed_qty, array $rules_data ): int {
-	$tiers = wchs_cro_tier_threshold_qtys( $rules_data );
-	if ( empty( $tiers ) ) {
-		return max( 1, $proposed_qty );
-	}
-
-	$current  = max( 1, $current_qty );
-	$proposed = max( 1, $proposed_qty );
-
-	if ( $proposed > $current ) {
-		$tier_at_current = 0;
-		$next_tier       = null;
-		foreach ( $tiers as $min_qty ) {
-			if ( $min_qty <= $current ) {
-				$tier_at_current = $min_qty;
-			}
-			if ( $min_qty > $current && null === $next_tier ) {
-				$next_tier = $min_qty;
-			}
-		}
-		if ( $tier_at_current > 0 && $current === $tier_at_current && null !== $next_tier && $proposed > $current && $proposed < $next_tier ) {
-			return $next_tier;
-		}
-		return $proposed;
-	}
-
-	if ( $proposed < $current && in_array( $current, $tiers, true ) ) {
-		$lower = 0;
-		foreach ( array_reverse( $tiers ) as $min_qty ) {
-			if ( $min_qty < $current ) {
-				$lower = $min_qty;
-				break;
-			}
-		}
-		if ( $lower > 0 && $proposed < $current && $proposed > $lower ) {
-			return $lower;
-		}
-	}
-
-	return $proposed;
+	unset( $current_qty, $rules_data );
+	return max( 1, $proposed_qty );
 }
 
 /**

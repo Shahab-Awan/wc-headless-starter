@@ -6,7 +6,7 @@ import {
 	repairBundlePresets,
 	VOLUME_DISCOUNT_CAP_QTY,
 	type BogoBundleConfig,
-	unitPriceAtTier,
+	unitPriceAtLineQty,
 	bogoUsesVolumePresets,
 } from '$lib/pdp/bogo-bundles';
 import type { WchsCroCartItem } from '$lib/wc/cart.svelte';
@@ -20,7 +20,7 @@ function activeBundleAnchor(qty: number, thresholds: number[]): number {
 	return anchor;
 }
 
-function estimateLineTotalUncapped(
+function estimateLegacyBundleLineTotal(
 	qty: number,
 	regularMinor: number,
 	thresholds: number[],
@@ -32,10 +32,20 @@ function estimateLineTotalUncapped(
 	const anchor = activeBundleAnchor(qty, thresholds);
 	if (anchor < 1) return regularMinor * qty;
 
-	const bundleUnit = unitPriceAtTier(anchor, regularMinor, presets);
+	const bundleUnit = unitPriceAtLineQty(anchor, regularMinor, presets);
 	const bundleLine = bundleUnit * anchor;
 	const overage = Math.max(0, qty - anchor);
 	return bundleLine + overage * regularMinor;
+}
+
+function estimateVolumeLineTotal(
+	qty: number,
+	regularMinor: number,
+	presets: ReturnType<typeof repairBundlePresets>
+): number {
+	if (qty < 1 || regularMinor <= 0) return 0;
+	const unit = unitPriceAtLineQty(qty, regularMinor, presets);
+	return unit * qty;
 }
 
 export function estimateLineTotalMinor(
@@ -47,14 +57,20 @@ export function estimateLineTotalMinor(
 	if (qty < 1 || regularMinor <= 0) return 0;
 
 	const presets = repairBundlePresets(bogo?.presets?.length ? bogo.presets : []);
-	if (bogoUsesVolumePresets(presets) && qty > VOLUME_DISCOUNT_CAP_QTY) {
+	const volume = bogoUsesVolumePresets(presets);
+
+	if (volume && qty > VOLUME_DISCOUNT_CAP_QTY) {
 		return (
-			estimateLineTotalUncapped(VOLUME_DISCOUNT_CAP_QTY, regularMinor, thresholds, presets) +
+			estimateLineTotalMinor(VOLUME_DISCOUNT_CAP_QTY, regularMinor, thresholds, bogo) +
 			(qty - VOLUME_DISCOUNT_CAP_QTY) * regularMinor
 		);
 	}
 
-	return estimateLineTotalUncapped(qty, regularMinor, thresholds, presets);
+	if (volume) {
+		return estimateVolumeLineTotal(qty, regularMinor, presets);
+	}
+
+	return estimateLegacyBundleLineTotal(qty, regularMinor, thresholds, presets);
 }
 
 /** Optimistic wchs_cro fields after a qty change (before server round-trip). */
@@ -81,6 +97,6 @@ export function estimateCartLineCro(
 		savings_line_total: savingsLine,
 		savings_pct: savingsPct,
 		bundle_label: resolveCartBundleLabel(qty, thresholds, bogo),
-		active_bundle_min_qty: thresholds.includes(qty) ? qty : activeBundleAnchor(qty, thresholds),
+		active_bundle_min_qty: activeBundleAnchor(qty, thresholds),
 	};
 }

@@ -24,6 +24,7 @@ import { loadFont } from './hero-fonts';
 import { isCaptchaChallenge, handleCaptchaChallenge } from './siteground-captcha';
 import type { HeroPrecisionConfig } from './hero-precision';
 import { HERO_PRECISION_DEFAULTS } from './hero-precision';
+import { mergeVaultPages } from './vault-page';
 
 export type HeroTrustItem = {
 	icon: string;
@@ -517,6 +518,40 @@ export type VideoModuleConfig = {
 	controls: boolean;
 };
 
+export type VaultHeroModuleConfig = {
+	headline?: string;
+	stats?: { label: string }[];
+	cta_text?: string;
+	cta_href?: string;
+	bg_image?: string;
+	vial_primary?: string;
+	vial_primary_alt?: string;
+	vial_secondary?: string;
+	vial_secondary_alt?: string;
+	vial_tertiary?: string;
+	vial_tertiary_alt?: string;
+};
+
+export type VaultQualityTab = {
+	title?: string;
+	summary?: string;
+	body?: string;
+	why_matters?: string;
+	chart_image?: string;
+};
+
+export type VaultQualityTabsModuleConfig = {
+	section_title?: string;
+	section_subtitle?: string;
+	product_image?: string;
+	product_image_alt?: string;
+	image_badge?: string;
+	panel_bg?: string;
+	detail_cta_text?: string;
+	detail_cta_href?: string;
+	tabs?: VaultQualityTab[];
+};
+
 export type HomepageModule =
 	| (ModuleBase & { type: 'product_slider'; config: ProductSliderModuleConfig })
 	| (ModuleBase & { type: 'review_slider'; config: ReviewSliderModuleConfig })
@@ -539,7 +574,9 @@ export type HomepageModule =
 	| (ModuleBase & { type: 'cta'; config: CTAModuleConfig })
 	| (ModuleBase & { type: 'spacer'; config: SpacerModuleConfig })
 	| (ModuleBase & { type: 'logo_strip'; config: LogoStripModuleConfig })
-	| (ModuleBase & { type: 'video'; config: VideoModuleConfig });
+	| (ModuleBase & { type: 'video'; config: VideoModuleConfig })
+	| (ModuleBase & { type: 'vault_hero'; config: VaultHeroModuleConfig })
+	| (ModuleBase & { type: 'vault_quality_tabs'; config: VaultQualityTabsModuleConfig });
 
 export type HomepageConfig = {
 	hero: HomepageHeroConfig;
@@ -1548,6 +1585,7 @@ class ConfigStore {
 					features: { ...DEFAULTS.features, ...json.features },
 					homepage: mergedHomepage,
 					pdp: mergeFetchedPdp(json.pdp),
+					pages: mergeVaultPages(json.pages ?? []),
 				};
 				this.ready = true;
 				this.error = null;
