@@ -150,10 +150,10 @@
 	.vault-qt {
 		--mod-pt: 0;
 		--mod-pb: 0;
-		width: 100vw;
-		max-width: 100vw;
-		margin-left: calc(50% - 50vw);
-		margin-right: calc(50% - 50vw);
+		width: 100%;
+		max-width: 100%;
+		margin-left: 0;
+		margin-right: 0;
 		padding: var(--mod-pt) 0 var(--mod-pb);
 	}
 

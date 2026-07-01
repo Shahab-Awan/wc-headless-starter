@@ -141,10 +141,10 @@
 	.vault-hero {
 		--mod-pt: 0;
 		--mod-pb: 0;
-		width: 100vw;
-		max-width: 100vw;
-		margin-left: calc(50% - 50vw);
-		margin-right: calc(50% - 50vw);
+		width: 100%;
+		max-width: 100%;
+		margin-left: 0;
+		margin-right: 0;
 		padding: var(--mod-pt) 0 var(--mod-pb);
 	}
 	.vault-hero.is-v-compact {
@@ -282,10 +282,10 @@
 
 	.vault-hero__vial--secondary {
 		--vial-rotate: 12deg;
-		right: 2%;
+		right: 12%;
 		top: 6%;
 		width: min(38%, 168px);
-		z-index: 2;
+		z-index: 3;
 		transform: rotate(var(--vial-rotate));
 		filter: drop-shadow(0 14px 24px color-mix(in srgb, var(--fg) 12%, transparent));
 		animation: vault-vial-float 4.4s ease-in-out infinite 0.35s;
@@ -293,13 +293,13 @@
 
 	.vault-hero__vial--tertiary {
 		--vial-rotate: -8deg;
-		right: 8%;
-		bottom: 8%;
-		width: min(36%, 158px);
+		left: 50%;
+		top: 16%;
+		width: min(34%, 172px);
 		z-index: 2;
-		transform: rotate(var(--vial-rotate));
+		transform: translateX(-50%) rotate(var(--vial-rotate));
 		filter: drop-shadow(0 16px 26px color-mix(in srgb, var(--fg) 12%, transparent));
-		animation: vault-vial-float 4.9s ease-in-out infinite 0.7s;
+		animation: vault-vial-float-center 4.9s ease-in-out infinite 0.7s;
 	}
 
 	@keyframes vault-vial-float {
@@ -309,6 +309,16 @@
 		}
 		50% {
 			transform: translateY(-12px) rotate(calc(var(--vial-rotate) + 2deg));
+		}
+	}
+
+	@keyframes vault-vial-float-center {
+		0%,
+		100% {
+			transform: translateX(-50%) translateY(0) rotate(var(--vial-rotate));
+		}
+		50% {
+			transform: translateX(-50%) translateY(-12px) rotate(calc(var(--vial-rotate) + 2deg));
 		}
 	}
 
@@ -342,6 +352,10 @@
 		.vault-hero__stat-sep {
 			display: none;
 		}
+
+		.vault-hero__vial--tertiary {
+			display: none;
+		}
 	}
 
 	@media (max-width: 520px) {
@@ -353,6 +367,10 @@
 	@media (prefers-reduced-motion: reduce) {
 		.vault-hero__vial {
 			animation: none;
+		}
+
+		.vault-hero__vial--tertiary {
+			transform: translateX(-50%) rotate(var(--vial-rotate));
 		}
 	}
 </style>

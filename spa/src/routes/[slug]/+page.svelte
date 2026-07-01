@@ -374,7 +374,8 @@
 		/* Half-padding per block → 64px between sections (32px + 32px). */
 		--wchs-page-section-half: 32px;
 		--wchs-page-section-bottom: 72px;
-		max-width: none;
+		max-width: 100%;
+		overflow-x: clip;
 		padding: 0 0 var(--wchs-page-section-bottom);
 		display: flex;
 		flex-direction: column;
@@ -448,7 +449,8 @@
 	.content-page--vault {
 		padding-top: 0;
 		padding-inline: 0;
-		max-width: none;
+		max-width: 100%;
+		overflow-x: clip;
 	}
 
 	.content-page--vault > :global(.vault-hero:first-child) {
@@ -481,6 +483,8 @@
 
 	.content-page--why-alyve {
 		padding-bottom: var(--wchs-page-section-bottom, 72px);
+		max-width: 100%;
+		overflow-x: clip;
 	}
 
 	.content-page--why-alyve > :global(section.listicle.has-editorial-hero:first-child) {
