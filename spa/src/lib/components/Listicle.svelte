@@ -604,14 +604,15 @@
 		--mod-px: clamp(16px, 3vw, 28px);
 		--mod-pt: 0;
 		--listicle-max: min(960px, 100%);
+		overflow-x: clip;
 	}
 
 	.listicle__hero--editorial {
 		gap: clamp(28px, 4.5vw, 44px);
 		max-width: 100%;
-		width: calc(100% + 2 * var(--mod-px, 28px));
-		margin-left: calc(-1 * var(--mod-px, 28px));
-		margin-right: calc(-1 * var(--mod-px, 28px));
+		width: 100%;
+		margin-left: 0;
+		margin-right: 0;
 		margin-bottom: clamp(36px, 5vw, 48px);
 		align-items: stretch;
 		text-align: center;
@@ -622,10 +623,10 @@
 		--hero-grad-teal: var(--listicle-teal);
 		--hero-grad-sky: color-mix(in srgb, var(--listicle-teal) 35%, #0ea5e9 65%);
 		--hero-grad-indigo: color-mix(in srgb, var(--listicle-teal) 45%, #4f46e5 55%);
-		width: 100%;
-		max-width: 100%;
-		margin-left: 0;
-		margin-right: 0;
+		width: 100vw;
+		max-width: 100vw;
+		margin-left: calc(50% - 50vw);
+		margin-right: calc(50% - 50vw);
 		padding: clamp(40px, 6vw, 72px) clamp(20px, 4vw, 32px);
 		box-sizing: border-box;
 		background: linear-gradient(

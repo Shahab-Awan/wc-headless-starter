@@ -152,6 +152,39 @@
 		return resolveDirectAddTarget(product, cached) !== null;
 	}
 
+	function canOfferAdd(product: StoreProduct): boolean {
+		if (!product.has_options) return canPurchase(product);
+		const cached = variationCache.get(product.id);
+		if (!cached) return true;
+		return cached.some((v) => canPurchase(v));
+	}
+
+	function addButtonLabel(product: StoreProduct, isAdding: boolean, justAdded: boolean): string {
+		if (isAdding) return 'Adding…';
+		if (justAdded) return 'Added';
+		if (product.has_options && !canDirectAdd(product)) return 'Select';
+		return 'Add';
+	}
+
+	async function handleAddClick(e: Event, product: StoreProduct, context: 'sidebar' | 'strip' = 'strip') {
+		e.preventDefault();
+		e.stopPropagation();
+		if (addingId !== null) return;
+
+		if (mode === 'complex' && product.has_options && context === 'strip') {
+			await miniAdd(e, product);
+			return;
+		}
+
+		await directAdd(e, product);
+	}
+
+	function onSelectChange(e: Event, product: StoreProduct) {
+		const value = (e.currentTarget as HTMLSelectElement).value;
+		if (!value) return;
+		miniSelect(product, value);
+	}
+
 	function flashAdded(productId: number) {
 		justAddedIds = { ...justAddedIds, [productId]: Date.now() };
 		setTimeout(() => {
@@ -166,12 +199,15 @@
 		e.stopPropagation();
 		if (addingId !== null) return;
 
-		addingId = product.id;
-		try {
-			if (product.has_options && product.variations.length > 0) {
-				const variations = await loadVariations(product);
-				const target = resolveDirectAddTarget(product, variations);
-				if (!target) return;
+		if (product.has_options && product.variations.length > 0) {
+			const variations = await loadVariations(product);
+			const target = resolveDirectAddTarget(product, variations);
+			if (!target) {
+				await openModal(product);
+				return;
+			}
+			addingId = product.id;
+			try {
 				const variation = Object.entries(target.attrs).map(([attribute, value]) => ({
 					attribute,
 					value,
@@ -179,10 +215,18 @@
 				await cart.addItem(target.variationId, 1, variation, {
 					clicked_from: 'cart_cross_sell',
 				});
-			} else {
-				if (!canPurchase(product)) return;
-				await cart.addItem(product.id, 1, [], { clicked_from: 'cart_cross_sell' });
+				flashAdded(product.id);
+			} finally {
+				addingId = null;
 			}
+			return;
+		}
+
+		if (!canPurchase(product)) return;
+
+		addingId = product.id;
+		try {
+			await cart.addItem(product.id, 1, [], { clicked_from: 'cart_cross_sell' });
 			flashAdded(product.id);
 		} finally {
 			addingId = null;
@@ -290,6 +334,7 @@
 			await cart.addItem(targetId, s.qty, variation, { clicked_from: 'cart_cross_sell' });
 			miniStates.set(product.id, { ...s, justAdded: true });
 			miniStates = new Map(miniStates);
+			flashAdded(product.id);
 			setTimeout(() => {
 				const cur = miniStates.get(product.id);
 				if (cur) {
@@ -389,6 +434,7 @@
 			await cart.addItem(targetId, modalState.qty, variation, { clicked_from: 'cart_cross_sell' });
 			miniStates.set(modalProduct.id, { ...modalState, justAdded: true });
 			miniStates = new Map(miniStates);
+			flashAdded(modalProduct.id);
 			closeModal();
 			setTimeout(() => {
 				const cur = miniStates.get(modalProduct!.id);
@@ -522,11 +568,11 @@
 								type="button"
 								class="cart-xsell__cta"
 								class:just-added={justAdded}
-								disabled={isAdding || !canDirectAdd(product)}
+								disabled={isAdding || !canOfferAdd(product)}
 								aria-busy={isAdding}
-								onclick={(e) => void directAdd(e, product)}
+								onclick={(e) => void handleAddClick(e, product, 'sidebar')}
 							>
-								{isAdding ? 'Adding…' : 'Add'}
+								{addButtonLabel(product, isAdding, justAdded)}
 							</button>
 						</div>
 					</article>
@@ -542,7 +588,99 @@
 				{@const onSale = regular > current}
 				{@const isAdding = addingId === product.id}
 				{@const justAdded = !!justAddedIds[product.id]}
-				<article class="cart-xsell__card" class:just-added={justAdded} role="listitem">
+				{@const s = getState(product)}
+				{@const steps = getSteps(product)}
+				{@const step = steps[s.stepIdx]}
+				{@const useComplexStrip = mode === 'complex' && product.has_options}
+				<article class="cart-xsell__card" class:just-added={justAdded || s.justAdded} role="listitem">
+					{#if useComplexStrip}
+						<div class="cart-xsell__strip">
+							<div class="cart-xsell__media">
+								{#if product.images[0]}
+									<img
+										src={product.images[0].thumbnail || product.images[0].src}
+										alt={product.images[0].alt || product.name}
+										loading="lazy"
+										draggable="false"
+									/>
+								{/if}
+								<div class="cart-xsell__controls">
+									{#if s.stepIdx > 0}
+										<button
+											type="button"
+											class="cart-xsell__ctrl-btn"
+											aria-label="Previous option"
+											onmousedown={(e) => e.stopPropagation()}
+											onclick={(e) => miniBack(e, product)}
+										>
+											←
+										</button>
+									{/if}
+									{#if step?.type === 'attribute'}
+										<select
+											class="cart-xsell__ctrl-select"
+											value={s.attrs[step.key] ?? ''}
+											onmousedown={(e) => e.stopPropagation()}
+											onchange={(e) => onSelectChange(e, product)}
+										>
+											<option value="">{step.key}</option>
+											{#each getStepOptions(product, s.stepIdx, s.attrs) as opt}
+												<option value={opt}>{opt}</option>
+											{/each}
+										</select>
+									{:else if step?.type === 'quantity'}
+										<button
+											type="button"
+											class="cart-xsell__ctrl-btn"
+											aria-label="Decrease quantity"
+											disabled={s.qty <= 1}
+											onmousedown={(e) => e.stopPropagation()}
+											onclick={(e) => miniQtyDec(e, product)}
+										>
+											−
+										</button>
+										<span class="cart-xsell__ctrl-qty tabular-nums">{s.qty}</span>
+										<button
+											type="button"
+											class="cart-xsell__ctrl-btn"
+											aria-label="Increase quantity"
+											onmousedown={(e) => e.stopPropagation()}
+											onclick={(e) => miniQtyInc(e, product)}
+										>
+											+
+										</button>
+									{/if}
+								</div>
+								<button
+									type="button"
+									class="cart-xsell__add-btn"
+									class:just-added={justAdded || s.justAdded}
+									disabled={isAdding || !canOfferAdd(product)}
+									aria-label="Add {product.name} to cart"
+									aria-busy={isAdding}
+									onmousedown={(e) => e.stopPropagation()}
+									onclick={(e) => void miniAdd(e, product)}
+								>
+									{#if isAdding}
+										…
+									{:else if justAdded || s.justAdded}
+										✓
+									{:else}
+										+
+									{/if}
+								</button>
+							</div>
+							<div class="cart-xsell__body">
+								<p class="cart-xsell__title">{product.name}</p>
+								<p class="cart-xsell__price tabular-nums">
+									<span class="cart-xsell__price-now">{formatMoneyInt(current)}</span>
+									{#if onSale}
+										<span class="cart-xsell__price-was">{formatMoneyInt(regular)}</span>
+									{/if}
+								</p>
+							</div>
+						</div>
+					{:else}
 					<div class="cart-xsell__strip">
 						<div class="cart-xsell__media">
 							{#if product.images[0]}
@@ -550,6 +688,7 @@
 									src={product.images[0].thumbnail || product.images[0].src}
 									alt={product.images[0].alt || product.name}
 									loading="lazy"
+									draggable="false"
 								/>
 							{/if}
 						</div>
@@ -565,15 +704,16 @@
 								type="button"
 								class="cart-xsell__cta cart-xsell__cta--compact"
 								class:just-added={justAdded}
-								disabled={isAdding || !canDirectAdd(product)}
+								disabled={isAdding || !canOfferAdd(product)}
 								aria-busy={isAdding}
 								onmousedown={(e) => e.stopPropagation()}
-								onclick={(e) => void directAdd(e, product)}
+								onclick={(e) => void handleAddClick(e, product, 'strip')}
 							>
-								{isAdding ? 'Adding…' : 'Add'}
+								{addButtonLabel(product, isAdding, justAdded)}
 							</button>
 						</div>
 					</div>
+					{/if}
 				</article>
 			{/each}
 			</div>
@@ -860,6 +1000,7 @@
 		border-color: var(--success, #059669);
 	}
 	.cart-xsell__media {
+		position: relative;
 		aspect-ratio: 1 / 1;
 		background: color-mix(in srgb, var(--accent) 6%, var(--bg-muted));
 		overflow: hidden;
