@@ -70,6 +70,11 @@ return [
 			'default' => 'READ THIS BEFORE YOU BUY RESEARCH COMPOUNDS FROM ANY OTHER COMPANY',
 		],
 		[
+			'id'      => 'hero_trust_lead',
+			'type'    => 'text',
+			'default' => 'Overseas suppliers make the same promises. Here is what actually sets Alyve\'s U.S.-fulfilled, batch-verified compounds apart — and why more research teams keep switching.',
+		],
+		[
 			'id'      => 'hero_cta_image',
 			'type'    => 'image',
 			'default' => '/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp',

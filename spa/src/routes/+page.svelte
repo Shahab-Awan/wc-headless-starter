@@ -11,6 +11,7 @@
 	import FeatureHighlights from '$lib/components/FeatureHighlights.svelte';
 	import OrderHandling from '$lib/components/OrderHandling.svelte';
 	import ShopCatalog from '$lib/components/ShopCatalog.svelte';
+	import FeaturedProducts from '$lib/components/FeaturedProducts.svelte';
 	import ContactForm from '$lib/components/ContactForm.svelte';
 	import Hero from '$lib/components/Hero.svelte';
 	import CTA from '$lib/components/CTA.svelte';
@@ -81,12 +82,12 @@
 
 {#each modules as mod}
 	<div class="wchs-mod-wrap" data-module-type={mod.type} data-module-id={mod.id ?? ''} style="display: contents">
-		{#if mod.type === 'product_slider' && mod.config.source === 'all'}
-			<ShopCatalog
+		{#if mod.type === 'featured_products'}
+			<FeaturedProducts
+				config={mod.config}
+				resolved={mod.resolved}
 				spacing_v={mod.spacing_v || 'normal'}
 				spacing_h={mod.spacing_h || 'normal'}
-				showPageHead={false}
-				showIntro={true}
 			/>
 		{:else if mod.type === 'product_slider'}
 			<HomepageProductSlider config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />

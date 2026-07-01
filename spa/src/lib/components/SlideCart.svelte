@@ -16,6 +16,7 @@
 	import CartBacWaterPrompt from './CartBacWaterPrompt.svelte';
 	import CartCheckoutSocialProof from './CartCheckoutSocialProof.svelte';
 	import CartRewardsMilestones from './CartRewardsMilestones.svelte';
+	import PaymentMethodIcons from './PaymentMethodIcons.svelte';
 	import { formatPrice } from '$lib/utils/format';
 	import { config } from '$lib/config.svelte';
 	import type { StoreApiCartItem } from '$lib/wc/cart.svelte';
@@ -345,7 +346,6 @@
 	{#if cart.cart && visibleItemCount > 0}
 		<div class="fkcart-social-wrap">
 			<CartCheckoutSocialProof />
-			<CartRewardsMilestones />
 		</div>
 	{/if}
 
@@ -506,6 +506,8 @@
 
 	{#if cart.cart && visibleItemCount > 0}
 		<footer class="fkcart-footer">
+			<CartRewardsMilestones />
+
 			{#if cartTotalSavings > 0}
 				<p class="fkcart-savings tabular-nums">
 					{#key cartTotalSavings}
@@ -585,11 +587,7 @@
 					Secure Checkout
 				</span>
 				<span class="fkcart-trust__payments" aria-hidden="true">
-					<span class="fkcart-pay fkcart-pay--visa">VISA</span>
-					<span class="fkcart-pay fkcart-pay--mc" aria-label="Mastercard"></span>
-					<span class="fkcart-pay fkcart-pay--amex">AMEX</span>
-					<span class="fkcart-pay fkcart-pay--disc">DISC</span>
-					<span class="fkcart-pay fkcart-pay--btc" aria-label="Bitcoin">₿</span>
+					<PaymentMethodIcons />
 				</span>
 			</div>
 		</footer>
@@ -837,10 +835,12 @@
 	.fkcart-body {
 		flex: 1 1 auto;
 		min-height: 0;
+		position: relative;
+		z-index: 1;
 		overflow-y: auto;
 		overflow-x: hidden;
 		-webkit-overflow-scrolling: touch;
-		padding: 8px 0 0;
+		padding: 8px 0 4px;
 	}
 	.fkcart-body.has-zero-state {
 		display: flex;
@@ -1087,17 +1087,26 @@
 
 	.fkcart-footer {
 		border-top: 1px solid var(--border);
-		padding: 14px 20px 16px;
+		padding: 12px 20px 14px;
 		display: flex;
 		flex-direction: column;
-		gap: 12px;
+		gap: 6px;
 		background: var(--bg);
 		flex-shrink: 0;
 		margin-top: auto;
+		position: relative;
+		z-index: 2;
+		overflow: visible;
 		box-shadow: 0 -6px 20px color-mix(in srgb, var(--fg) 6%, transparent);
 	}
+	.fkcart-footer :global(.fkcart-rewards) {
+		margin-top: 0;
+		margin-bottom: 2px;
+		overflow: visible;
+	}
+
 	.fkcart-savings {
-		margin: 0 0 12px;
+		margin: 0;
 		font-size: 14px;
 		font-weight: 500;
 		line-height: 1.35;
@@ -1125,7 +1134,7 @@
 	}
 	.fkcart-checkout {
 		display: block;
-		padding: 14px 16px;
+		padding: 12px 16px;
 		border-radius: 999px;
 		background: var(--accent);
 		color: var(--accent-fg) !important;
@@ -1153,10 +1162,10 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		padding: 10px 12px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-md, 8px);
-		background: var(--bg);
+		padding: 4px 0 6px;
+		border: 0;
+		border-radius: 0;
+		background: transparent;
 	}
 	.fkcart-ship-protect__icon {
 		flex-shrink: 0;
@@ -1323,63 +1332,8 @@
 	.fkcart-trust__payments {
 		display: inline-flex;
 		align-items: center;
-		gap: 5px;
 		flex-wrap: wrap;
 		justify-content: flex-end;
-	}
-	.fkcart-pay {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 34px;
-		height: 22px;
-		padding: 0 6px;
-		border-radius: 4px;
-		font-size: 9px;
-		font-weight: 700;
-		letter-spacing: 0.02em;
-		line-height: 1;
-	}
-	.fkcart-pay--visa {
-		background: #1a1f71;
-		color: #fff;
-	}
-	.fkcart-pay--mc {
-		width: 34px;
-		padding: 0;
-		background: #000;
-		position: relative;
-	}
-	.fkcart-pay--mc::before,
-	.fkcart-pay--mc::after {
-		content: '';
-		position: absolute;
-		top: 50%;
-		width: 14px;
-		height: 14px;
-		border-radius: 50%;
-		transform: translateY(-50%);
-	}
-	.fkcart-pay--mc::before {
-		left: 8px;
-		background: #eb001b;
-	}
-	.fkcart-pay--mc::after {
-		right: 8px;
-		background: #f79e1b;
-	}
-	.fkcart-pay--amex {
-		background: #2e77bc;
-		color: #fff;
-	}
-	.fkcart-pay--disc {
-		background: #111;
-		color: #fff;
-	}
-	.fkcart-pay--btc {
-		background: #f7931a;
-		color: #fff;
-		font-size: 12px;
 	}
 
 	/* =================================================================

@@ -1270,14 +1270,11 @@ class AdminPage {
 					],
 				],
 				[
-					'type'       => 'product_slider',
+					'type'       => 'featured_products',
 					'visibility' => 'all',
-					'config'     => [
-						'title'       => 'Featured',
-						'source'      => 'all',
-						'category'    => null,
-						'product_ids' => [],
-					],
+					'spacing_v'  => 'normal',
+					'spacing_h'  => 'normal',
+					'config'     => wchs_featured_products_defaults(),
 				],
 				[
 					'type'          => 'reviews_listicle',
@@ -5737,34 +5734,190 @@ class AdminPage {
 				<div class="wchs-field wchs-field--full"><label>Product image alt</label><input type="text" data-field="vqt_product_alt" /></div>
 				<div class="wchs-field wchs-field--full"><label>Image badge overlay</label><input type="text" data-field="vqt_image_badge" placeholder="99.4% Purity — Verified by HPLC" /></div>
 				<div class="wchs-field"><label>Left panel background</label><input type="text" data-field="vqt_panel_bg" placeholder="#ebe6f5" /></div>
-				<div class="wchs-field"><label>Detail CTA text</label><input type="text" data-field="vqt_detail_cta_text" placeholder="See the Proof → View COA Library" /></div>
-				<div class="wchs-field"><label>Detail CTA link</label><input type="text" data-field="vqt_detail_cta_href" placeholder="/coa-library" /></div>
 				<div class="wchs-field wchs-field--full" style="margin-top:12px">
-					<label>Quality tabs</label>
-					<div class="wchs-vqt-tabs" style="display:flex;flex-direction:column;gap:10px">
-						<div class="wchs-accordion-item wchs-vqt-tab-item" style="padding:10px;border:1px solid #ddd;background:#fafafa;display:flex;flex-direction:column;gap:8px">
-							<input type="text" data-field="vqt_tab_title" placeholder="Tab title (e.g. Purity)" />
-							<input type="text" data-field="vqt_tab_summary" placeholder="Short summary (e.g. HPLC ≥99%)" />
-							<textarea data-field="vqt_tab_body" rows="3" placeholder="Explanation" data-wysiwyg="1"></textarea>
-							<input type="text" data-field="vqt_tab_why" placeholder="Why it matters" />
-							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Chart / diagram image (optional)</label>
-							<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
-								<input type="text" data-field="vqt_tab_chart" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
-								<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
-								<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
-							</div>
-							<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:120px;margin-top:4px;border:1px solid #e0e0e0" />
+					<label>Guarantee cards <?php echo self::hint_icon( 'Three icon cards beside the product image — purity, shipping, COA.' ); ?></label>
+					<div class="wchs-vqt-guarantees" style="display:flex;flex-direction:column;gap:10px">
+						<div class="wchs-accordion-item wchs-vqt-guarantee-item" style="padding:10px;border:1px solid #ddd;background:#fafafa;display:flex;flex-direction:column;gap:8px">
+							<input type="text" data-field="vqt_guarantee_title" placeholder="Card title" />
+							<input type="text" data-field="vqt_guarantee_desc" placeholder="Short description" />
+							<input type="text" data-field="vqt_guarantee_tooltip" placeholder="Tooltip (optional)" />
+							<select data-field="vqt_guarantee_accent">
+								<option value="green">Green accent</option>
+								<option value="blue">Blue accent</option>
+								<option value="yellow">Yellow accent</option>
+							</select>
+							<select data-field="vqt_guarantee_icon">
+								<option value="purity">Purity badge icon</option>
+								<option value="shipping">Shipping truck icon</option>
+								<option value="coa">Certificate / document icon</option>
+							</select>
 							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
 						</div>
 					</div>
-					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-vqt-tab-modal" style="margin-top:8px">+ Add tab</button>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-vqt-guarantee-modal" style="margin-top:8px">+ Add guarantee card</button>
 				</div>
 			</div>
 			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
 				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
 					Accent color override
-					<?php echo self::hint_icon( 'Tints tab icons and active states.' ); ?>
+					<?php echo self::hint_icon( 'Tints card icon wells.' ); ?>
 				</label>
+				<?php echo self::accent_override_swatches(); ?>
+			</div>
+			<?php $this->render_module_common_fields(); ?>
+		</div>
+
+		<!-- Vault quality verify (Amino Club style) -->
+		<div id="wchs-mod-tpl-vault_quality_verify" style="display:none">
+			<div class="wchs-module__fields">
+				<div class="wchs-field wchs-field--full"><label>Section title</label><input type="text" data-field="vqv_title" placeholder="Quality You Can Verify, Not Just Trust" /></div>
+				<div class="wchs-field wchs-field--full"><label>Section subtitle</label><input type="text" data-field="vqv_subtitle" /></div>
+				<div class="wchs-field wchs-field--full" style="margin-top:12px">
+					<label>Stats row <?php echo self::hint_icon( 'Headline stats above pill tabs.' ); ?></label>
+					<div class="wchs-vqv-stats" style="display:flex;flex-direction:column;gap:10px">
+						<div class="wchs-accordion-item wchs-vqv-stat-item" style="padding:10px;border:1px solid #ddd;background:#fafafa;display:flex;flex-direction:column;gap:8px">
+							<input type="text" data-field="vqv_stat_value" placeholder="99%+" />
+							<input type="text" data-field="vqv_stat_label" placeholder="Purity Guaranteed" />
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-vqv-stat-modal" style="margin-top:8px">+ Add stat</button>
+				</div>
+				<div class="wchs-field wchs-field--full" style="margin-top:12px">
+					<label>Quality pills</label>
+					<div class="wchs-vqv-tabs" style="display:flex;flex-direction:column;gap:10px">
+						<div class="wchs-accordion-item wchs-vqv-tab-item" style="padding:10px;border:1px solid #ddd;background:#fafafa;display:flex;flex-direction:column;gap:8px">
+							<input type="text" data-field="vqv_tab_title" placeholder="Tab title (e.g. Purity)" />
+							<input type="text" data-field="vqv_tab_summary" placeholder="Short summary (e.g. HPLC ≥99%)" />
+							<textarea data-field="vqv_tab_body" rows="3" placeholder="Explanation" data-wysiwyg="1"></textarea>
+							<div class="wchs-field wchs-field--full">
+								<label>Chart image (optional)</label>
+								<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+									<input type="text" data-field="vqv_tab_chart" class="wchs-media-url" placeholder="No chart selected" style="flex:1;min-width:0" />
+									<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+									<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+								</div>
+								<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:140px;margin-top:8px;border:1px solid #e0e0e0" />
+							</div>
+							<input type="text" data-field="vqv_tab_why" placeholder="Why it matters" />
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-vqv-tab-modal" style="margin-top:8px">+ Add pill tab</button>
+				</div>
+				<div class="wchs-field"><label>Shop CTA text</label><input type="text" data-field="vqv_shop_cta_text" placeholder="Shop Now →" /></div>
+				<div class="wchs-field"><label>Shop CTA link</label><input type="text" data-field="vqv_shop_cta_href" placeholder="/shop" /></div>
+				<div class="wchs-field wchs-field--full"><label>Trust note</label><input type="text" data-field="vqv_trust_note" placeholder="Free COA included with every order" /></div>
+				<div class="wchs-field wchs-field--full">
+					<label>Panel image (full bleed) <?php echo self::hint_icon( 'Covers the entire right panel. Purity badge and proof bar overlay on top.' ); ?></label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="vqv_product_image" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:140px;margin-top:8px;border:1px solid #e0e0e0" />
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Panel image alt</label><input type="text" data-field="vqv_product_alt" /></div>
+				<div class="wchs-field"><label>Purity badge title</label><input type="text" data-field="vqv_purity_badge_title" placeholder="99.4% Purity" /></div>
+				<div class="wchs-field"><label>Purity badge subtitle</label><input type="text" data-field="vqv_purity_badge_subtitle" placeholder="Verified by HPLC" /></div>
+				<div class="wchs-field"><label>Panel background</label><input type="text" data-field="vqv_panel_bg" placeholder="#e8eef5" /></div>
+				<div class="wchs-field"><label>Proof bar title</label><input type="text" data-field="vqv_proof_title" placeholder="See the Proof" /></div>
+				<div class="wchs-field"><label>Proof bar subtitle</label><input type="text" data-field="vqv_proof_subtitle" placeholder="View our quality procedures" /></div>
+				<div class="wchs-field wchs-field--full"><label>Proof bar link</label><input type="text" data-field="vqv_proof_href" placeholder="/coa-library" /></div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+					Accent color override
+					<?php echo self::hint_icon( 'Tints pill tabs and active states.' ); ?>
+				</label>
+				<?php echo self::accent_override_swatches(); ?>
+			</div>
+			<?php $this->render_module_common_fields(); ?>
+		</div>
+
+		<!-- Vault why choose -->
+		<div id="wchs-mod-tpl-vault_why_choose" style="display:none">
+			<div class="wchs-module__fields">
+				<div class="wchs-field wchs-field--full"><label>Section title</label><input type="text" data-field="vwc_title" placeholder="Why Choose Alyve" /></div>
+				<div class="wchs-field wchs-field--full" style="margin-top:12px">
+					<label>Benefit cards <?php echo self::hint_icon( 'Six-card grid — stock, pricing, shipping, verification, COA, fulfillment.' ); ?></label>
+					<div class="wchs-vwc-items" style="display:flex;flex-direction:column;gap:10px">
+						<div class="wchs-accordion-item wchs-vwc-item" style="padding:10px;border:1px solid #ddd;background:#fafafa;display:flex;flex-direction:column;gap:8px">
+							<input type="text" data-field="vwc_item_title" placeholder="Card title" />
+							<input type="text" data-field="vwc_item_desc" placeholder="Short description" />
+							<select data-field="vwc_item_icon">
+								<option value="stock">Stacked inventory</option>
+								<option value="volume">Volume pricing</option>
+								<option value="shipping">Protected shipping</option>
+								<option value="verified">Third-party verified</option>
+								<option value="coa">COA document</option>
+								<option value="fulfillment">Same-day fulfillment</option>
+							</select>
+							<select data-field="vwc_item_accent">
+								<option value="violet">Violet accent</option>
+								<option value="green">Green accent</option>
+								<option value="amber">Amber accent</option>
+								<option value="rose">Rose accent</option>
+								<option value="blue">Blue accent</option>
+								<option value="teal">Teal accent</option>
+							</select>
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-vwc-item-modal" style="margin-top:8px">+ Add benefit card</button>
+				</div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+					Accent color override
+					<?php echo self::hint_icon( 'Optional section-wide accent tint.' ); ?>
+				</label>
+				<?php echo self::accent_override_swatches(); ?>
+			</div>
+			<?php $this->render_module_common_fields(); ?>
+		</div>
+
+		<!-- Vault bottom CTA -->
+		<div id="wchs-mod-tpl-vault_cta" style="display:none">
+			<div class="wchs-module__fields">
+				<div class="wchs-field wchs-field--full"><label>Headline (before accent)</label><input type="text" data-field="vcta_headline_prefix" placeholder="Ready to Verify? Browse the" /></div>
+				<div class="wchs-field wchs-field--full"><label>Headline accent</label><input type="text" data-field="vcta_headline_accent" placeholder="Research Vault." /></div>
+				<div class="wchs-field"><label>Primary button text</label><input type="text" data-field="vcta_primary_text" placeholder="Browse Catalog →" /></div>
+				<div class="wchs-field"><label>Primary button link</label><input type="text" data-field="vcta_primary_href" placeholder="/shop" /></div>
+				<div class="wchs-field"><label>Secondary button text</label><input type="text" data-field="vcta_secondary_text" placeholder="View COA Library" /></div>
+				<div class="wchs-field"><label>Secondary button link</label><input type="text" data-field="vcta_secondary_href" placeholder="/coa-library" /></div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">
+					Accent color override
+					<?php echo self::hint_icon( 'Tints the gradient underline and cool side of the panel.' ); ?>
+				</label>
+				<?php echo self::accent_override_swatches(); ?>
+			</div>
+			<?php $this->render_module_common_fields(); ?>
+		</div>
+
+		<!-- Featured products -->
+		<div id="wchs-mod-tpl-featured_products" style="display:none">
+			<div class="wchs-module__fields">
+				<div class="wchs-field wchs-field--full"><label>Eyebrow</label><input type="text" data-field="fp_eyebrow" placeholder="Bestsellers" /></div>
+				<div class="wchs-field wchs-field--full"><label>Headline (before accent)</label><input type="text" data-field="fp_headline_prefix" placeholder="Featured" /></div>
+				<div class="wchs-field wchs-field--full"><label>Headline accent</label><input type="text" data-field="fp_headline_accent" placeholder="Products" /></div>
+				<div class="wchs-field wchs-field--full"><label>Subheadline</label><input type="text" data-field="fp_subheadline" /></div>
+				<div class="wchs-field"><label>Product badge</label><input type="text" data-field="fp_product_badge" placeholder="Most Popular" /></div>
+				<div class="wchs-field">
+					<label>Product source</label>
+					<select data-field="fp_source">
+						<option value="popular">Curated bestsellers</option>
+						<option value="best_sellers">WooCommerce popularity</option>
+					</select>
+				</div>
+				<div class="wchs-field"><label>Product count</label><input type="number" data-field="fp_product_limit" min="1" max="6" placeholder="3" /></div>
+				<div class="wchs-field"><label>CTA text</label><input type="text" data-field="fp_cta_text" placeholder="Explore All Products" /></div>
+				<div class="wchs-field"><label>CTA link</label><input type="text" data-field="fp_cta_href" placeholder="/shop" /></div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">Accent color override</label>
 				<?php echo self::accent_override_swatches(); ?>
 			</div>
 			<?php $this->render_module_common_fields(); ?>

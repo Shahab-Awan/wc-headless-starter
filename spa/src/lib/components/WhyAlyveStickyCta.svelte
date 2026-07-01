@@ -11,12 +11,12 @@
 		href: string;
 	} = $props();
 
-	let promoInView = $state(false);
+	let heroCtaInView = $state(false);
 
 	onMount(() => {
 		if (!browser) return;
 
-		const anchor = document.querySelector('.content-page--why-alyve section.promo-offer');
+		const anchor = document.querySelector('.content-page--why-alyve .listicle__hero-cta');
 		if (!anchor) return;
 
 		const mq = window.matchMedia('(max-width: 639px)');
@@ -24,10 +24,10 @@
 		const observer = new IntersectionObserver(
 			([entry]) => {
 				if (!mq.matches) {
-					promoInView = false;
+					heroCtaInView = false;
 					return;
 				}
-				promoInView = entry.isIntersecting;
+				heroCtaInView = entry.isIntersecting;
 			},
 			{ threshold: [0, 0.05, 0.12] }
 		);
@@ -35,7 +35,7 @@
 		observer.observe(anchor);
 
 		const onMqChange = () => {
-			if (!mq.matches) promoInView = false;
+			if (!mq.matches) heroCtaInView = false;
 		};
 		mq.addEventListener('change', onMqChange);
 
@@ -48,12 +48,12 @@
 
 <div
 	class="why-alyve-sticky"
-	class:is-hidden={promoInView}
+	class:is-hidden={heroCtaInView}
 	role="region"
 	aria-label="Call to action"
-	aria-hidden={promoInView}
+	aria-hidden={heroCtaInView}
 >
-	<a class="why-alyve-sticky__btn" href={bridgeAwareHref(href)} tabindex={promoInView ? -1 : undefined}>{label}</a>
+	<a class="why-alyve-sticky__btn" href={bridgeAwareHref(href)} tabindex={heroCtaInView ? -1 : undefined}>{label}</a>
 </div>
 
 <style>

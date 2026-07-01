@@ -27,11 +27,15 @@
 	import ListicleFaqs from '$lib/components/ListicleFaqs.svelte';
 	import VaultHero from '$lib/components/VaultHero.svelte';
 	import VaultQualityTabs from '$lib/components/VaultQualityTabs.svelte';
+	import VaultQualityVerify from '$lib/components/VaultQualityVerify.svelte';
+	import VaultWhyChoose from '$lib/components/VaultWhyChoose.svelte';
+	import VaultCta from '$lib/components/VaultCta.svelte';
 	import WhyAlyveStickyCta from '$lib/components/WhyAlyveStickyCta.svelte';
 	import SEO from '$lib/components/SEO.svelte';
 	import { getWhyAlyveCta } from '$lib/why-alyve-cta';
 	import { mergeWhyAlyveReviewsConfig } from '$lib/why-alyve-reviews';
 	import { mergeWhyAlyveProcessConfig } from '$lib/why-alyve-process';
+	import { resolveVaultTestimonialsModule } from '$lib/vault-page';
 
 	const pageData = $derived(
 		config.data.pages?.find(p => p.slug === (page.params.slug ?? '')) ?? null
@@ -43,6 +47,11 @@
 	});
 
 	const isVaultPage = $derived((page.params.slug ?? '').replace(/\/$/, '') === 'vault');
+
+	const vaultTestimonialsModule = $derived.by(() => {
+		if (!isVaultPage) return null;
+		return resolveVaultTestimonialsModule(pageData?.modules, config.data.homepage.modules);
+	});
 
 	const isWhyAlyvePage = $derived((page.params.slug ?? '').replace(/\/$/, '') === 'why-alyve');
 
@@ -111,6 +120,7 @@
 		(pageData?.modules ?? []).filter(
 			(m) =>
 				isModuleVisibleNow(m) &&
+				!(isVaultPage && m.type === 'reviews_listicle') &&
 				!(
 					isWhyAlyvePage &&
 					(m.type === 'promo_offer' || m.type === 'reviews_listicle' || m.type === 'order_handling')
@@ -279,6 +289,39 @@
 						spacing_v={mod.spacing_v || 'normal'}
 						spacing_h={mod.spacing_h || 'normal'}
 					/>
+				{:else if mod.type === 'vault_quality_verify'}
+					<VaultQualityVerify
+						config={mod.config}
+						resolved={mod.resolved}
+						spacing_v={mod.spacing_v || 'normal'}
+						spacing_h={mod.spacing_h || 'normal'}
+					/>
+				{:else if mod.type === 'vault_why_choose'}
+					<VaultWhyChoose
+						config={mod.config}
+						resolved={mod.resolved}
+						spacing_v={mod.spacing_v || 'normal'}
+						spacing_h={mod.spacing_h || 'normal'}
+					/>
+					{#if vaultTestimonialsModule}
+						<ReviewsListicle
+							config={vaultTestimonialsModule.config}
+							resolved={vaultTestimonialsModule.resolved}
+							spacing_v={vaultTestimonialsModule.spacing_v || 'normal'}
+							spacing_h={vaultTestimonialsModule.spacing_h || 'normal'}
+							variant="product"
+							visibleSlides={3}
+							showHeadline={true}
+							transparentBg={true}
+						/>
+					{/if}
+				{:else if mod.type === 'vault_cta'}
+					<VaultCta
+						config={mod.config}
+						resolved={mod.resolved}
+						spacing_v={mod.spacing_v || 'normal'}
+						spacing_h={mod.spacing_h || 'normal'}
+					/>
 				{:else if mod.type === 'text_block'}
 					<TextBlock config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 				{:else if mod.type === 'gallery'}
@@ -384,6 +427,7 @@
 	}
 
 	.content-page--listicle :global(.listicle__cta),
+	.content-page--listicle :global(.listicle__hero-cta),
 	.content-page--listicle :global(.promo-offer__cta),
 	.content-page--listicle :global(a.cta),
 	.content-page--listicle :global(button.cta) {
@@ -420,8 +464,31 @@
 		--mod-pt: 0;
 	}
 
+	.content-page--vault > :global(section.compare) {
+		--mod-pt: clamp(32px, 5vw, 56px);
+		--mod-pb: clamp(40px, 6vw, 72px);
+		max-width: none;
+		padding-inline: clamp(16px, 4vw, 28px);
+	}
+
+	.content-page--vault > :global(section.compare .compare__headline),
+	.content-page--vault > :global(section.compare .compare__title),
+	.content-page--vault > :global(section.compare .compare__lead),
+	.content-page--vault > :global(section.compare .compare__lead--html) {
+		text-align: center;
+		margin-inline: auto;
+	}
+
 	.content-page--why-alyve {
 		padding-bottom: var(--wchs-page-section-bottom, 72px);
+	}
+
+	.content-page--why-alyve > :global(section.listicle.has-editorial-hero:first-child) {
+		--mod-pt: 0;
+	}
+
+	.content-page--why-alyve > :global(section.listicle.has-editorial-hero .listicle__hero-band) {
+		padding-top: clamp(48px, 7vw, 80px);
 	}
 
 	/* Section headings — match Why Alyve comparison title; skip listicle H1 + reason titles */

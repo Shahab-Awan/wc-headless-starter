@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@chenglou/pretext": "^0.0.5",
+    "@lucide/svelte": "^1.22.0",
     "embla-carousel": "^8.6.0",
     "ogl": "^1.0.11"
   }

@@ -329,6 +329,7 @@ export type ListicleModuleConfig = {
 	trust_brand?: string;
 	trust_items?: string[];
 	hero_callout?: string;
+	hero_trust_lead?: string;
 	hero_cta_image?: string;
 	hero_cta_image_alt?: string;
 	hero_cta_headline?: string;
@@ -540,6 +541,19 @@ export type VaultQualityTab = {
 	chart_image?: string;
 };
 
+export type VaultQualityStat = {
+	value?: string;
+	label?: string;
+};
+
+export type VaultGuaranteeCard = {
+	title?: string;
+	description?: string;
+	tooltip?: string;
+	accent?: 'green' | 'blue' | 'yellow' | string;
+	icon?: 'purity' | 'shipping' | 'coa' | string;
+};
+
 export type VaultQualityTabsModuleConfig = {
 	section_title?: string;
 	section_subtitle?: string;
@@ -547,14 +561,64 @@ export type VaultQualityTabsModuleConfig = {
 	product_image_alt?: string;
 	image_badge?: string;
 	panel_bg?: string;
-	detail_cta_text?: string;
-	detail_cta_href?: string;
+	guarantee_cards?: VaultGuaranteeCard[];
+};
+
+export type VaultQualityVerifyModuleConfig = {
+	section_title?: string;
+	section_subtitle?: string;
+	product_image?: string;
+	product_image_alt?: string;
+	purity_badge_title?: string;
+	purity_badge_subtitle?: string;
+	panel_bg?: string;
+	proof_link_title?: string;
+	proof_link_subtitle?: string;
+	proof_link_href?: string;
+	shop_cta_text?: string;
+	shop_cta_href?: string;
+	trust_note?: string;
+	stats?: VaultQualityStat[];
 	tabs?: VaultQualityTab[];
+};
+
+export type VaultWhyChooseItem = {
+	title?: string;
+	description?: string;
+	icon?: 'stock' | 'volume' | 'shipping' | 'verified' | 'coa' | 'fulfillment' | string;
+	accent?: 'violet' | 'green' | 'amber' | 'rose' | 'blue' | 'teal' | string;
+};
+
+export type VaultWhyChooseModuleConfig = {
+	section_title?: string;
+	items?: VaultWhyChooseItem[];
+};
+
+export type VaultCtaModuleConfig = {
+	headline_prefix?: string;
+	headline_accent?: string;
+	primary_cta_text?: string;
+	primary_cta_href?: string;
+	secondary_cta_text?: string;
+	secondary_cta_href?: string;
+};
+
+export type FeaturedProductsModuleConfig = {
+	eyebrow?: string;
+	headline_prefix?: string;
+	headline_accent?: string;
+	subheadline?: string;
+	product_badge?: string;
+	source?: 'popular' | 'best_sellers';
+	product_limit?: number;
+	cta_text?: string;
+	cta_href?: string;
 };
 
 export type HomepageModule =
 	| (ModuleBase & { type: 'product_slider'; config: ProductSliderModuleConfig })
 	| (ModuleBase & { type: 'review_slider'; config: ReviewSliderModuleConfig })
+	| (ModuleBase & { type: 'featured_products'; config: FeaturedProductsModuleConfig })
 	| (ModuleBase & { type: 'accordion'; config: AccordionModuleConfig })
 	| (ModuleBase & { type: 'trust_bar'; config: TrustBarModuleConfig })
 	| (ModuleBase & { type: 'text_block'; config: TextBlockModuleConfig })
@@ -576,7 +640,10 @@ export type HomepageModule =
 	| (ModuleBase & { type: 'logo_strip'; config: LogoStripModuleConfig })
 	| (ModuleBase & { type: 'video'; config: VideoModuleConfig })
 	| (ModuleBase & { type: 'vault_hero'; config: VaultHeroModuleConfig })
-	| (ModuleBase & { type: 'vault_quality_tabs'; config: VaultQualityTabsModuleConfig });
+	| (ModuleBase & { type: 'vault_quality_tabs'; config: VaultQualityTabsModuleConfig })
+	| (ModuleBase & { type: 'vault_quality_verify'; config: VaultQualityVerifyModuleConfig })
+	| (ModuleBase & { type: 'vault_why_choose'; config: VaultWhyChooseModuleConfig })
+	| (ModuleBase & { type: 'vault_cta'; config: VaultCtaModuleConfig });
 
 export type HomepageConfig = {
 	hero: HomepageHeroConfig;
@@ -1055,13 +1122,21 @@ const DEFAULTS: SiteConfig = {
 				},
 			},
 			{
-				type: 'product_slider',
+				type: 'featured_products',
 				visibility: 'all',
+				spacing_v: 'normal',
+				spacing_h: 'normal',
 				config: {
-					title: 'Featured',
-					source: 'all',
-					category: null,
-					product_ids: [],
+					eyebrow: 'Bestsellers',
+					headline_prefix: 'Featured',
+					headline_accent: 'Products',
+					subheadline:
+						'Explore our most popular research compounds, chosen for their quality, purity, and consistency.',
+					product_badge: 'Most Popular',
+					source: 'popular',
+					product_limit: 3,
+					cta_text: 'Explore All Products',
+					cta_href: '/shop',
 				},
 			},
 			{
@@ -1362,7 +1437,9 @@ function legacyTrustBarInsertIndex(modules: HomepageModule[]): number {
 	if (svIdx !== -1) {
 		return svIdx;
 	}
-	const sliderIdx = list.findIndex((m) => m?.type === 'product_slider');
+	const sliderIdx = list.findIndex(
+		(m) => m?.type === 'featured_products' || m?.type === 'product_slider'
+	);
 	return sliderIdx >= 0 ? sliderIdx : 0;
 }
 
@@ -1424,6 +1501,74 @@ function mergeHomepageModulesWithDefaultOrderHandling(modules: HomepageModule[])
 	return list;
 }
 
+const FEATURED_PRODUCTS_MODULE_SEED = (): HomepageModule & { type: 'featured_products' } => {
+	const seed = DEFAULTS.homepage.modules.find((m) => m.type === 'featured_products');
+	if (seed?.type === 'featured_products') {
+		return JSON.parse(JSON.stringify(seed)) as HomepageModule & { type: 'featured_products' };
+	}
+	return {
+		type: 'featured_products',
+		visibility: 'all',
+		spacing_v: 'normal',
+		spacing_h: 'normal',
+		config: {
+			eyebrow: 'Bestsellers',
+			headline_prefix: 'Featured',
+			headline_accent: 'Products',
+			subheadline:
+				'Explore our most popular research compounds, chosen for their quality, purity, and consistency.',
+			product_badge: 'Most Popular',
+			source: 'popular',
+			product_limit: 3,
+			cta_text: 'Explore All Products',
+			cta_href: '/shop',
+		},
+	};
+};
+
+function moduleToFeaturedProducts(mod: HomepageModule): HomepageModule & { type: 'featured_products' } {
+	const seed = FEATURED_PRODUCTS_MODULE_SEED();
+	return {
+		...seed,
+		id: mod.id,
+		visibility: mod.visibility ?? seed.visibility,
+		spacing_v: mod.spacing_v ?? seed.spacing_v,
+		spacing_h: mod.spacing_h ?? seed.spacing_h,
+		config: {
+			...seed.config,
+			...(mod.type === 'featured_products' ? mod.config : {}),
+		},
+	};
+}
+
+function mergeHomepageFeaturedProducts(modules: HomepageModule[]): HomepageModule[] {
+	const list = Array.isArray(modules) ? [...modules] : [];
+	if (list.some((m) => m?.type === 'featured_products')) {
+		return list.map((m) =>
+			m?.type === 'featured_products' ? moduleToFeaturedProducts(m) : m
+		);
+	}
+	for (let i = 0; i < list.length; i++) {
+		const mod = list[i];
+		if (!mod) continue;
+		if (
+			mod.type === 'product_slider' &&
+			(mod.config as ProductSliderModuleConfig)?.source === 'all'
+		) {
+			list[i] = moduleToFeaturedProducts(mod);
+			return list;
+		}
+		if (mod.type === 'category_grid' || mod.type === 'shop_grid') {
+			list[i] = moduleToFeaturedProducts(mod);
+			return list;
+		}
+	}
+	const sliderIdx = list.findIndex((m) => m?.type === 'product_slider');
+	const insertAt = sliderIdx >= 0 ? sliderIdx : legacyTrustBarInsertIndex(list);
+	list.splice(insertAt, 0, FEATURED_PRODUCTS_MODULE_SEED());
+	return list;
+}
+
 export function homepageModulesWithSplitValueAfterHero(modules: HomepageModule[]): HomepageModule[] {
 	const visible = modules.filter(isModuleVisibleNow);
 	let ordered = [...visible];
@@ -1442,7 +1587,10 @@ export function homepageModulesWithSplitValueAfterHero(modules: HomepageModule[]
 	}
 
 	const catalogIdx = ordered.findIndex(
-		(m) => m.type === 'product_slider' || m.type === 'shop_grid'
+		(m) =>
+			m.type === 'featured_products' ||
+			m.type === 'product_slider' ||
+			m.type === 'shop_grid'
 	);
 	const reviewsIdx = ordered.findIndex((m) => m.type === 'reviews_listicle');
 	if (catalogIdx !== -1 && reviewsIdx !== -1 && reviewsIdx !== catalogIdx + 1) {
@@ -1516,9 +1664,11 @@ function mergeFetchedHomepage(incoming: HomepageConfig | undefined): HomepageCon
 				...(rawHero.precision ?? {}),
 			},
 		},
-		modules: mergeHomepageTrustBar(
-			mergeHomepageModulesWithDefaultOrderHandling(
-				mergeHomepageModulesWithDefaultSplitValue(rawModules)
+		modules: mergeHomepageFeaturedProducts(
+			mergeHomepageTrustBar(
+				mergeHomepageModulesWithDefaultOrderHandling(
+					mergeHomepageModulesWithDefaultSplitValue(rawModules)
+				)
 			)
 		),
 	};
@@ -1585,7 +1735,7 @@ class ConfigStore {
 					features: { ...DEFAULTS.features, ...json.features },
 					homepage: mergedHomepage,
 					pdp: mergeFetchedPdp(json.pdp),
-					pages: mergeVaultPages(json.pages ?? []),
+					pages: mergeVaultPages(json.pages ?? [], mergedHomepage.modules),
 				};
 				this.ready = true;
 				this.error = null;

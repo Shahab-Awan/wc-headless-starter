@@ -92,50 +92,27 @@
 	let adding = $state(false);
 	let activeImage = $state(0);
 
-	// Embla gallery
-	let galleryViewport = $state<HTMLElement | undefined>();
-	let galleryContainer = $state<HTMLElement | undefined>();
-	let embla: EmblaCarouselType | undefined;
+	function selectGalleryImage(index: number) {
+		activeImage = index;
+	}
 
-	$effect(() => {
-		if (!galleryViewport || !galleryContainer || !product || product.images.length === 0) return;
-		embla = EmblaCarousel(galleryViewport, {
-			align: 'start',
-			containScroll: 'keepSnaps',
-			loop: false,
-			container: galleryContainer,
-		});
-		embla.on('select', () => {
-			activeImage = embla!.selectedScrollSnap();
-		});
-		return () => embla?.destroy();
-	});
-
-	// Jump carousel to variation image ONLY when the variant selection
-	// actually changes — NOT every time the effect's reactive graph
-	// updates (which includes `activeImage` via the embla select event).
-	// Without the guard, the effect snaps the user back to the variant
-	// image every time they scroll to a different gallery slide, making
-	// the gallery feel "locked" to the variant.
-	//
-	// Track the last variant ID we jumped for; fire the scrollTo only
-	// when the selected variant ID differs. After the jump, the user is
-	// free to navigate the gallery normally until they pick a different
-	// variant.
+	// Jump gallery to variation image ONLY when the variant selection
+	// actually changes — NOT every time activeImage updates.
 	let lastJumpedVariantId = $state<number | null>(null);
 	$effect(() => {
-		if (!product || !selectedVariation || !embla) return;
+		if (!product || !selectedVariation) return;
 		if (selectedVariation.id === lastJumpedVariantId) return;
 		const varImg = selectedVariation.images?.[0];
-		if (!varImg) { lastJumpedVariantId = selectedVariation.id; return; }
-		let idx = product.images.findIndex(img => img.id === varImg.id);
+		if (!varImg) {
+			lastJumpedVariantId = selectedVariation.id;
+			return;
+		}
+		let idx = product.images.findIndex((img) => img.id === varImg.id);
 		if (idx < 0) {
-			// variation's image isn't in parent gallery — inject it at position 0
 			product.images = [varImg, ...product.images];
 			idx = 0;
-			embla.reInit();
 		}
-		embla.scrollTo(idx);
+		activeImage = idx;
 		lastJumpedVariantId = selectedVariation.id;
 	});
 
@@ -593,42 +570,49 @@
 		<div class="pdp__media">
 			{#if product.images.length > 0}
 				<div class="pdp__gallery-wrap">
-				<div class="pdp__gallery" bind:this={galleryViewport}>
-					<div class="pdp__gallery-track" bind:this={galleryContainer}>
+					<div class="pdp__gallery">
+						<button
+							type="button"
+							class="pdp__gallery-main"
+							onclick={() => openLightbox(activeImage)}
+							aria-label="View image {activeImage + 1} full size"
+						>
+							{#key product.images[activeImage].id}
+								<img
+									src={product.images[activeImage].src}
+									srcset={product.images[activeImage].srcset}
+									sizes={product.images[activeImage].sizes}
+									alt={product.images[activeImage].alt || product.name}
+									loading={activeImage === 0 ? 'eager' : 'lazy'}
+									fetchpriority={activeImage === 0 ? 'high' : undefined}
+									draggable="false"
+								/>
+							{/key}
+						</button>
+					</div>
+					{#if config.data.pdp?.image_disclaimer}
+						<p class="pdp__image-disclaimer">{config.data.pdp.image_disclaimer}</p>
+					{/if}
+				</div>
+				{#if product.images.length > 1}
+					<div class="pdp__thumbs" role="tablist" aria-label="Product images">
 						{#each product.images as img, i}
 							<button
 								type="button"
-								class="pdp__gallery-slide"
-								onclick={() => openLightbox(i)}
-								aria-label="View image {i + 1} full size"
+								role="tab"
+								class="pdp__thumb"
+								class:pdp__thumb--active={i === activeImage}
+								aria-selected={i === activeImage}
+								aria-label="Show image {i + 1}"
+								onclick={() => selectGalleryImage(i)}
 							>
 								<img
-									src={img.src}
-									srcset={img.srcset}
-									sizes={img.sizes}
-									alt={img.alt || product.name}
-									loading={i === 0 ? 'eager' : 'lazy'}
-									fetchpriority={i === 0 ? 'high' : undefined}
+									src={img.thumbnail || img.src}
+									alt=""
+									loading="lazy"
 									draggable="false"
 								/>
 							</button>
-						{/each}
-					</div>
-				</div>
-				{#if config.data.pdp?.image_disclaimer}
-					<p class="pdp__image-disclaimer">{config.data.pdp.image_disclaimer}</p>
-				{/if}
-				</div>
-				{#if product.images.length > 1}
-					<div class="pdp__dots">
-						{#each product.images as _, i}
-							<button
-								type="button"
-								class="pdp__dot"
-								class:pdp__dot--active={i === activeImage}
-								onclick={() => embla?.scrollTo(i)}
-								aria-label="Go to image {i + 1}"
-							></button>
 						{/each}
 					</div>
 				{/if}
@@ -871,7 +855,7 @@
 	.pdp__media {
 		display: flex;
 		flex-direction: column;
-		gap: 12px;
+		gap: 14px;
 		position: sticky;
 		top: 100px;
 		align-self: start;
@@ -879,7 +863,6 @@
 	.pdp__gallery-wrap {
 		position: relative;
 		border-radius: var(--pdp-radius);
-		overflow: hidden;
 	}
 	.pdp__image-disclaimer {
 		position: absolute;
@@ -895,6 +878,7 @@
 		color: var(--fg-muted);
 		line-height: 1.35;
 		pointer-events: none;
+		z-index: 1;
 	}
 	@media (max-width: 860px) {
 		.pdp__media {
@@ -902,7 +886,7 @@
 		}
 	}
 	.pdp__gallery {
-		aspect-ratio: 1 / 1;
+		width: 100%;
 		background: var(--bg-muted);
 		border: 1px solid var(--border);
 		border-radius: var(--pdp-radius);
@@ -912,51 +896,63 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		aspect-ratio: 1;
 		color: var(--fg-faint);
 	}
-	.pdp__gallery-track {
+	.pdp__gallery-main {
 		display: flex;
-		height: 100%;
-	}
-	.pdp__gallery-slide {
-		flex: 0 0 100%;
-		min-width: 0;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		min-height: min(280px, 52vw);
+		max-height: min(78vh, 720px);
 		padding: 0;
 		border: 0;
 		background: transparent;
 		cursor: zoom-in;
-		overflow: hidden;
 	}
-	.pdp__gallery-slide img {
+	.pdp__gallery-main img {
 		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		border-radius: var(--pdp-radius);
+		height: auto;
+		max-height: min(78vh, 720px);
+		object-fit: contain;
 		display: block;
 		user-select: none;
 		-webkit-user-drag: none;
 	}
-	.pdp__dots {
+	.pdp__thumbs {
 		display: flex;
-		justify-content: center;
-		gap: 8px;
+		flex-wrap: wrap;
+		gap: 10px;
 	}
-	.pdp__dot {
-		width: 8px;
-		height: 8px;
+	.pdp__thumb {
+		width: 72px;
+		height: 72px;
 		padding: 0;
-		border: 1px solid var(--fg-muted);
-		border-radius: 50%;
-		background: transparent;
+		border: 2px solid color-mix(in srgb, var(--border) 88%, transparent);
+		border-radius: 14px;
+		overflow: hidden;
+		background: var(--bg-muted);
 		cursor: pointer;
-		transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+		flex-shrink: 0;
+		transition:
+			border-color var(--dur-fast) var(--ease),
+			box-shadow var(--dur-fast) var(--ease);
 	}
-	.pdp__dot:hover {
-		border-color: var(--fg);
+	.pdp__thumb:hover {
+		border-color: color-mix(in srgb, var(--accent) 45%, var(--border) 55%);
 	}
-	.pdp__dot--active {
-		background: var(--fg);
-		border-color: var(--fg);
+	.pdp__thumb--active {
+		border-color: var(--accent);
+		box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+	}
+	.pdp__thumb img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+		user-select: none;
+		-webkit-user-drag: none;
 	}
 
 	/* ── Lightbox ── */

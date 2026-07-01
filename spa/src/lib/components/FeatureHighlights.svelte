@@ -203,8 +203,11 @@
 		margin: 8px 0 0;
 		padding: 0;
 		width: 100%;
+		max-width: 1120px;
+		margin-inline: auto;
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(200px, 260px));
+		justify-content: center;
 		gap: 18px;
 		text-align: left;
 	}

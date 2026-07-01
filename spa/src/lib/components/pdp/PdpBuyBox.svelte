@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { config } from '$lib/config.svelte';
 	import PdpInfoTabs from '$lib/components/pdp/PdpInfoTabs.svelte';
+	import PaymentMethodIcons from '$lib/components/PaymentMethodIcons.svelte';
 	import { resolveBundleRows, defaultBundleMinQty, type BundleDisplayRow } from '$lib/pdp/bogo-bundles';
 	import type { StoreProduct, StoreProductVariation, WchsCroProduct } from '$lib/wc/products';
 
@@ -178,6 +179,11 @@
 		if (!full) return '';
 		return formatMoneyInt(Number(full.prices.price));
 	}
+
+	function bundleSubLabel(row: (typeof bundleRows)[number]): string {
+		if (/^\d+ Vials?$/.test(row.title)) return 'of the same product';
+		return row.title;
+	}
 </script>
 
 <div class="pdp-buy">
@@ -250,7 +256,10 @@
 		{#if showBundles}
 			<div class="pdp-buy__section">
 				<p class="pdp-buy__section-label">SELECT YOUR BUNDLE</p>
-				<div class="pdp-buy__bundles">
+				<div
+					class="pdp-buy__bundles"
+					style="--bundle-cols: {Math.min(bundleRows.length, 4)}"
+				>
 					{#each bundleRows as row (row.min_qty)}
 						<button
 							type="button"
@@ -262,20 +271,17 @@
 							{#if row.flag}
 								<span class="pdp-buy__bundle-flag">{row.flag}</span>
 							{/if}
-							<span class="pdp-buy__bundle-radio" aria-hidden="true"></span>
-							<span class="pdp-buy__bundle-body">
-								<span class="pdp-buy__bundle-title">{row.title}</span>
-								{#if row.savings_pct > 0}
-									<span class="pdp-buy__bundle-save">SAVE {Math.round(row.savings_pct)}%</span>
-								{/if}
-							</span>
-							<span class="pdp-buy__bundle-pricing">
-								<span class="pdp-buy__bundle-total tabular-nums">{formatMoneyInt(row.line_total_at_min_qty)}</span>
-								{#if row.compare_line_total > row.line_total_at_min_qty}
-									<span class="pdp-buy__bundle-was tabular-nums">{formatMoneyInt(row.compare_line_total)}</span>
-								{/if}
-								<span class="pdp-buy__bundle-unit tabular-nums">{formatMoneyInt(row.unit_price)} / vial</span>
-							</span>
+							<span class="pdp-buy__bundle-qty tabular-nums">{row.min_qty}</span>
+							<span class="pdp-buy__bundle-sub">{bundleSubLabel(row)}</span>
+							{#if row.savings_pct > 0}
+								<span class="pdp-buy__bundle-off">{Math.round(row.savings_pct)}% off</span>
+							{:else}
+								<span class="pdp-buy__bundle-off pdp-buy__bundle-off--muted">Standard price</span>
+							{/if}
+							<span class="pdp-buy__bundle-total tabular-nums">{formatMoneyInt(row.line_total_at_min_qty)}</span>
+							{#if row.compare_line_total > row.line_total_at_min_qty}
+								<span class="pdp-buy__bundle-was tabular-nums">{formatMoneyInt(row.compare_line_total)}</span>
+							{/if}
 						</button>
 					{/each}
 				</div>
@@ -313,12 +319,8 @@
 
 		{#if pdpUi?.show_payment_icons !== false}
 			<div class="pdp-buy__payments">
-				<span>We Accept:</span>
-				<span class="pdp-buy__pay-icons" aria-label="Visa, Mastercard, American Express">
-					<span class="pdp-buy__pay">VISA</span>
-					<span class="pdp-buy__pay">MC</span>
-					<span class="pdp-buy__pay">AMEX</span>
-				</span>
+				<span class="pdp-buy__payments-label">We Accept:</span>
+				<PaymentMethodIcons />
 			</div>
 		{/if}
 
@@ -523,24 +525,31 @@
 		color: var(--fg-muted);
 	}
 	.pdp-buy__bundles {
-		display: flex;
-		flex-direction: column;
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 10px;
+	}
+	@media (min-width: 640px) {
+		.pdp-buy__bundles {
+			grid-template-columns: repeat(var(--bundle-cols, 4), minmax(0, 1fr));
+		}
 	}
 	.pdp-buy__bundle {
 		position: relative;
-		display: grid;
-		grid-template-columns: auto 1fr auto;
+		display: flex;
+		flex-direction: column;
 		align-items: center;
-		gap: 12px;
+		justify-content: center;
+		gap: 3px;
+		min-height: 118px;
 		width: 100%;
-		padding: 16px;
+		padding: 16px 10px 12px;
 		border: 1.5px solid var(--border);
 		border-radius: var(--pdp-radius);
 		background: var(--bg);
 		color: var(--fg);
 		font: inherit;
-		text-align: left;
+		text-align: center;
 		cursor: pointer;
 		transition:
 			border-color var(--dur-fast) var(--ease),
@@ -548,84 +557,67 @@
 			box-shadow var(--dur-fast) var(--ease);
 	}
 	.pdp-buy__bundle--tagged {
-		margin-top: 12px;
+		padding-top: 22px;
 	}
 	.pdp-buy__bundle--active {
-		border-color: transparent;
-		background:
-			linear-gradient(var(--bg), var(--bg)) padding-box,
-			linear-gradient(135deg, var(--accent), var(--pdp-shine-mid)) border-box;
-		box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 18%, transparent);
+		border-color: var(--accent);
+		box-shadow: 0 0 0 1px var(--accent), 0 4px 16px color-mix(in srgb, var(--accent) 18%, transparent);
 	}
 	.pdp-buy__bundle-flag {
 		position: absolute;
-		top: -11px;
+		top: -10px;
 		left: 50%;
 		transform: translateX(-50%);
-		padding: 4px 12px;
+		padding: 4px 10px;
 		border-radius: 999px;
-		border: 1px solid var(--accent);
-		background: var(--bg);
-		color: var(--accent);
-		font-size: 9px;
-		font-weight: 700;
+		border: 1px solid color-mix(in srgb, #f59e0b 70%, var(--accent));
+		background: #fbbf24;
+		color: #111;
+		font-size: 8px;
+		font-weight: 800;
 		letter-spacing: 0.08em;
 		white-space: nowrap;
+		max-width: calc(100% - 12px);
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
-	.pdp-buy__bundle-radio {
-		width: 18px;
-		height: 18px;
-		border: 2px solid var(--border);
-		border-radius: 50%;
-		flex-shrink: 0;
+	.pdp-buy__bundle-qty {
+		font-size: clamp(28px, 5vw, 34px);
+		font-weight: 800;
+		line-height: 1;
+		letter-spacing: -0.03em;
+		color: var(--fg);
 	}
-	.pdp-buy__bundle--active .pdp-buy__bundle-radio {
-		border-color: var(--accent);
-		box-shadow: inset 0 0 0 4px var(--accent);
-	}
-	.pdp-buy__bundle-body {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		min-width: 0;
-	}
-	.pdp-buy__bundle-title {
-		font-size: 14px;
-		font-weight: 600;
-	}
-	.pdp-buy__bundle-save {
-		display: inline-flex;
-		align-self: flex-start;
-		padding: 3px 8px;
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--success, #059669) 12%, transparent);
+	.pdp-buy__bundle-sub {
 		font-size: 10px;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		color: var(--success, #059669);
+		line-height: 1.3;
+		color: var(--fg-muted);
+		max-width: 11ch;
 	}
-	.pdp-buy__bundle-pricing {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-end;
-		gap: 2px;
-		min-width: 88px;
+	.pdp-buy__bundle-off {
+		margin-top: 2px;
+		font-size: 13px;
+		font-weight: 700;
+		line-height: 1.2;
+		color: var(--accent);
+	}
+	.pdp-buy__bundle-off--muted {
+		font-size: 11px;
+		font-weight: 600;
+		color: var(--fg-muted);
 	}
 	.pdp-buy__bundle-total {
-		font-size: 17px;
+		margin-top: 4px;
+		font-size: 12px;
 		font-weight: 700;
 		color: var(--fg);
 		line-height: 1.1;
 	}
 	.pdp-buy__bundle-was {
-		font-size: 12px;
+		font-size: 10px;
 		font-weight: 500;
 		color: var(--fg-muted);
 		text-decoration: line-through;
-	}
-	.pdp-buy__bundle-unit {
-		font-size: 11px;
-		color: var(--fg-muted);
 	}
 	.pdp-buy__actions {
 		display: block;
@@ -675,22 +667,12 @@
 		justify-content: center;
 		gap: 8px;
 		margin-top: 10px;
-		padding-top: 0;
-		border-top: 0;
 		font-size: 12px;
 		color: var(--fg-muted);
 	}
-	.pdp-buy__pay-icons {
-		display: inline-flex;
-		gap: 8px;
-	}
-	.pdp-buy__pay {
-		padding: 4px 8px;
-		border: 1px solid var(--border);
-		border-radius: var(--pdp-radius);
-		font-size: 10px;
-		font-weight: 700;
-		letter-spacing: 0.04em;
+	.pdp-buy__payments-label {
+		font-size: 12px;
+		font-weight: 500;
 		color: var(--fg-muted);
 	}
 	.pdp-buy__trust {

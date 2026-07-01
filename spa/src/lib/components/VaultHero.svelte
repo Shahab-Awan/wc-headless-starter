@@ -1,6 +1,17 @@
 <script lang="ts">
 	import { bridgeAwareHref } from '$lib/bridge-domain';
-	import type { VaultHeroModuleConfig, SpacingPreset, ModuleResolved } from '$lib/config.svelte';
+	import { config as siteConfig, type VaultHeroModuleConfig, type SpacingPreset, type ModuleResolved } from '$lib/config.svelte';
+	import { HERO_FONTS } from '$lib/hero-fonts';
+
+	const WEIGHT_MAP: Record<string, string> = {
+		light: '300',
+		regular: '400',
+		medium: '500',
+		semibold: '600',
+		bold: '700',
+		extrabold: '800',
+		black: '900',
+	};
 
 	let {
 		config,
@@ -36,6 +47,18 @@
 	const vialSecondary = $derived(config.vial_secondary?.trim() || '');
 	const vialTertiary = $derived(config.vial_tertiary?.trim() || '');
 	const hasVials = $derived(Boolean(vialPrimary || vialSecondary || vialTertiary));
+
+	const titleStyle = $derived.by(() => {
+		const hero = siteConfig.data.homepage?.hero;
+		const fontKey = (hero?.headline_font ??
+			siteConfig.data.typography?.heading_font ??
+			'inter') as keyof typeof HERO_FONTS;
+		const family = HERO_FONTS[fontKey]?.family ?? HERO_FONTS.inter.family;
+		const weightKey =
+			hero?.headline_weight ?? siteConfig.data.typography?.heading_weight ?? 'semibold';
+		const weight = WEIGHT_MAP[weightKey] ?? '600';
+		return `font-family: ${family}; font-weight: ${weight};`;
+	});
 </script>
 
 <section
@@ -50,7 +73,7 @@
 	<div class="vault-hero__grid">
 		<div class="vault-hero__copy">
 			<div class="vault-hero__copy-inner">
-				<h1 id="vault-hero-title" class="vault-hero__title">{headline}</h1>
+				<h1 id="vault-hero-title" class="vault-hero__title" style={titleStyle}>{headline}</h1>
 
 				{#if stats.length}
 					<ul class="vault-hero__stats" aria-label="Quality highlights">
@@ -153,10 +176,8 @@
 
 	.vault-hero__title {
 		margin: 0 0 clamp(24px, 3.5vw, 32px);
-		font-family: var(--font-heading, var(--font-sans));
-		font-size: clamp(2rem, 4.5vw, 3.25rem);
-		font-weight: var(--heading-weight, 600);
-		line-height: 1.06;
+		font-size: clamp(2.15rem, 4.8vw, 3.5rem);
+		line-height: 1.05;
 		letter-spacing: -0.03em;
 		color: var(--fg);
 		text-wrap: balance;

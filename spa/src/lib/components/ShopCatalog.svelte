@@ -7,6 +7,7 @@
 		type StoreProduct,
 		type ProductListParams,
 	} from '$lib/wc/products';
+	import { pickPopularProducts } from '$lib/popular-products';
 	import { canPurchase } from '$lib/wc/stock';
 	import type { SpacingPreset } from '$lib/config.svelte';
 
@@ -20,12 +21,6 @@
 
 	type CatalogLayout = 'sections' | 'filter-grid';
 	type SortValue = 'popularity-desc' | 'date-desc' | 'price-asc' | 'price-desc';
-
-	const MOST_POPULAR_MATCHERS = [
-		{ slug: 'bpc-157', name: 'bpc-157' },
-		{ slug: 'retatrutide', name: 'retatrutide' },
-		{ slug: 'ghk-cu', name: 'ghk-cu' },
-	] as const;
 
 	let {
 		spacing_v = 'normal',
@@ -111,29 +106,6 @@
 	);
 
 	const HEADER_OFFSET = 120;
-
-	function normalizeKey(value: string): string {
-		return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
-	}
-
-	function pickPopularProducts(products: StoreProduct[]): StoreProduct[] {
-		const out: StoreProduct[] = [];
-		const used = new Set<number>();
-		for (const matcher of MOST_POPULAR_MATCHERS) {
-			const nameKey = normalizeKey(matcher.name);
-			const hit = products.find((p) => {
-				if (used.has(p.id)) return false;
-				const slug = p.slug.toLowerCase();
-				if (slug === matcher.slug || slug.includes(matcher.slug)) return true;
-				return normalizeKey(p.name).includes(nameKey);
-			});
-			if (hit) {
-				out.push(hit);
-				used.add(hit.id);
-			}
-		}
-		return out;
-	}
 
 	function parseSort(value: SortValue): Pick<ProductListParams, 'orderby' | 'order'> {
 		switch (value) {

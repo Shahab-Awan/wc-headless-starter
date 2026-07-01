@@ -174,6 +174,7 @@
 	var TYPE_LABELS = {
 		hero: 'Hero',
 		product_slider: 'Product Slider', review_slider: 'Review Slider',
+		featured_products: 'Featured products',
 		listicle: 'Listicle',
 		promo_offer: 'Promo offer (split)',
 		reviews_listicle: 'Reviews listicle',
@@ -187,12 +188,16 @@
 		cta: 'CTA button', spacer: 'Spacer', logo_strip: 'Logo strip',
 		video: 'Video / embed',
 		vault_hero: 'Vault hero',
-		vault_quality_tabs: 'Vault quality tabs'
+		vault_quality_tabs: 'Vault quality tabs',
+		vault_quality_verify: 'Vault quality verify',
+		vault_why_choose: 'Vault why choose',
+		vault_cta: 'Vault bottom CTA'
 	};
 
 	var TYPE_CATEGORY = {
 		hero: 'branding', trust_bar: 'branding', logo_strip: 'branding',
 		product_slider: 'commerce', review_slider: 'commerce',
+		featured_products: 'commerce',
 		shop_grid: 'commerce', category_grid: 'commerce',
 		accordion: 'content', listicle: 'content', reviews_listicle: 'content', listicle_faqs: 'content', text_block: 'content', gallery: 'content',
 		promo_offer: 'commerce',
@@ -202,6 +207,9 @@
 		video: 'content',
 		vault_hero: 'branding',
 		vault_quality_tabs: 'branding',
+		vault_quality_verify: 'branding',
+		vault_why_choose: 'branding',
+		vault_cta: 'branding',
 		contact_form: 'engagement'
 	};
 
@@ -216,6 +224,7 @@
 		feature_highlights: ['homepage','shop','pdp','pages'],
 		order_handling: ['homepage','shop','pdp','pages'],
 		product_slider: ['homepage','shop','pdp','pages'],
+		featured_products: ['homepage','shop','pdp','pages'],
 		review_slider: ['homepage','shop','pdp','pages'],
 		text_block: ['homepage','shop','pdp','pages'],
 		listicle: ['homepage','shop','pdp','pages'],
@@ -230,6 +239,9 @@
 		video: ['homepage','shop','pdp','pages'],
 		vault_hero: ['pages'],
 		vault_quality_tabs: ['pages'],
+		vault_quality_verify: ['pages'],
+		vault_why_choose: ['pages'],
+		vault_cta: ['pages'],
 		shop_grid: ['homepage', 'shop'],
 		category_grid: ['homepage','pages'],
 		contact_form: ['pages']
@@ -310,25 +322,50 @@
 		if (type === 'vault_quality_tabs') {
 			return {
 				section_title: 'The Alyve Vault Guarantee',
-				section_subtitle: 'Every batch is independently verified — purity, identity, endotoxin, stability, and consistency.',
+				section_subtitle: 'Documented quality for research and laboratory use. Every batch meets our internal purity standards.',
 				product_image: '',
 				product_image_alt: '',
 				image_badge: '99.4% Purity — Verified by HPLC',
 				panel_bg: '#ebe6f5',
-				detail_cta_text: 'See the Proof → View COA Library',
-				detail_cta_href: '/coa-library',
+				guarantee_cards: [
+					{ title: '99% Purity Guaranteed', description: 'Every batch verified', tooltip: '', accent: 'green', icon: 'purity' },
+					{ title: 'Shipment Protection', description: 'Every order fully covered', tooltip: 'Full replacement or refund if your shipment is lost or damaged in transit.', accent: 'blue', icon: 'shipping' },
+					{ title: 'COA with Every Batch', description: 'Third Party tested in America', tooltip: 'Independent U.S. lab Certificates of Analysis ship with every order and are published before purchase.', accent: 'yellow', icon: 'coa' },
+				],
+			};
+		}
+		if (type === 'vault_quality_verify') {
+			return {
+				section_title: 'Quality You Can Verify, Not Just Trust',
+				section_subtitle: 'Every batch is independently tested and documented. Review the data before you buy — not after.',
+				product_image: '',
+				product_image_alt: '',
+				purity_badge_title: '99.4% Purity',
+				purity_badge_subtitle: 'Verified by HPLC',
+				panel_bg: '#e8eef5',
+				proof_link_title: 'See the Proof',
+				proof_link_subtitle: 'View our quality procedures',
+				proof_link_href: '/coa-library',
+				shop_cta_text: 'Shop Now →',
+				shop_cta_href: '/shop',
+				trust_note: 'Free COA included with every order',
+				stats: [
+					{ value: '99%+', label: 'Purity Guaranteed' },
+					{ value: '5', label: 'Quality Checks' },
+					{ value: '100%', label: 'U.S. Verified' },
+				],
 				tabs: [
 					{
 						title: 'Purity',
 						summary: 'HPLC ≥99%',
-						body: '<p>Every batch is verified by High-Performance Liquid Chromatography (HPLC) to confirm peptide purity meets or exceeds 99%.</p>',
+						body: '<p>Every batch is verified by High-Performance Liquid Chromatography (HPLC) to confirm peptide purity meets or exceeds 99%. Chromatogram peaks and purity percentages are published on every Certificate of Analysis before release.</p>',
 						why_matters: 'Impurities can skew receptor binding and invalidate your study data.',
 						chart_image: '',
 					},
 					{
 						title: 'Identity',
 						summary: 'Mass Spec confirmed',
-						body: '<p>Mass spectrometry confirms the molecular weight and sequence identity of each peptide lot before release.</p>',
+						body: '<p>Mass spectrometry confirms the molecular weight and sequence identity of each peptide lot before release — verifying you receive the exact compound specified, not a mislabeled analog.</p>',
 						why_matters: 'Ensures you receive the exact compound specified — not a mislabeled analog.',
 						chart_image: '',
 					},
@@ -342,18 +379,54 @@
 					{
 						title: 'Stability',
 						summary: 'Lyophilized for shelf life',
-						body: '<p>Peptides are lyophilized under controlled conditions to maximize stability during storage and transit.</p>',
+						body: '<p>Peptides are lyophilized under controlled conditions to maximize stability during storage and transit, preserving bioactivity from synthesis to your bench.</p>',
 						why_matters: 'Proper lyophilization preserves bioactivity from synthesis to your bench.',
 						chart_image: '',
 					},
 					{
 						title: 'Consistency',
 						summary: 'Batch-to-batch variance data',
-						body: '<p>We publish lot-to-lot analytical data so you can compare batches across your study timeline.</p>',
+						body: '<p>We publish lot-to-lot analytical data so you can compare batches across your study timeline and maintain reproducible research outcomes.</p>',
 						why_matters: 'Reproducible research requires predictable material from order to order.',
 						chart_image: '',
 					},
 				],
+			};
+		}
+		if (type === 'vault_why_choose') {
+			return {
+				section_title: 'Why Choose Alyve',
+				items: [
+					{ title: 'Always In Stock', description: 'Core research compounds restocked on a reliable cadence — your protocol stays on schedule.', icon: 'stock', accent: 'violet' },
+					{ title: 'Volume Pricing', description: 'Transparent tiered discounts from 3 vials up — scale your order and save on every batch.', icon: 'volume', accent: 'green' },
+					{ title: 'Safe & Protected Shipping', description: 'Tracked domestic fulfillment with shipment protection on every order.', icon: 'shipping', accent: 'amber' },
+					{ title: 'Third-Party Verified', description: 'Independent U.S. laboratory testing confirms identity, purity, and safety before release.', icon: 'verified', accent: 'rose' },
+					{ title: 'COA Every Batch', description: 'Full Certificates of Analysis published for every lot — review documentation before you buy.', icon: 'coa', accent: 'blue' },
+					{ title: 'Same-Day Fulfillment', description: 'Orders placed before 2PM EST ship same day via tracked carrier.', icon: 'fulfillment', accent: 'teal' },
+				],
+			};
+		}
+		if (type === 'vault_cta') {
+			return {
+				headline_prefix: 'Ready to Verify? Browse the',
+				headline_accent: 'Research Vault.',
+				primary_cta_text: 'Browse Catalog →',
+				primary_cta_href: '/shop',
+				secondary_cta_text: 'View COA Library',
+				secondary_cta_href: '/coa-library',
+			};
+		}
+		if (type === 'featured_products') {
+			return {
+				eyebrow: 'Bestsellers',
+				headline_prefix: 'Featured',
+				headline_accent: 'Products',
+				subheadline: 'Explore our most popular research compounds, chosen for their quality, purity, and consistency.',
+				product_badge: 'Most Popular',
+				source: 'popular',
+				product_limit: 3,
+				cta_text: 'Explore All Products',
+				cta_href: '/shop',
 			};
 		}
 		if (type === 'split_value') {
@@ -1501,9 +1574,7 @@
 				setVal(container, '[data-field="vqt_product_alt"]', cfg.product_image_alt || '');
 				setVal(container, '[data-field="vqt_image_badge"]', cfg.image_badge || '');
 				setVal(container, '[data-field="vqt_panel_bg"]', cfg.panel_bg || '');
-				setVal(container, '[data-field="vqt_detail_cta_text"]', cfg.detail_cta_text || '');
-				setVal(container, '[data-field="vqt_detail_cta_href"]', cfg.detail_cta_href || '');
-				populateVqtTabs(container, cfg.tabs || []);
+				populateVqtGuarantees(container, cfg.guarantee_cards || []);
 				container.querySelectorAll('.wchs-media-url').forEach(function (input) {
 					var field = input.closest('.wchs-field, .wchs-accordion-item');
 					var preview = field && field.querySelector('.wchs-media-preview');
@@ -1512,6 +1583,54 @@
 					else if (preview) { preview.src = ''; preview.style.display = 'none'; }
 					if (removeBtn) removeBtn.style.display = input.value ? '' : 'none';
 				});
+				break;
+			case 'vault_quality_verify':
+				setVal(container, '[data-field="vqv_title"]', cfg.section_title || '');
+				setVal(container, '[data-field="vqv_subtitle"]', cfg.section_subtitle || '');
+				setVal(container, '[data-field="vqv_product_image"]', cfg.product_image || '');
+				setVal(container, '[data-field="vqv_product_alt"]', cfg.product_image_alt || '');
+				setVal(container, '[data-field="vqv_purity_badge_title"]', cfg.purity_badge_title || '');
+				setVal(container, '[data-field="vqv_purity_badge_subtitle"]', cfg.purity_badge_subtitle || '');
+				setVal(container, '[data-field="vqv_panel_bg"]', cfg.panel_bg || '');
+				setVal(container, '[data-field="vqv_proof_title"]', cfg.proof_link_title || '');
+				setVal(container, '[data-field="vqv_proof_subtitle"]', cfg.proof_link_subtitle || '');
+				setVal(container, '[data-field="vqv_proof_href"]', cfg.proof_link_href || '');
+				setVal(container, '[data-field="vqv_shop_cta_text"]', cfg.shop_cta_text || '');
+				setVal(container, '[data-field="vqv_shop_cta_href"]', cfg.shop_cta_href || '');
+				setVal(container, '[data-field="vqv_trust_note"]', cfg.trust_note || '');
+				populateVqvStats(container, cfg.stats || []);
+				populateVqvTabs(container, cfg.tabs || []);
+				container.querySelectorAll('.wchs-media-url').forEach(function (input) {
+					var field = input.closest('.wchs-field, .wchs-accordion-item');
+					var preview = field && field.querySelector('.wchs-media-preview');
+					var removeBtn = field && field.querySelector('.wchs-media-remove');
+					if (input.value && preview) { preview.src = input.value; preview.style.display = ''; }
+					else if (preview) { preview.src = ''; preview.style.display = 'none'; }
+					if (removeBtn) removeBtn.style.display = input.value ? '' : 'none';
+				});
+				break;
+			case 'vault_why_choose':
+				setVal(container, '[data-field="vwc_title"]', cfg.section_title || '');
+				populateVwcItems(container, cfg.items || []);
+				break;
+			case 'vault_cta':
+				setVal(container, '[data-field="vcta_headline_prefix"]', cfg.headline_prefix || '');
+				setVal(container, '[data-field="vcta_headline_accent"]', cfg.headline_accent || '');
+				setVal(container, '[data-field="vcta_primary_text"]', cfg.primary_cta_text || '');
+				setVal(container, '[data-field="vcta_primary_href"]', cfg.primary_cta_href || '');
+				setVal(container, '[data-field="vcta_secondary_text"]', cfg.secondary_cta_text || '');
+				setVal(container, '[data-field="vcta_secondary_href"]', cfg.secondary_cta_href || '');
+				break;
+			case 'featured_products':
+				setVal(container, '[data-field="fp_eyebrow"]', cfg.eyebrow || '');
+				setVal(container, '[data-field="fp_headline_prefix"]', cfg.headline_prefix || '');
+				setVal(container, '[data-field="fp_headline_accent"]', cfg.headline_accent || '');
+				setVal(container, '[data-field="fp_subheadline"]', cfg.subheadline || '');
+				setVal(container, '[data-field="fp_product_badge"]', cfg.product_badge || '');
+				setVal(container, '[data-field="fp_source"]', cfg.source || 'popular');
+				setVal(container, '[data-field="fp_product_limit"]', cfg.product_limit != null ? String(cfg.product_limit) : '3');
+				setVal(container, '[data-field="fp_cta_text"]', cfg.cta_text || '');
+				setVal(container, '[data-field="fp_cta_href"]', cfg.cta_href || '');
 				break;
 			case 'split_value':
 				setVal(container, '[data-field="sv_rating_line"]', cfg.rating_line || '');
@@ -1841,9 +1960,51 @@
 				cfg.product_image_alt = getVal(container, '[data-field="vqt_product_alt"]') || '';
 				cfg.image_badge = getVal(container, '[data-field="vqt_image_badge"]') || '';
 				cfg.panel_bg = getVal(container, '[data-field="vqt_panel_bg"]') || '';
-				cfg.detail_cta_text = getVal(container, '[data-field="vqt_detail_cta_text"]') || '';
-				cfg.detail_cta_href = getVal(container, '[data-field="vqt_detail_cta_href"]') || '';
-				cfg.tabs = readVqtTabs(container);
+				cfg.guarantee_cards = readVqtGuaranteeCards(container);
+				delete cfg.title;
+				break;
+			case 'vault_quality_verify':
+				cfg.section_title = getVal(container, '[data-field="vqv_title"]') || '';
+				cfg.section_subtitle = getVal(container, '[data-field="vqv_subtitle"]') || '';
+				cfg.product_image = getVal(container, '[data-field="vqv_product_image"]') || '';
+				cfg.product_image_alt = getVal(container, '[data-field="vqv_product_alt"]') || '';
+				cfg.purity_badge_title = getVal(container, '[data-field="vqv_purity_badge_title"]') || '';
+				cfg.purity_badge_subtitle = getVal(container, '[data-field="vqv_purity_badge_subtitle"]') || '';
+				cfg.panel_bg = getVal(container, '[data-field="vqv_panel_bg"]') || '';
+				cfg.proof_link_title = getVal(container, '[data-field="vqv_proof_title"]') || '';
+				cfg.proof_link_subtitle = getVal(container, '[data-field="vqv_proof_subtitle"]') || '';
+				cfg.proof_link_href = getVal(container, '[data-field="vqv_proof_href"]') || '';
+				cfg.shop_cta_text = getVal(container, '[data-field="vqv_shop_cta_text"]') || '';
+				cfg.shop_cta_href = getVal(container, '[data-field="vqv_shop_cta_href"]') || '';
+				cfg.trust_note = getVal(container, '[data-field="vqv_trust_note"]') || '';
+				cfg.stats = readVqvStats(container);
+				cfg.tabs = readVqvTabs(container);
+				delete cfg.title;
+				break;
+			case 'vault_why_choose':
+				cfg.section_title = getVal(container, '[data-field="vwc_title"]') || '';
+				cfg.items = readVwcItems(container);
+				delete cfg.title;
+				break;
+			case 'vault_cta':
+				cfg.headline_prefix = getVal(container, '[data-field="vcta_headline_prefix"]') || '';
+				cfg.headline_accent = getVal(container, '[data-field="vcta_headline_accent"]') || '';
+				cfg.primary_cta_text = getVal(container, '[data-field="vcta_primary_text"]') || '';
+				cfg.primary_cta_href = getVal(container, '[data-field="vcta_primary_href"]') || '';
+				cfg.secondary_cta_text = getVal(container, '[data-field="vcta_secondary_text"]') || '';
+				cfg.secondary_cta_href = getVal(container, '[data-field="vcta_secondary_href"]') || '';
+				delete cfg.title;
+				break;
+			case 'featured_products':
+				cfg.eyebrow = getVal(container, '[data-field="fp_eyebrow"]') || '';
+				cfg.headline_prefix = getVal(container, '[data-field="fp_headline_prefix"]') || '';
+				cfg.headline_accent = getVal(container, '[data-field="fp_headline_accent"]') || '';
+				cfg.subheadline = getVal(container, '[data-field="fp_subheadline"]') || '';
+				cfg.product_badge = getVal(container, '[data-field="fp_product_badge"]') || '';
+				cfg.source = getVal(container, '[data-field="fp_source"]') || 'popular';
+				cfg.product_limit = parseInt(getVal(container, '[data-field="fp_product_limit"]') || '3', 10) || 3;
+				cfg.cta_text = getVal(container, '[data-field="fp_cta_text"]') || '';
+				cfg.cta_href = getVal(container, '[data-field="fp_cta_href"]') || '';
 				delete cfg.title;
 				break;
 			case 'split_value':
@@ -2369,6 +2530,49 @@
 		return items;
 	}
 
+	function readVqvStats(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-vqv-stats .wchs-accordion-item').forEach(function (el) {
+			var value = getVal(el, '[data-field="vqv_stat_value"]') || '';
+			var label = getVal(el, '[data-field="vqv_stat_label"]') || '';
+			if (!value.trim() || !label.trim()) return;
+			items.push({ value: value.trim(), label: label.trim() });
+		});
+		return items;
+	}
+
+	function readVqvTabs(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-vqv-tabs .wchs-accordion-item').forEach(function (el) {
+			var title = getVal(el, '[data-field="vqv_tab_title"]') || '';
+			if (!title.trim()) return;
+			items.push({
+				title: title.trim(),
+				summary: getVal(el, '[data-field="vqv_tab_summary"]') || '',
+				body: getVal(el, '[data-field="vqv_tab_body"]') || '',
+				why_matters: getVal(el, '[data-field="vqv_tab_why"]') || '',
+				chart_image: getVal(el, '[data-field="vqv_tab_chart"]') || '',
+			});
+		});
+		return items;
+	}
+
+	function readVqtGuaranteeCards(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-vqt-guarantees .wchs-accordion-item').forEach(function (el) {
+			var title = getVal(el, '[data-field="vqt_guarantee_title"]') || '';
+			if (!title.trim()) return;
+			items.push({
+				title: title.trim(),
+				description: getVal(el, '[data-field="vqt_guarantee_desc"]') || '',
+				tooltip: getVal(el, '[data-field="vqt_guarantee_tooltip"]') || '',
+				accent: getVal(el, '[data-field="vqt_guarantee_accent"]') || 'green',
+				icon: getVal(el, '[data-field="vqt_guarantee_icon"]') || 'purity',
+			});
+		});
+		return items;
+	}
+
 	function readVqtTabs(ctx) {
 		var items = [];
 		ctx.querySelectorAll('.wchs-vqt-tabs .wchs-accordion-item').forEach(function (el) {
@@ -2380,6 +2584,21 @@
 				body: getVal(el, '[data-field="vqt_tab_body"]') || '',
 				why_matters: getVal(el, '[data-field="vqt_tab_why"]') || '',
 				chart_image: getVal(el, '[data-field="vqt_tab_chart"]') || '',
+			});
+		});
+		return items;
+	}
+
+	function readVwcItems(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-vwc-items .wchs-accordion-item').forEach(function (el) {
+			var title = getVal(el, '[data-field="vwc_item_title"]') || '';
+			if (!title.trim()) return;
+			items.push({
+				title: title.trim(),
+				description: getVal(el, '[data-field="vwc_item_desc"]') || '',
+				icon: getVal(el, '[data-field="vwc_item_icon"]') || 'stock',
+				accent: getVal(el, '[data-field="vwc_item_accent"]') || 'violet',
 			});
 		});
 		return items;
@@ -2571,6 +2790,71 @@
 		});
 	}
 
+	function populateVqvStats(ctx, items) {
+		var container = ctx.querySelector('.wchs-vqv-stats');
+		if (!container) return;
+		var tpl = container.querySelector('.wchs-accordion-item');
+		if (!tpl) return;
+		var tplHtml = tpl.outerHTML;
+		container.innerHTML = '';
+		(items.length ? items : [{ value: '', label: '' }]).forEach(function (item) {
+			var div = document.createElement('div');
+			div.innerHTML = tplHtml;
+			var el = div.firstElementChild;
+			setVal(el, '[data-field="vqv_stat_value"]', item.value || '');
+			setVal(el, '[data-field="vqv_stat_label"]', item.label || '');
+			container.appendChild(el);
+		});
+	}
+
+	function populateVqvTabs(ctx, items) {
+		var container = ctx.querySelector('.wchs-vqv-tabs');
+		if (!container) return;
+		var tpl = container.querySelector('.wchs-accordion-item');
+		if (!tpl) return;
+		var tplHtml = tpl.outerHTML;
+		container.innerHTML = '';
+		(items.length ? items : [{ title: '', summary: '', body: '', why_matters: '', chart_image: '' }]).forEach(function (item) {
+			var div = document.createElement('div');
+			div.innerHTML = tplHtml;
+			var el = div.firstElementChild;
+			setVal(el, '[data-field="vqv_tab_title"]', item.title || '');
+			setVal(el, '[data-field="vqv_tab_summary"]', item.summary || '');
+			setVal(el, '[data-field="vqv_tab_body"]', item.body || '');
+			setVal(el, '[data-field="vqv_tab_why"]', item.why_matters || '');
+			setVal(el, '[data-field="vqv_tab_chart"]', item.chart_image || '');
+			var chartInput = el.querySelector('[data-field="vqv_tab_chart"]');
+			if (chartInput) {
+				var preview = el.querySelector('.wchs-media-preview');
+				var removeBtn = el.querySelector('.wchs-media-remove');
+				if (chartInput.value && preview) { preview.src = chartInput.value; preview.style.display = ''; }
+				else if (preview) { preview.src = ''; preview.style.display = 'none'; }
+				if (removeBtn) removeBtn.style.display = chartInput.value ? '' : 'none';
+			}
+			container.appendChild(el);
+		});
+	}
+
+	function populateVqtGuarantees(ctx, items) {
+		var container = ctx.querySelector('.wchs-vqt-guarantees');
+		if (!container) return;
+		var tpl = container.querySelector('.wchs-accordion-item');
+		if (!tpl) return;
+		var tplHtml = tpl.outerHTML;
+		container.innerHTML = '';
+		(items.length ? items : [{ title: '', description: '', tooltip: '', accent: 'green', icon: 'purity' }]).forEach(function (item) {
+			var div = document.createElement('div');
+			div.innerHTML = tplHtml;
+			var el = div.firstElementChild;
+			setVal(el, '[data-field="vqt_guarantee_title"]', item.title || '');
+			setVal(el, '[data-field="vqt_guarantee_desc"]', item.description || '');
+			setVal(el, '[data-field="vqt_guarantee_tooltip"]', item.tooltip || '');
+			setVal(el, '[data-field="vqt_guarantee_accent"]', item.accent || 'green');
+			setVal(el, '[data-field="vqt_guarantee_icon"]', item.icon || 'purity');
+			container.appendChild(el);
+		});
+	}
+
 	function populateVqtTabs(ctx, items) {
 		var container = ctx.querySelector('.wchs-vqt-tabs');
 		if (!container) return;
@@ -2595,6 +2879,25 @@
 				else if (preview) { preview.src = ''; preview.style.display = 'none'; }
 				if (removeBtn) removeBtn.style.display = chartInput.value ? '' : 'none';
 			}
+			container.appendChild(el);
+		});
+	}
+
+	function populateVwcItems(ctx, items) {
+		var container = ctx.querySelector('.wchs-vwc-items');
+		if (!container) return;
+		var tpl = container.querySelector('.wchs-accordion-item');
+		if (!tpl) return;
+		var tplHtml = tpl.outerHTML;
+		container.innerHTML = '';
+		(items.length ? items : [{ title: '', description: '', icon: 'stock', accent: 'violet' }]).forEach(function (item) {
+			var div = document.createElement('div');
+			div.innerHTML = tplHtml;
+			var el = div.firstElementChild;
+			setVal(el, '[data-field="vwc_item_title"]', item.title || '');
+			setVal(el, '[data-field="vwc_item_desc"]', item.description || '');
+			setVal(el, '[data-field="vwc_item_icon"]', item.icon || 'stock');
+			setVal(el, '[data-field="vwc_item_accent"]', item.accent || 'violet');
 			container.appendChild(el);
 		});
 	}
@@ -3151,6 +3454,61 @@
 			var vClone = vTpl.cloneNode(true);
 			vClone.querySelectorAll('input[type="text"]').forEach(function (el) { el.value = ''; });
 			vCont.appendChild(vClone);
+		}
+
+		var addVqvStatModal = e.target.closest('.wchs-add-vqv-stat-modal');
+		if (addVqvStatModal) {
+			var vsCont = addVqvStatModal.previousElementSibling;
+			if (!vsCont || !vsCont.classList.contains('wchs-vqv-stats')) return;
+			var vsTpl = vsCont.querySelector('.wchs-accordion-item');
+			if (!vsTpl) return;
+			var vsClone = vsTpl.cloneNode(true);
+			vsClone.querySelectorAll('input').forEach(function (el) { el.value = ''; });
+			vsCont.appendChild(vsClone);
+		}
+
+		var addVqvTabModal = e.target.closest('.wchs-add-vqv-tab-modal');
+		if (addVqvTabModal) {
+			var vtCont = addVqvTabModal.previousElementSibling;
+			if (!vtCont || !vtCont.classList.contains('wchs-vqv-tabs')) return;
+			var vtTpl = vtCont.querySelector('.wchs-accordion-item');
+			if (!vtTpl) return;
+			var vtClone = vtTpl.cloneNode(true);
+			vtClone.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
+			vtCont.appendChild(vtClone);
+		}
+
+		var addVqtStatModal = e.target.closest('.wchs-add-vqt-stat-modal');
+		if (addVqtStatModal) {
+			var sCont = addVqtStatModal.previousElementSibling;
+			if (!sCont || !sCont.classList.contains('wchs-vqt-stats')) return;
+			var sTpl = sCont.querySelector('.wchs-accordion-item');
+			if (!sTpl) return;
+			var sClone = sTpl.cloneNode(true);
+			sClone.querySelectorAll('input').forEach(function (el) { el.value = ''; });
+			sCont.appendChild(sClone);
+		}
+
+		var addVqtGuaranteeModal = e.target.closest('.wchs-add-vqt-guarantee-modal');
+		if (addVqtGuaranteeModal) {
+			var gCont = addVqtGuaranteeModal.previousElementSibling;
+			if (!gCont || !gCont.classList.contains('wchs-vqt-guarantees')) return;
+			var gTpl = gCont.querySelector('.wchs-accordion-item');
+			if (!gTpl) return;
+			var gClone = gTpl.cloneNode(true);
+			gClone.querySelectorAll('input, select').forEach(function (el) { el.value = ''; });
+			gCont.appendChild(gClone);
+		}
+
+		var addVwcItemModal = e.target.closest('.wchs-add-vwc-item-modal');
+		if (addVwcItemModal) {
+			var wCont = addVwcItemModal.previousElementSibling;
+			if (!wCont || !wCont.classList.contains('wchs-vwc-items')) return;
+			var wTpl = wCont.querySelector('.wchs-accordion-item');
+			if (!wTpl) return;
+			var wClone = wTpl.cloneNode(true);
+			wClone.querySelectorAll('input, select').forEach(function (el) { el.value = ''; });
+			wCont.appendChild(wClone);
 		}
 
 		var addVqtTabModal = e.target.closest('.wchs-add-vqt-tab-modal');

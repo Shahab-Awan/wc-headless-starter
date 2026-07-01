@@ -59,13 +59,19 @@
 		return { lead: 'All cart rewards unlocked', amount: '', tail: '' };
 	});
 
+	const allUnlocked = $derived(shippingUnlocked && bacUnlocked);
+
 	const showBar = $derived(
 		enabled && trackMaxMinor > 0 && (shipMinor > 0 || bacMinor > 0) && subtotalMinor >= 0
 	);
 </script>
 
 {#if showBar}
-	<div class="fkcart-rewards" aria-label="Cart rewards progress">
+	<div
+		class="fkcart-rewards"
+		class:is-complete={allUnlocked}
+		aria-label="Cart rewards progress"
+	>
 		<p class="fkcart-rewards__headline">
 			{#if headline.amount}
 				{headline.lead}<strong class="fkcart-rewards__amount">{headline.amount}</strong>{headline.tail}
@@ -149,22 +155,54 @@
 		min-width: 0;
 		box-sizing: border-box;
 		margin-top: 10px;
-		padding: 0;
+		padding: 12px 14px 8px;
+		border-radius: 12px;
+		border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--accent) 10%, var(--bg)) 0%,
+			color-mix(in srgb, var(--accent) 4%, var(--bg)) 100%
+		);
+		box-shadow:
+			0 1px 0 color-mix(in srgb, white 35%, transparent) inset,
+			0 6px 20px color-mix(in srgb, var(--accent) 12%, transparent);
+	}
+
+	.fkcart-rewards.is-complete {
+		border-color: color-mix(in srgb, #22c55e 32%, var(--border));
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, #22c55e 10%, var(--bg)) 0%,
+			color-mix(in srgb, #22c55e 4%, var(--bg)) 100%
+		);
+		box-shadow:
+			0 1px 0 color-mix(in srgb, white 35%, transparent) inset,
+			0 6px 20px color-mix(in srgb, #22c55e 10%, transparent);
 	}
 
 	.fkcart-rewards__headline {
-		margin: 0 0 14px;
+		margin: 0 0 12px;
 		padding: 0;
-		font-size: 12px;
-		line-height: 1.4;
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 1.45;
 		text-align: center;
-		color: var(--fg-muted);
+		color: var(--fg);
 		text-wrap: balance;
+		overflow: visible;
+	}
+
+	.fkcart-rewards__headline strong {
+		font-weight: 800;
+	}
+
+	.fkcart-rewards.is-complete .fkcart-rewards__headline {
+		color: color-mix(in srgb, #15803d 82%, var(--fg));
 	}
 
 	.fkcart-rewards__amount {
 		color: var(--accent);
-		font-weight: 700;
+		font-weight: 800;
 	}
 
 	.fkcart-rewards__track-wrap {
@@ -179,7 +217,7 @@
 
 	.fkcart-rewards__track {
 		position: relative;
-		height: 4px;
+		height: 5px;
 		border-radius: 999px;
 		background: color-mix(in srgb, var(--fg) 12%, var(--bg));
 		overflow: hidden;

@@ -12,6 +12,7 @@
 		spacing_h = 'normal',
 		variant = 'default',
 		embedded = false,
+		transparentBg = false,
 		showHeadline,
 		limit,
 		offset = 0,
@@ -26,6 +27,7 @@
 		spacing_h?: SpacingPreset;
 		variant?: Variant;
 		embedded?: boolean;
+		transparentBg?: boolean;
 		showHeadline?: boolean;
 		limit?: number;
 		offset?: number;
@@ -182,6 +184,7 @@
 		class:is-h-compact={spacing_h === 'compact'}
 		class:is-h-spacious={spacing_h === 'spacious'}
 		class:is-embedded={embedded}
+		class:is-transparent-bg={transparentBg}
 		class:is-proof={variant === 'proof' || variant === 'product'}
 		class:is-product={variant === 'product'}
 		class:is-marquee={variant === 'marquee'}
@@ -280,10 +283,11 @@
 	.reviews-listicle.is-h-spacious {
 		--mod-px: 40px;
 	}
-	.reviews-listicle.is-embedded {
+	.reviews-listicle.is-embedded,
+	.reviews-listicle.is-transparent-bg {
 		background: transparent;
 	}
-	.reviews-listicle.is-proof:not(.is-embedded) {
+	.reviews-listicle.is-proof:not(.is-embedded):not(.is-transparent-bg) {
 		background: color-mix(in srgb, var(--rl-teal) 6%, var(--bg) 94%);
 	}
 

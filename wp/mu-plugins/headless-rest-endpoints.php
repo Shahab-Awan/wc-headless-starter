@@ -1349,13 +1349,20 @@ function wchs_enrich_why_alyve_order_handling_config( array $cfg ): array {
 
 function wchs_enrich_homepage_modules( array $modules ): array {
 	foreach ( $modules as $i => $mod ) {
-		if ( ! is_array( $mod ) || ( $mod['type'] ?? '' ) !== 'trust_bar' ) {
+		if ( ! is_array( $mod ) ) {
 			continue;
 		}
-		$modules[ $i ]['config']     = wchs_enrich_trust_bar_config( [] );
-		$modules[ $i ]['spacing_v']  = 'compact';
-		$modules[ $i ]['spacing_h']  = $modules[ $i ]['spacing_h'] ?? 'normal';
-		$modules[ $i ]['visibility'] = $modules[ $i ]['visibility'] ?? 'all';
+		$type = $mod['type'] ?? '';
+		if ( 'trust_bar' === $type ) {
+			$modules[ $i ]['config']     = wchs_enrich_trust_bar_config( [] );
+			$modules[ $i ]['spacing_v']  = 'compact';
+			$modules[ $i ]['spacing_h']  = $modules[ $i ]['spacing_h'] ?? 'normal';
+			$modules[ $i ]['visibility'] = $modules[ $i ]['visibility'] ?? 'all';
+		}
+		if ( 'featured_products' === $type ) {
+			$cfg = is_array( $mod['config'] ?? null ) ? $mod['config'] : [];
+			$modules[ $i ]['config'] = wchs_enrich_featured_products_config( $cfg );
+		}
 	}
 	return $modules;
 }
@@ -1381,6 +1388,16 @@ function wchs_enrich_page_modules( array $modules, string $page_slug ): array {
 			$modules[ $i ]['config'] = wchs_enrich_vault_hero_config( $cfg );
 		} elseif ( 'vault_quality_tabs' === $type ) {
 			$modules[ $i ]['config'] = wchs_enrich_vault_quality_tabs_config( $cfg );
+		} elseif ( 'vault_quality_verify' === $type ) {
+			$modules[ $i ]['config'] = wchs_enrich_vault_quality_verify_config( $cfg );
+		} elseif ( 'vault_why_choose' === $type ) {
+			$modules[ $i ]['config'] = wchs_enrich_vault_why_choose_config( $cfg );
+		} elseif ( 'featured_products' === $type ) {
+			$modules[ $i ]['config'] = wchs_enrich_featured_products_config( $cfg );
+		} elseif ( 'vault_cta' === $type ) {
+			$modules[ $i ]['config'] = wchs_enrich_vault_cta_config( $cfg );
+		} elseif ( 'vault' === $page_slug && 'text_block' === $type && ( $cfg['layout'] ?? '' ) === 'comparison' ) {
+			$modules[ $i ]['config'] = wchs_enrich_vault_comparison_config( $cfg );
 		}
 	}
 	return $modules;
@@ -1440,25 +1457,121 @@ function wchs_enrich_vault_hero_config( array $cfg ): array {
 function wchs_vault_quality_tabs_defaults(): array {
 	return [
 		'section_title'    => 'The Alyve Vault Guarantee',
-		'section_subtitle' => 'Every batch is independently verified — purity, identity, endotoxin, stability, and consistency.',
+		'section_subtitle' => 'Documented quality for research and laboratory use. Every batch meets our internal purity standards.',
 		'product_image'    => '',
 		'product_image_alt'=> '',
 		'image_badge'      => '99.4% Purity — Verified by HPLC',
 		'panel_bg'         => '#ebe6f5',
-		'detail_cta_text'  => 'See the Proof → View COA Library',
-		'detail_cta_href'  => '/coa-library',
-		'tabs'             => [
+		'guarantee_cards'  => [
+			[
+				'title'       => '99% Purity Guaranteed',
+				'description' => 'Every batch verified',
+				'tooltip'     => '',
+				'accent'      => 'green',
+				'icon'        => 'purity',
+			],
+			[
+				'title'       => 'Shipment Protection',
+				'description' => 'Every order fully covered',
+				'tooltip'     => 'Full replacement or refund if your shipment is lost or damaged in transit.',
+				'accent'      => 'blue',
+				'icon'        => 'shipping',
+			],
+			[
+				'title'       => 'COA with Every Batch',
+				'description' => 'Third Party tested in America',
+				'tooltip'     => 'Independent U.S. lab Certificates of Analysis ship with every order and are published before purchase.',
+				'accent'      => 'yellow',
+				'icon'        => 'coa',
+			],
+		],
+	];
+}
+
+function wchs_enrich_vault_quality_tabs_config( array $cfg ): array {
+	$defaults = wchs_vault_quality_tabs_defaults();
+	$merged   = array_merge( $defaults, $cfg );
+	$cards    = is_array( $merged['guarantee_cards'] ?? null ) ? $merged['guarantee_cards'] : [];
+	$valid    = array_values(
+		array_filter(
+			array_map(
+				static function ( $row ) {
+					if ( ! is_array( $row ) ) {
+						return null;
+					}
+					$title = trim( (string) ( $row['title'] ?? '' ) );
+					if ( '' === $title ) {
+						return null;
+					}
+					if ( 'CoA with Every Batch' === $title ) {
+						$title = 'COA with Every Batch';
+					}
+					$accent = trim( (string) ( $row['accent'] ?? 'green' ) );
+					if ( ! in_array( $accent, [ 'green', 'blue', 'yellow' ], true ) ) {
+						$accent = 'green';
+					}
+					$icon = trim( (string) ( $row['icon'] ?? 'purity' ) );
+					if ( ! in_array( $icon, [ 'purity', 'shipping', 'coa' ], true ) ) {
+						$icon = 'purity';
+					}
+					return [
+						'title'       => $title,
+						'description' => trim( (string) ( $row['description'] ?? '' ) ),
+						'tooltip'     => trim( (string) ( $row['tooltip'] ?? '' ) ),
+						'accent'      => $accent,
+						'icon'        => $icon,
+					];
+				},
+				$cards
+			)
+		)
+	);
+	$merged['guarantee_cards'] = empty( $valid ) ? $defaults['guarantee_cards'] : $valid;
+	return $merged;
+}
+
+function wchs_vault_quality_tabs_module_seed(): array {
+	return [
+		'type'       => 'vault_quality_tabs',
+		'visibility' => 'all',
+		'spacing_v'  => 'normal',
+		'spacing_h'  => 'normal',
+		'config'     => wchs_vault_quality_tabs_defaults(),
+	];
+}
+
+function wchs_vault_quality_verify_defaults(): array {
+	return [
+		'section_title'         => 'Quality You Can Verify, Not Just Trust',
+		'section_subtitle'      => 'Every batch is independently tested and documented. Review the data before you buy — not after.',
+		'product_image'         => '',
+		'product_image_alt'     => '',
+		'purity_badge_title'    => '99.4% Purity',
+		'purity_badge_subtitle' => 'Verified by HPLC',
+		'panel_bg'              => '#e8eef5',
+		'proof_link_title'      => 'See the Proof',
+		'proof_link_subtitle'   => 'View our quality procedures',
+		'proof_link_href'       => '/coa-library',
+		'shop_cta_text'         => 'Shop Now →',
+		'shop_cta_href'         => '/shop',
+		'trust_note'            => 'Free COA included with every order',
+		'stats'                 => [
+			[ 'value' => '99%+', 'label' => 'Purity Guaranteed' ],
+			[ 'value' => '5', 'label' => 'Quality Checks' ],
+			[ 'value' => '100%', 'label' => 'U.S. Verified' ],
+		],
+		'tabs'                  => [
 			[
 				'title'       => 'Purity',
 				'summary'     => 'HPLC ≥99%',
-				'body'        => '<p>Every batch is verified by High-Performance Liquid Chromatography (HPLC) to confirm peptide purity meets or exceeds 99%.</p>',
+				'body'        => '<p>Every batch is verified by High-Performance Liquid Chromatography (HPLC) to confirm peptide purity meets or exceeds 99%. Chromatogram peaks and purity percentages are published on every Certificate of Analysis before release.</p>',
 				'why_matters' => 'Impurities can skew receptor binding and invalidate your study data.',
 				'chart_image' => '',
 			],
 			[
 				'title'       => 'Identity',
 				'summary'     => 'Mass Spec confirmed',
-				'body'        => '<p>Mass spectrometry confirms the molecular weight and sequence identity of each peptide lot before release.</p>',
+				'body'        => '<p>Mass spectrometry confirms the molecular weight and sequence identity of each peptide lot before release — verifying you receive the exact compound specified, not a mislabeled analog.</p>',
 				'why_matters' => 'Ensures you receive the exact compound specified — not a mislabeled analog.',
 				'chart_image' => '',
 			],
@@ -1472,14 +1585,14 @@ function wchs_vault_quality_tabs_defaults(): array {
 			[
 				'title'       => 'Stability',
 				'summary'     => 'Lyophilized for shelf life',
-				'body'        => '<p>Peptides are lyophilized under controlled conditions to maximize stability during storage and transit.</p>',
+				'body'        => '<p>Peptides are lyophilized under controlled conditions to maximize stability during storage and transit, preserving bioactivity from synthesis to your bench.</p>',
 				'why_matters' => 'Proper lyophilization preserves bioactivity from synthesis to your bench.',
 				'chart_image' => '',
 			],
 			[
 				'title'       => 'Consistency',
 				'summary'     => 'Batch-to-batch variance data',
-				'body'        => '<p>We publish lot-to-lot analytical data so you can compare batches across your study timeline.</p>',
+				'body'        => '<p>We publish lot-to-lot analytical data so you can compare batches across your study timeline and maintain reproducible research outcomes.</p>',
 				'why_matters' => 'Reproducible research requires predictable material from order to order.',
 				'chart_image' => '',
 			],
@@ -1487,11 +1600,57 @@ function wchs_vault_quality_tabs_defaults(): array {
 	];
 }
 
-function wchs_enrich_vault_quality_tabs_config( array $cfg ): array {
-	$defaults = wchs_vault_quality_tabs_defaults();
+function wchs_vault_quality_verify_tabs_need_migration( array $tabs ): bool {
+	$titles = [];
+	foreach ( $tabs as $row ) {
+		if ( ! is_array( $row ) ) {
+			continue;
+		}
+		$title = strtolower( trim( (string) ( $row['title'] ?? '' ) ) );
+		if ( '' !== $title ) {
+			$titles[] = $title;
+		}
+	}
+	if ( in_array( 'potency', $titles, true ) || in_array( 'safety', $titles, true ) ) {
+		return true;
+	}
+	$canonical = [ 'purity', 'identity', 'endotoxin', 'stability', 'consistency' ];
+	foreach ( $canonical as $title ) {
+		if ( ! in_array( $title, $titles, true ) ) {
+			return true;
+		}
+	}
+	return count( $titles ) !== count( $canonical );
+}
+
+function wchs_migrate_vault_quality_verify_tabs( array $saved_tabs ): array {
+	$defaults = wchs_vault_quality_verify_defaults()['tabs'];
+	$chart    = '';
+	foreach ( $saved_tabs as $row ) {
+		if ( ! is_array( $row ) ) {
+			continue;
+		}
+		$img = trim( (string) ( $row['chart_image'] ?? '' ) );
+		if ( '' === $img ) {
+			continue;
+		}
+		$title = strtolower( trim( (string) ( $row['title'] ?? '' ) ) );
+		if ( in_array( $title, [ 'potency', 'purity' ], true ) || '' === $chart ) {
+			$chart = $img;
+		}
+	}
+	if ( '' !== $chart && isset( $defaults[0] ) ) {
+		$defaults[0]['chart_image'] = $chart;
+	}
+	return $defaults;
+}
+
+function wchs_enrich_vault_quality_verify_config( array $cfg ): array {
+	$defaults = wchs_vault_quality_verify_defaults();
 	$merged   = array_merge( $defaults, $cfg );
-	$tabs     = is_array( $merged['tabs'] ?? null ) ? $merged['tabs'] : [];
-	$valid    = array_values(
+
+	$tabs = is_array( $merged['tabs'] ?? null ) ? $merged['tabs'] : [];
+	$tabs_valid = array_values(
 		array_filter(
 			array_map(
 				static function ( $row ) {
@@ -1514,18 +1673,479 @@ function wchs_enrich_vault_quality_tabs_config( array $cfg ): array {
 			)
 		)
 	);
-	$merged['tabs'] = empty( $valid ) ? $defaults['tabs'] : $valid;
+	if ( empty( $tabs_valid ) ) {
+		$merged['tabs'] = $defaults['tabs'];
+	} elseif ( wchs_vault_quality_verify_tabs_need_migration( $tabs_valid ) ) {
+		$merged['tabs'] = wchs_migrate_vault_quality_verify_tabs( $tabs_valid );
+	} else {
+		$merged['tabs'] = $tabs_valid;
+	}
+
+	$stats = is_array( $merged['stats'] ?? null ) ? $merged['stats'] : [];
+	$stats_valid = array_values(
+		array_filter(
+			array_map(
+				static function ( $row ) {
+					if ( ! is_array( $row ) ) {
+						return null;
+					}
+					$value = trim( (string) ( $row['value'] ?? '' ) );
+					$label = trim( (string) ( $row['label'] ?? '' ) );
+					if ( '' === $value || '' === $label ) {
+						return null;
+					}
+					return [
+						'value' => $value,
+						'label' => $label,
+					];
+				},
+				$stats
+			)
+		)
+	);
+	$merged['stats'] = empty( $stats_valid ) ? $defaults['stats'] : $stats_valid;
+
+	$merged['section_subtitle']      = trim( (string) ( $merged['section_subtitle'] ?? '' ) ) ?: $defaults['section_subtitle'];
+	$purity_badge                    = trim( (string) ( $merged['purity_badge_title'] ?? '' ) );
+	$merged['purity_badge_title']    = in_array( $purity_badge, [ '99%+ Purity', '99%+ purity' ], true )
+		? $defaults['purity_badge_title']
+		: ( $purity_badge ?: $defaults['purity_badge_title'] );
+	$merged['purity_badge_subtitle'] = trim( (string) ( $merged['purity_badge_subtitle'] ?? '' ) ) ?: $defaults['purity_badge_subtitle'];
+	$merged['proof_link_title']      = trim( (string) ( $merged['proof_link_title'] ?? '' ) ) ?: $defaults['proof_link_title'];
+	$merged['proof_link_subtitle']   = trim( (string) ( $merged['proof_link_subtitle'] ?? '' ) ) ?: $defaults['proof_link_subtitle'];
+	$merged['proof_link_href']       = trim( (string) ( $merged['proof_link_href'] ?? '' ) ) ?: $defaults['proof_link_href'];
+	$merged['shop_cta_text']         = trim( (string) ( $merged['shop_cta_text'] ?? '' ) ) ?: $defaults['shop_cta_text'];
+	$merged['shop_cta_href']         = trim( (string) ( $merged['shop_cta_href'] ?? '' ) ) ?: $defaults['shop_cta_href'];
+	$merged['trust_note']            = trim( (string) ( $merged['trust_note'] ?? '' ) ) ?: $defaults['trust_note'];
 	return $merged;
 }
 
-function wchs_vault_quality_tabs_module_seed(): array {
+function wchs_vault_quality_verify_module_seed(): array {
 	return [
-		'type'       => 'vault_quality_tabs',
+		'type'       => 'vault_quality_verify',
 		'visibility' => 'all',
 		'spacing_v'  => 'normal',
 		'spacing_h'  => 'normal',
-		'config'     => wchs_vault_quality_tabs_defaults(),
+		'config'     => wchs_vault_quality_verify_defaults(),
 	];
+}
+
+function wchs_vault_comparison_defaults(): array {
+	return [
+		'layout'            => 'comparison',
+		'title'             => '',
+		'headline'          => 'Alyve vs Grey-Market Sites',
+		'content'           => '<p>How verified U.S. batches stack up against generic peptide sellers and overseas grey-market sources.</p>',
+		'brand_name'        => 'Alyve',
+		'competitor_name'   => 'Generic Peptide Sites',
+		'competitor_name_2' => 'Overseas / Grey-Market',
+		'brand_logo'        => '',
+		'competitor_logo'   => '',
+		'comparison_rows'   => [
+			[
+				'heading'      => '🧬 Endotoxin Testing',
+				'brand'        => 'LAB tested every batch, pharma-grade low',
+				'competitor'   => 'Skipped entirely',
+				'competitor_2' => 'Unknown, never tested',
+			],
+			[
+				'heading'      => '🧪 Purity',
+				'brand'        => '99%+ HPLC-verified at manufacture',
+				'competitor'   => 'Estimated, not proven',
+				'competitor_2' => 'Label claim only',
+			],
+			[
+				'heading'      => '📄 Third-Party Verification',
+				'brand'        => "Accredited labs, COA per batch, test it yourself and we'll reimburse",
+				'competitor'   => 'In-house claims only',
+				'competitor_2' => 'Redacted or none',
+			],
+			[
+				'heading'      => '🚚 Shipping',
+				'brand'        => 'Same-day, tracked, discreet, 2–3 days',
+				'competitor'   => 'Slow, sometimes tracked',
+				'competitor_2' => '2–6 weeks, customs risk',
+			],
+		],
+	];
+}
+
+function wchs_enrich_vault_comparison_config( array $cfg ): array {
+	$defaults = wchs_vault_comparison_defaults();
+	$merged   = array_merge( $defaults, $cfg );
+	$merged['title']    = $defaults['title'];
+	$merged['headline'] = trim( (string) ( $merged['headline'] ?? '' ) ) ?: $defaults['headline'];
+	if ( '' === trim( wp_strip_all_tags( (string) ( $cfg['content'] ?? '' ) ) ) ) {
+		$merged['content'] = $defaults['content'];
+	}
+	return $merged;
+}
+
+function wchs_vault_module_is_comparison( array $mod ): bool {
+	if ( ( $mod['type'] ?? '' ) !== 'text_block' ) {
+		return false;
+	}
+	$cfg = is_array( $mod['config'] ?? null ) ? $mod['config'] : [];
+	return ( $cfg['layout'] ?? '' ) === 'comparison';
+}
+
+function wchs_vault_comparison_module_seed(): array {
+	return [
+		'type'          => 'text_block',
+		'visibility'    => 'all',
+		'spacing_v'     => 'normal',
+		'spacing_h'     => 'normal',
+		'center_header' => true,
+		'config'        => wchs_vault_comparison_defaults(),
+	];
+}
+
+function wchs_vault_why_choose_defaults(): array {
+	return [
+		'section_title' => 'Why Choose Alyve',
+		'items'         => [
+			[
+				'title'       => 'Always In Stock',
+				'description' => 'Core research compounds restocked on a reliable cadence — your protocol stays on schedule.',
+				'icon'        => 'stock',
+				'accent'      => 'violet',
+			],
+			[
+				'title'       => 'Volume Pricing',
+				'description' => 'Transparent tiered discounts from 3 vials up — scale your order and save on every batch.',
+				'icon'        => 'volume',
+				'accent'      => 'green',
+			],
+			[
+				'title'       => 'Safe & Protected Shipping',
+				'description' => 'Tracked domestic fulfillment with shipment protection on every order.',
+				'icon'        => 'shipping',
+				'accent'      => 'amber',
+			],
+			[
+				'title'       => 'Third-Party Verified',
+				'description' => 'Independent U.S. laboratory testing confirms identity, purity, and safety before release.',
+				'icon'        => 'verified',
+				'accent'      => 'rose',
+			],
+			[
+				'title'       => 'COA Every Batch',
+				'description' => 'Full Certificates of Analysis published for every lot — review documentation before you buy.',
+				'icon'        => 'coa',
+				'accent'      => 'blue',
+			],
+			[
+				'title'       => 'Same-Day Fulfillment',
+				'description' => 'Orders placed before 2PM EST ship same day via tracked carrier.',
+				'icon'        => 'fulfillment',
+				'accent'      => 'teal',
+			],
+		],
+	];
+}
+
+function wchs_enrich_vault_why_choose_config( array $cfg ): array {
+	$defaults = wchs_vault_why_choose_defaults();
+	$merged   = array_merge( $defaults, $cfg );
+	$items    = is_array( $merged['items'] ?? null ) ? $merged['items'] : [];
+	$valid    = array_values(
+		array_filter(
+			array_map(
+				static function ( $row ) {
+					if ( ! is_array( $row ) ) {
+						return null;
+					}
+					$title = trim( (string) ( $row['title'] ?? '' ) );
+					if ( '' === $title ) {
+						return null;
+					}
+					$icon   = trim( (string) ( $row['icon'] ?? 'stock' ) ) ?: 'stock';
+					$accent = trim( (string) ( $row['accent'] ?? 'violet' ) ) ?: 'violet';
+					return [
+						'title'       => $title,
+						'description' => trim( (string) ( $row['description'] ?? '' ) ),
+						'icon'        => $icon,
+						'accent'      => $accent,
+					];
+				},
+				$items
+			)
+		)
+	);
+	if ( empty( $valid ) ) {
+		$merged['items'] = $defaults['items'];
+	} else {
+		$merged['items'] = $valid;
+	}
+	$merged['section_title'] = trim( (string) ( $merged['section_title'] ?? '' ) ) ?: $defaults['section_title'];
+	return $merged;
+}
+
+function wchs_vault_why_choose_module_seed(): array {
+	return [
+		'type'       => 'vault_why_choose',
+		'visibility' => 'all',
+		'spacing_v'  => 'normal',
+		'spacing_h'  => 'normal',
+		'config'     => wchs_vault_why_choose_defaults(),
+	];
+}
+
+function wchs_vault_cta_defaults(): array {
+	return [
+		'headline_prefix'    => 'Ready to Verify? Browse the',
+		'headline_accent'    => 'Research Vault.',
+		'primary_cta_text'   => 'Browse Catalog →',
+		'primary_cta_href'   => '/shop',
+		'secondary_cta_text' => 'View COA Library',
+		'secondary_cta_href' => '/coa-library',
+	];
+}
+
+function wchs_enrich_vault_cta_config( array $cfg ): array {
+	$defaults = wchs_vault_cta_defaults();
+	$merged   = array_merge( $defaults, $cfg );
+	return [
+		'headline_prefix'    => trim( (string) ( $merged['headline_prefix'] ?? '' ) ) ?: $defaults['headline_prefix'],
+		'headline_accent'    => trim( (string) ( $merged['headline_accent'] ?? '' ) ) ?: $defaults['headline_accent'],
+		'primary_cta_text'   => trim( (string) ( $merged['primary_cta_text'] ?? '' ) ) ?: $defaults['primary_cta_text'],
+		'primary_cta_href'   => trim( (string) ( $merged['primary_cta_href'] ?? '' ) ) ?: $defaults['primary_cta_href'],
+		'secondary_cta_text' => trim( (string) ( $merged['secondary_cta_text'] ?? '' ) ) ?: $defaults['secondary_cta_text'],
+		'secondary_cta_href' => trim( (string) ( $merged['secondary_cta_href'] ?? '' ) ) ?: $defaults['secondary_cta_href'],
+	];
+}
+
+function wchs_vault_cta_module_seed(): array {
+	return [
+		'type'       => 'vault_cta',
+		'visibility' => 'all',
+		'spacing_v'  => 'normal',
+		'spacing_h'  => 'normal',
+		'config'     => wchs_vault_cta_defaults(),
+	];
+}
+
+function wchs_featured_products_defaults(): array {
+	return [
+		'eyebrow'         => 'Bestsellers',
+		'headline_prefix' => 'Featured',
+		'headline_accent' => 'Products',
+		'subheadline'     => 'Explore our most popular research compounds, chosen for their quality, purity, and consistency.',
+		'product_badge'   => 'Most Popular',
+		'source'          => 'popular',
+		'product_limit'   => 3,
+		'cta_text'        => 'Explore All Products',
+		'cta_href'        => '/shop',
+	];
+}
+
+function wchs_enrich_featured_products_config( array $cfg ): array {
+	$defaults = wchs_featured_products_defaults();
+	$merged   = array_merge( $defaults, $cfg );
+	$source   = ( $merged['source'] ?? '' ) === 'best_sellers' ? 'best_sellers' : 'popular';
+	$limit    = (int) ( $merged['product_limit'] ?? 3 );
+	$limit    = max( 1, min( 6, $limit ) );
+	return [
+		'eyebrow'         => trim( (string) ( $merged['eyebrow'] ?? '' ) ) ?: $defaults['eyebrow'],
+		'headline_prefix' => trim( (string) ( $merged['headline_prefix'] ?? '' ) ) ?: $defaults['headline_prefix'],
+		'headline_accent' => trim( (string) ( $merged['headline_accent'] ?? '' ) ) ?: $defaults['headline_accent'],
+		'subheadline'     => trim( (string) ( $merged['subheadline'] ?? '' ) ) ?: $defaults['subheadline'],
+		'product_badge'   => trim( (string) ( $merged['product_badge'] ?? '' ) ) ?: $defaults['product_badge'],
+		'source'          => $source,
+		'product_limit'   => $limit,
+		'cta_text'        => trim( (string) ( $merged['cta_text'] ?? '' ) ) ?: $defaults['cta_text'],
+		'cta_href'        => trim( (string) ( $merged['cta_href'] ?? '' ) ) ?: $defaults['cta_href'],
+	];
+}
+
+function wchs_featured_products_module_seed(): array {
+	return [
+		'type'       => 'featured_products',
+		'visibility' => 'all',
+		'spacing_v'  => 'normal',
+		'spacing_h'  => 'normal',
+		'config'     => wchs_featured_products_defaults(),
+	];
+}
+
+function wchs_homepage_module_to_featured_products( array $mod ): array {
+	$seed = wchs_featured_products_module_seed();
+	if ( ( $mod['type'] ?? '' ) === 'featured_products' ) {
+		$seed['id']         = $mod['id'] ?? null;
+		$seed['visibility'] = $mod['visibility'] ?? $seed['visibility'];
+		$seed['spacing_v']  = $mod['spacing_v'] ?? $seed['spacing_v'];
+		$seed['spacing_h']  = $mod['spacing_h'] ?? $seed['spacing_h'];
+		$seed['config']     = wchs_enrich_featured_products_config(
+			is_array( $mod['config'] ?? null ) ? $mod['config'] : []
+		);
+	}
+	return $seed;
+}
+
+function wchs_homepage_ensure_featured_products_module( array $mods ): array {
+	foreach ( $mods as $mod ) {
+		if ( is_array( $mod ) && ( $mod['type'] ?? '' ) === 'featured_products' ) {
+			return array_map(
+				static function ( $item ) {
+					return is_array( $item ) && ( $item['type'] ?? '' ) === 'featured_products'
+						? wchs_homepage_module_to_featured_products( $item )
+						: $item;
+				},
+				$mods
+			);
+		}
+	}
+	for ( $i = 0, $n = count( $mods ); $i < $n; $i++ ) {
+		$mod = $mods[ $i ];
+		if ( ! is_array( $mod ) ) {
+			continue;
+		}
+		$type = $mod['type'] ?? '';
+		if ( 'product_slider' === $type ) {
+			$cfg    = is_array( $mod['config'] ?? null ) ? $mod['config'] : [];
+			$source = $cfg['source'] ?? 'all';
+			if ( 'all' === $source ) {
+				$mods[ $i ] = wchs_homepage_module_to_featured_products( $mod );
+				return $mods;
+			}
+		}
+		if ( 'category_grid' === $type || 'shop_grid' === $type ) {
+			$mods[ $i ] = wchs_homepage_module_to_featured_products( $mod );
+			return $mods;
+		}
+	}
+	$insert_at = 0;
+	foreach ( $mods as $i => $mod ) {
+		if ( is_array( $mod ) && ( $mod['type'] ?? '' ) === 'product_slider' ) {
+			$insert_at = $i;
+			break;
+		}
+	}
+	array_splice( $mods, $insert_at, 0, [ wchs_featured_products_module_seed() ] );
+	return $mods;
+}
+
+function wchs_strip_vault_featured_products( array $modules ): array {
+	return array_values(
+		array_filter(
+			$modules,
+			static function ( $mod ) {
+				return ! is_array( $mod ) || ( $mod['type'] ?? '' ) !== 'vault_featured_products';
+			}
+		)
+	);
+}
+
+function wchs_vault_reviews_listicle_defaults(): array {
+	return [
+		'headline'          => 'What researchers say after ordering',
+		'proof_subheadline' => '4.9 stars · 200+ verified orders.',
+		'items'             => [
+			[
+				'quote'   => 'COAs matched the batch numbers on our BPC-157 vials. Documentation was clear and easy to file for our lab records.',
+				'name'    => 'Vincent R.',
+				'product' => 'BPC-157 5mg',
+				'rating'  => 5,
+			],
+			[
+				'quote'   => 'TB-500 batch purity matched the published COA exactly. Reconstitution notes were clear and shipment arrived tracked within two days.',
+				'name'    => 'James T.',
+				'product' => 'TB-500 5mg',
+				'rating'  => 5,
+			],
+			[
+				'quote'   => 'Tirzepatide purity report was posted before checkout — exactly what our QC process requires.',
+				'name'    => 'Justin F.',
+				'product' => 'Tirzepatide 10mg',
+				'rating'  => 5,
+			],
+			[
+				'quote'   => 'Ipamorelin vials arrived cold-packed with batch COA attached. Purity matched the published report on the first HPLC rerun.',
+				'name'    => 'Sarah M.',
+				'product' => 'Ipamorelin 2mg',
+				'rating'  => 5,
+			],
+			[
+				'quote'   => 'Consistent Retatrutide quality across reorders — no surprises between batches. Support answered technical questions the same day.',
+				'name'    => 'Carlos B.',
+				'product' => 'Retatrutide 5mg',
+				'rating'  => 5,
+			],
+		],
+	];
+}
+
+function wchs_homepage_reviews_listicle_module(): ?array {
+	$homepage = \WCHS\Admin\AdminPage::get_homepage_config();
+	$modules  = is_array( $homepage['modules'] ?? null ) ? $homepage['modules'] : [];
+	foreach ( $modules as $mod ) {
+		if ( is_array( $mod ) && ( $mod['type'] ?? '' ) === 'reviews_listicle' ) {
+			return $mod;
+		}
+	}
+	return null;
+}
+
+function wchs_clone_reviews_listicle_config( array $cfg ): array {
+	$defaults = wchs_vault_reviews_listicle_defaults();
+	$items    = is_array( $cfg['items'] ?? null ) ? $cfg['items'] : [];
+	$valid    = array_values(
+		array_filter(
+			array_map(
+				static function ( $row ) {
+					if ( ! is_array( $row ) ) {
+						return null;
+					}
+					$quote = trim( (string) ( $row['quote'] ?? '' ) );
+					$name  = trim( (string) ( $row['name'] ?? '' ) );
+					if ( '' === $quote || '' === $name ) {
+						return null;
+					}
+					return [
+						'quote'    => $quote,
+						'name'     => $name,
+						'product'  => trim( (string) ( $row['product'] ?? '' ) ),
+						'location' => trim( (string) ( $row['location'] ?? '' ) ),
+						'title'    => trim( (string) ( $row['title'] ?? '' ) ),
+						'rating'   => min( 5, max( 1, (int) ( $row['rating'] ?? 5 ) ) ),
+					];
+				},
+				$items
+			)
+		)
+	);
+	return [
+		'headline'          => trim( (string) ( $cfg['headline'] ?? '' ) ) ?: $defaults['headline'],
+		'subheadline'       => trim( (string) ( $cfg['subheadline'] ?? '' ) ),
+		'proof_headline'    => trim( (string) ( $cfg['proof_headline'] ?? '' ) ),
+		'proof_subheadline' => trim( (string) ( $cfg['proof_subheadline'] ?? '' ) ) ?: $defaults['proof_subheadline'],
+		'items'             => empty( $valid ) ? $defaults['items'] : $valid,
+	];
+}
+
+function wchs_vault_reviews_listicle_module_seed(): array {
+	$from_home = wchs_homepage_reviews_listicle_module();
+	$cfg       = is_array( $from_home['config'] ?? null ) ? $from_home['config'] : [];
+	return [
+		'id'            => 'vault-reviews',
+		'type'          => 'reviews_listicle',
+		'visibility'    => $from_home['visibility'] ?? 'all',
+		'spacing_v'     => $from_home['spacing_v'] ?? 'normal',
+		'spacing_h'     => $from_home['spacing_h'] ?? 'normal',
+		'center_header' => $from_home['center_header'] ?? true,
+		'config'        => wchs_clone_reviews_listicle_config( $cfg ),
+	];
+}
+
+function wchs_strip_vault_review_slider( array $modules ): array {
+	return array_values(
+		array_filter(
+			$modules,
+			static function ( $mod ) {
+				return ! is_array( $mod ) || ( $mod['type'] ?? '' ) !== 'review_slider';
+			}
+		)
+	);
 }
 
 function wchs_vault_hero_module_seed(): array {
@@ -1539,8 +2159,14 @@ function wchs_vault_hero_module_seed(): array {
 }
 
 function wchs_ensure_vault_page_modules( array $modules ): array {
-	$has_hero = false;
-	$has_tabs = false;
+	$modules = wchs_strip_vault_featured_products( wchs_strip_vault_review_slider( $modules ) );
+	$has_hero       = false;
+	$has_tabs       = false;
+	$has_verify     = false;
+	$has_compare    = false;
+	$has_reviews    = false;
+	$has_why_choose = false;
+	$has_cta        = false;
 	foreach ( $modules as $mod ) {
 		if ( ! is_array( $mod ) ) {
 			continue;
@@ -1551,6 +2177,21 @@ function wchs_ensure_vault_page_modules( array $modules ): array {
 		}
 		if ( 'vault_quality_tabs' === $type ) {
 			$has_tabs = true;
+		}
+		if ( 'vault_quality_verify' === $type ) {
+			$has_verify = true;
+		}
+		if ( wchs_vault_module_is_comparison( $mod ) ) {
+			$has_compare = true;
+		}
+		if ( 'reviews_listicle' === $type ) {
+			$has_reviews = true;
+		}
+		if ( 'vault_why_choose' === $type ) {
+			$has_why_choose = true;
+		}
+		if ( 'vault_cta' === $type ) {
+			$has_cta = true;
 		}
 	}
 	if ( ! $has_hero ) {
@@ -1566,12 +2207,95 @@ function wchs_ensure_vault_page_modules( array $modules ): array {
 		}
 		array_splice( $modules, $insert_at, 0, [ wchs_vault_quality_tabs_module_seed() ] );
 	}
+	if ( ! $has_verify ) {
+		$insert_at = count( $modules );
+		foreach ( $modules as $i => $mod ) {
+			if ( is_array( $mod ) && ( $mod['type'] ?? '' ) === 'vault_quality_tabs' ) {
+				$insert_at = $i + 1;
+				break;
+			}
+		}
+		array_splice( $modules, $insert_at, 0, [ wchs_vault_quality_verify_module_seed() ] );
+	}
+	if ( ! $has_compare ) {
+		$insert_at = count( $modules );
+		foreach ( $modules as $i => $mod ) {
+			if ( is_array( $mod ) && ( $mod['type'] ?? '' ) === 'vault_quality_verify' ) {
+				$insert_at = $i + 1;
+				break;
+			}
+		}
+		array_splice( $modules, $insert_at, 0, [ wchs_vault_comparison_module_seed() ] );
+	}
+	if ( ! $has_why_choose ) {
+		$insert_at = count( $modules );
+		foreach ( $modules as $i => $mod ) {
+			if ( is_array( $mod ) && wchs_vault_module_is_comparison( $mod ) ) {
+				$insert_at = $i + 1;
+				break;
+			}
+		}
+		array_splice( $modules, $insert_at, 0, [ wchs_vault_why_choose_module_seed() ] );
+	}
+	if ( ! $has_reviews ) {
+		$insert_at = count( $modules );
+		foreach ( $modules as $i => $mod ) {
+			if ( is_array( $mod ) && ( $mod['type'] ?? '' ) === 'vault_why_choose' ) {
+				$insert_at = $i + 1;
+				break;
+			}
+		}
+		array_splice( $modules, $insert_at, 0, [ wchs_vault_reviews_listicle_module_seed() ] );
+	}
+	$modules = wchs_reposition_vault_reviews_listicle( $modules );
+	if ( ! $has_cta ) {
+		$modules[] = wchs_vault_cta_module_seed();
+	}
+	return $modules;
+}
+
+function wchs_reposition_vault_reviews_listicle( array $modules ): array {
+	$review_idx = null;
+	$why_idx    = null;
+	foreach ( $modules as $i => $mod ) {
+		if ( ! is_array( $mod ) ) {
+			continue;
+		}
+		if ( ( $mod['type'] ?? '' ) === 'reviews_listicle' ) {
+			$review_idx = $i;
+		}
+		if ( ( $mod['type'] ?? '' ) === 'vault_why_choose' ) {
+			$why_idx = $i;
+		}
+	}
+	if ( null === $review_idx || null === $why_idx ) {
+		return $modules;
+	}
+	$target = $why_idx + 1;
+	if ( $review_idx === $target ) {
+		return $modules;
+	}
+	$review = $modules[ $review_idx ];
+	unset( $modules[ $review_idx ] );
+	$modules = array_values( $modules );
+	foreach ( $modules as $i => $mod ) {
+		if ( is_array( $mod ) && ( $mod['type'] ?? '' ) === 'vault_why_choose' ) {
+			array_splice( $modules, $i + 1, 0, [ $review ] );
+			break;
+		}
+	}
 	return $modules;
 }
 
 function wchs_vault_page_needs_sync( array $modules ): bool {
-	$has_hero = false;
-	$has_tabs = false;
+	$modules = wchs_strip_vault_featured_products( $modules );
+	$has_hero       = false;
+	$has_tabs       = false;
+	$has_verify     = false;
+	$has_compare    = false;
+	$has_reviews    = false;
+	$has_why_choose = false;
+	$has_cta        = false;
 	foreach ( $modules as $mod ) {
 		if ( ! is_array( $mod ) ) {
 			continue;
@@ -1583,8 +2307,92 @@ function wchs_vault_page_needs_sync( array $modules ): bool {
 		if ( 'vault_quality_tabs' === $type ) {
 			$has_tabs = true;
 		}
+		if ( 'vault_quality_verify' === $type ) {
+			$has_verify = true;
+			$cfg        = is_array( $mod['config'] ?? null ) ? $mod['config'] : [];
+			$tabs       = is_array( $cfg['tabs'] ?? null ) ? $cfg['tabs'] : [];
+			if ( wchs_vault_quality_verify_tabs_need_migration( $tabs ) ) {
+				return true;
+			}
+		}
+		if ( wchs_vault_module_is_comparison( $mod ) ) {
+			$has_compare = true;
+		}
+		if ( 'reviews_listicle' === $type ) {
+			$has_reviews = true;
+		}
+		if ( 'vault_why_choose' === $type ) {
+			$has_why_choose = true;
+		}
+		if ( 'vault_cta' === $type ) {
+			$has_cta = true;
+		}
 	}
-	return ! $has_hero || ! $has_tabs;
+	return ! $has_hero || ! $has_tabs || ! $has_verify || ! $has_compare || ! $has_reviews || ! $has_why_choose || ! $has_cta
+		|| wchs_vault_reviews_listicle_needs_placement( $modules );
+}
+
+function wchs_vault_reviews_listicle_needs_placement( array $modules ): bool {
+	$review_idx = null;
+	$why_idx    = null;
+	$has_slider = false;
+	foreach ( $modules as $i => $mod ) {
+		if ( ! is_array( $mod ) ) {
+			continue;
+		}
+		if ( ( $mod['type'] ?? '' ) === 'review_slider' ) {
+			$has_slider = true;
+		}
+		if ( ( $mod['type'] ?? '' ) === 'reviews_listicle' ) {
+			$review_idx = $i;
+		}
+		if ( ( $mod['type'] ?? '' ) === 'vault_why_choose' ) {
+			$why_idx = $i;
+		}
+	}
+	if ( $has_slider ) {
+		return true;
+	}
+	if ( null !== $why_idx && null === $review_idx ) {
+		return true;
+	}
+	if ( null !== $why_idx && null !== $review_idx && $review_idx !== $why_idx + 1 ) {
+		return true;
+	}
+	return false;
+}
+
+function wchs_migrate_vault_page_modules( array $modules ): array {
+	$modules = wchs_strip_vault_featured_products( wchs_strip_vault_review_slider( $modules ) );
+	foreach ( $modules as $i => $mod ) {
+		if ( ! is_array( $mod ) || ( $mod['type'] ?? '' ) !== 'vault_quality_verify' ) {
+			continue;
+		}
+		$cfg      = is_array( $mod['config'] ?? null ) ? $mod['config'] : [];
+		$enriched = wchs_enrich_vault_quality_verify_config( $cfg );
+		if ( wp_json_encode( $enriched ) !== wp_json_encode( $cfg ) ) {
+			$modules[ $i ]['config'] = $enriched;
+		}
+	}
+	if ( wchs_vault_reviews_listicle_needs_placement( $modules ) ) {
+		$has_reviews = false;
+		foreach ( $modules as $mod ) {
+			if ( is_array( $mod ) && ( $mod['type'] ?? '' ) === 'reviews_listicle' ) {
+				$has_reviews = true;
+				break;
+			}
+		}
+		if ( ! $has_reviews ) {
+			foreach ( $modules as $i => $mod ) {
+				if ( is_array( $mod ) && ( $mod['type'] ?? '' ) === 'vault_why_choose' ) {
+					array_splice( $modules, $i + 1, 0, [ wchs_vault_reviews_listicle_module_seed() ] );
+					break;
+				}
+			}
+		}
+		$modules = wchs_reposition_vault_reviews_listicle( $modules );
+	}
+	return $modules;
 }
 
 function wchs_maybe_persist_vault_page_config( array $pages_cfg ): array {
@@ -1598,7 +2406,12 @@ function wchs_maybe_persist_vault_page_config( array $pages_cfg ): array {
 		}
 		$vault_i = $i;
 		$modules = is_array( $page['modules'] ?? null ) ? $page['modules'] : [];
+		$modules = wchs_migrate_vault_page_modules( $modules );
 		if ( ! wchs_vault_page_needs_sync( $modules ) ) {
+			if ( wp_json_encode( $modules ) !== wp_json_encode( $page['modules'] ?? [] ) ) {
+				$pages[ $i ]['modules'] = $modules;
+				$changed                = true;
+			}
 			break;
 		}
 		$modules = wchs_ensure_vault_page_modules( $modules );
@@ -1690,6 +2503,7 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 	$homepage['modules'] = wchs_enrich_homepage_modules( $homepage['modules'] );
 	$homepage['modules'] = wchs_homepage_ensure_feature_highlights_module( $homepage['modules'] );
 	$homepage['modules'] = wchs_homepage_ensure_order_handling_module( $homepage['modules'] );
+	$homepage['modules'] = wchs_homepage_ensure_featured_products_module( $homepage['modules'] );
 
 	// Merge site defaults + per-module overrides into a `resolved` block on
 	// each module. SPA components read module.resolved instead of

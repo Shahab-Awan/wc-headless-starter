@@ -62,6 +62,7 @@
 	);
 
 	const EDITORIAL_DEFAULTS = {
+		section_eyebrow: 'RESEARCH-GRADE SUPPLY',
 		headline: '8 Reasons Researchers Choose Alyve For their Research Compounds',
 		trust_brand: 'Alyve Peptides',
 		trust_items: [
@@ -71,6 +72,8 @@
 		],
 		hero_callout:
 			'READ THIS BEFORE YOU BUY RESEARCH COMPOUNDS FROM ANY OTHER COMPANY',
+		hero_trust_lead:
+			'Overseas suppliers make the same promises. Here is what actually sets Alyve\u2019s U.S.-fulfilled, batch-verified compounds apart \u2014 and why more research teams keep switching.',
 		hero_cta_image: '/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp',
 		hero_cta_image_alt: 'Alyve research-grade peptide vials',
 		hero_cta_headline: 'Up to 40% Off — Verified Batches In Stock',
@@ -202,14 +205,9 @@
 	const heroHeadline = $derived(
 		config.headline?.trim() || EDITORIAL_DEFAULTS.headline
 	);
-	const trustBrandId = $derived(
-		`listicle-trust-${heroHeadline.replace(/\s+/g, '-').slice(0, 40).toLowerCase()}`
+	const heroBadge = $derived(
+		config.section_eyebrow?.trim() || EDITORIAL_DEFAULTS.section_eyebrow
 	);
-
-	const trustBrand = $derived(
-		config.trust_brand?.trim() || EDITORIAL_DEFAULTS.trust_brand
-	);
-
 	const trustItems = $derived.by(() => {
 		const saved = (config.trust_items ?? []).map((item) => item.trim()).filter(Boolean);
 		return saved.length ? saved : [...EDITORIAL_DEFAULTS.trust_items];
@@ -219,15 +217,10 @@
 		config.hero_callout?.trim() || EDITORIAL_DEFAULTS.hero_callout
 	);
 
-	const heroCtaImage = $derived(
-		config.hero_cta_image?.trim() || EDITORIAL_DEFAULTS.hero_cta_image
+	const heroTrustLead = $derived(
+		config.hero_trust_lead?.trim() || EDITORIAL_DEFAULTS.hero_trust_lead
 	);
-	const heroCtaImageAlt = $derived(
-		config.hero_cta_image_alt?.trim() || EDITORIAL_DEFAULTS.hero_cta_image_alt
-	);
-	const heroCtaHeadline = $derived(
-		config.hero_cta_headline?.trim() || EDITORIAL_DEFAULTS.hero_cta_headline
-	);
+
 	const heroCtaLabel = $derived(
 		config.hero_cta_label?.trim() || EDITORIAL_DEFAULTS.hero_cta_label
 	);
@@ -235,38 +228,17 @@
 		config.hero_cta_href?.trim() || EDITORIAL_DEFAULTS.hero_cta_href
 	);
 
-	const showHeroMidCta = $derived(
-		isEditorialHero &&
-			Boolean(
-				heroCtaImage ||
-					heroCtaHeadline ||
-					(heroCtaLabel && heroCtaHref)
-			)
-	);
+	const showHeroCta = $derived(Boolean(heroCtaLabel && heroCtaHref));
 
-	const heroPromoConfig = $derived.by((): PromoOfferModuleConfig => {
-		const parts = heroCtaHeadline.split('—').map((part) => part.trim()).filter(Boolean);
-		return {
-			badge_text: '',
-			image: heroCtaImage,
-			image_alt: heroCtaImageAlt,
-			ribbon_text: config.hero_cta_ribbon?.trim() || '',
-			offer_primary: parts[0] || heroCtaHeadline,
-			offer_secondary: parts.slice(1).join(' — ') || '',
-			scarcity_text: config.hero_cta_scarcity?.trim() || '',
-			cta_label: heroCtaLabel,
-			cta_href: heroCtaHref,
-			show_countdown: false,
-		};
-	});
+	const TRUST_STRIP_ICONS = ['lab', 'shield', 'check'] as const;
 
 	const showEditorialHero = $derived(
 		isEditorialHero &&
 			Boolean(
 				heroHeadline ||
-					trustBrand ||
+					heroBadge ||
 					trustItems.length ||
-					showHeroMidCta ||
+					showHeroCta ||
 					heroCallout
 			)
 	);
@@ -336,44 +308,56 @@
 	>
 		<div class="listicle__inner">
 			{#if showEditorialHero}
-				<header class="listicle__hero listicle__hero--editorial" class:has-items-headline={Boolean(itemsHeadline && items.length)}>
-					{#if config.section_eyebrow?.trim()}
-						<p class="listicle__eyebrow listicle__hero-eyebrow">{config.section_eyebrow.trim()}</p>
-					{/if}
-
-					<h1 class="listicle__editorial-headline">{heroHeadline}</h1>
-
-					{#if trustBrand || trustItems.length}
-						<div class="listicle__trust-bar" aria-labelledby={trustBrand ? `${trustBrandId}-brand` : undefined}>
-							{#if trustBrand}
-								<span class="listicle__trust-brand" id="{trustBrandId}-brand">{trustBrand}</span>
+				<header
+					class="listicle__hero listicle__hero--editorial"
+					class:has-items-headline={Boolean(itemsHeadline && items.length && !showEditorialHero)}
+				>
+					<div class="listicle__hero-band">
+						<div class="listicle__hero-band-inner">
+							{#if heroBadge}
+								<p class="listicle__hero-badge">{heroBadge}</p>
 							{/if}
-							{#each trustItems as item, i}
-								<span class="listicle__trust-sep" aria-hidden="true">·</span>
-								<span class="listicle__trust-item">
-									<svg class="listicle__trust-check" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-										<path
-											fill="currentColor"
-											d="M6.5 12 2 7.5l1.4-1.4L6.5 9.2 12.6 3 14 4.4z"
-										/>
-									</svg>
-									<span>{item}</span>
-								</span>
-							{/each}
-						</div>
-					{/if}
 
-					{#if showHeroMidCta}
-						<div class="listicle__hero-promo">
-							<PromoOffer
-								config={heroPromoConfig}
-								{resolved}
-								embedded
-								spacing_v="compact"
-								spacing_h="compact"
-							/>
+							<h1 class="listicle__editorial-headline">{heroHeadline}</h1>
+
+							{#if showHeroCta}
+								<a class="listicle__hero-cta" href={bridgeAwareHref(heroCtaHref)}>
+									{heroCtaLabel}
+								</a>
+							{/if}
+
+							{#if heroTrustLead}
+								<p class="listicle__hero-trust-lead">{heroTrustLead}</p>
+							{/if}
+
+							{#if trustItems.length}
+								<ul class="listicle__trust-strip" aria-label="Quality highlights">
+									{#each trustItems as item, i}
+										{@const iconKey = TRUST_STRIP_ICONS[i % TRUST_STRIP_ICONS.length]}
+										<li class="listicle__trust-strip-item">
+											{#if listicleIcons[iconKey]}
+												<span class="listicle__trust-strip-icon" aria-hidden="true">
+													<svg
+														viewBox="0 0 24 24"
+														width="18"
+														height="18"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="1.85"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+													>
+														{@html listicleIcons[iconKey]}
+													</svg>
+												</span>
+											{/if}
+											<span>{item}</span>
+										</li>
+									{/each}
+								</ul>
+							{/if}
 						</div>
-					{/if}
+					</div>
 
 					{#if heroCallout}
 						<div class="listicle__hero-callout">
@@ -419,7 +403,7 @@
 				</header>
 			{/if}
 
-			{#if itemsHeadline && items.length}
+			{#if itemsHeadline && items.length && !showEditorialHero}
 				<h3 class="listicle__items-headline">{itemsHeadline}</h3>
 			{/if}
 
@@ -598,11 +582,6 @@
 		--mod-px: 40px;
 	}
 
-	.listicle.has-editorial-hero {
-		--mod-px: clamp(16px, 3vw, 28px);
-		--listicle-max: min(960px, 100%);
-	}
-
 	.listicle__inner {
 		max-width: var(--listicle-max);
 		margin: 0 auto;
@@ -616,36 +595,153 @@
 		max-width: var(--listicle-hero-max);
 		width: 100%;
 	}
+
 	.listicle__hero.has-items-headline {
 		margin-bottom: 40px;
 	}
 
+	.listicle.has-editorial-hero {
+		--mod-px: clamp(16px, 3vw, 28px);
+		--mod-pt: 0;
+		--listicle-max: min(960px, 100%);
+	}
+
 	.listicle__hero--editorial {
-		gap: 20px;
+		gap: clamp(28px, 4.5vw, 44px);
 		max-width: 100%;
 		width: 100%;
 		margin-left: 0;
 		margin-right: 0;
-		align-items: center;
+		margin-bottom: clamp(36px, 5vw, 48px);
+		align-items: stretch;
 		text-align: center;
 	}
 
-	.listicle__hero--editorial .listicle__hero-eyebrow {
-		width: 100%;
+	.listicle__hero-band {
+		--hero-grad-teal: var(--listicle-teal);
+		--hero-grad-sky: color-mix(in srgb, var(--listicle-teal) 35%, #0ea5e9 65%);
+		--hero-grad-indigo: color-mix(in srgb, var(--listicle-teal) 45%, #4f46e5 55%);
+		width: 100vw;
+		margin-left: calc(50% - 50vw);
+		margin-right: calc(50% - 50vw);
+		padding: clamp(40px, 6vw, 72px) clamp(20px, 4vw, 32px);
+		background: linear-gradient(
+			128deg,
+			color-mix(in srgb, var(--hero-grad-teal) 18%, var(--bg) 82%) 0%,
+			color-mix(in srgb, var(--hero-grad-sky) 14%, var(--bg) 86%) 42%,
+			color-mix(in srgb, var(--hero-grad-indigo) 10%, var(--bg) 90%) 78%,
+			color-mix(in srgb, var(--hero-grad-teal) 12%, var(--bg) 88%) 100%
+		);
+	}
+
+	.listicle__hero-band-inner {
+		max-width: min(920px, 100%);
+		margin: 0 auto;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: clamp(16px, 2.5vw, 24px);
+		text-align: center;
+	}
+
+	.listicle__hero-badge {
+		display: inline-flex;
+		align-items: center;
+		margin: 0;
+		padding: 6px 14px 7px;
+		border-radius: 999px;
+		border: 1px solid color-mix(in srgb, var(--listicle-teal) 28%, var(--border) 72%);
+		background: color-mix(in srgb, var(--listicle-teal) 12%, var(--bg) 88%);
+		color: color-mix(in srgb, var(--listicle-teal) 72%, var(--fg) 28%);
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
 	}
 
 	.listicle__hero--editorial .listicle__editorial-headline {
 		width: 100%;
+		max-width: min(36ch, 100%);
 	}
 
-	.listicle__hero--editorial .listicle__trust-bar {
-		width: 100%;
+	@media (min-width: 640px) {
+		.listicle__hero--editorial .listicle__editorial-headline {
+			max-width: 100%;
+		}
+	}
+
+	.listicle__hero-cta {
+		display: inline-flex;
+		align-items: center;
 		justify-content: center;
+		min-height: 48px;
+		padding: 12px 28px;
+		border-radius: 999px;
+		background: var(--fg);
+		color: var(--bg);
+		border: 1px solid var(--fg);
+		font-size: 14px;
+		font-weight: 700;
+		letter-spacing: 0.02em;
+		text-decoration: none;
+		transition:
+			opacity var(--dur-fast) var(--ease),
+			transform var(--dur-fast) var(--ease);
+	}
+
+	.listicle__hero-cta:hover {
+		opacity: 0.92;
+		transform: translateY(-1px);
+	}
+
+	.listicle__hero-trust-lead {
+		margin: clamp(6px, 1.2vw, 10px) 0 0;
+		padding-top: clamp(18px, 2.8vw, 24px);
+		border-top: 1px solid color-mix(in srgb, var(--fg) 12%, transparent);
+		max-width: min(680px, 100%);
+		font-size: clamp(14px, 2.1vw, 16px);
+		font-weight: 500;
+		line-height: 1.55;
+		color: color-mix(in srgb, var(--fg) 78%, transparent);
+		text-wrap: pretty;
+	}
+
+	.listicle__trust-strip {
+		list-style: none;
+		margin: clamp(4px, 1vw, 8px) 0 0;
+		padding: 0;
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		align-items: flex-start;
+		gap: 12px clamp(18px, 4vw, 32px);
+		max-width: min(860px, 100%);
+	}
+
+	.listicle__trust-strip-item {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 13px;
+		font-weight: 600;
+		line-height: 1.35;
+		color: var(--fg-muted);
+		text-align: left;
+	}
+
+	.listicle__trust-strip-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		color: var(--listicle-teal);
 	}
 
 	.listicle__hero--editorial .listicle__hero-callout {
 		width: 100%;
-		margin-top: 14px;
+		max-width: min(820px, 100%);
+		margin-top: clamp(8px, 1.5vw, 12px);
+		margin-inline: auto;
 		padding: 18px 22px 18px 24px;
 	}
 
@@ -658,92 +754,6 @@
 		letter-spacing: -0.03em;
 		color: var(--fg);
 		text-wrap: balance;
-	}
-
-	.listicle__trust-bar {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 8px 10px;
-		margin-top: 4px;
-		padding: 12px 16px;
-		border: 1px solid var(--listicle-teal-border);
-		border-radius: 10px;
-		background: var(--listicle-teal-soft);
-	}
-
-	.listicle__trust-brand {
-		font-size: 14px;
-		font-weight: 800;
-		line-height: 1.3;
-		color: var(--fg);
-		white-space: nowrap;
-	}
-
-	.listicle__trust-sep {
-		font-size: 16px;
-		font-weight: 700;
-		line-height: 1;
-		color: color-mix(in srgb, var(--fg) 36%, transparent);
-		user-select: none;
-	}
-
-	.listicle__trust-item {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		font-size: 13px;
-		font-weight: 600;
-		line-height: 1.35;
-		color: color-mix(in srgb, var(--fg) 78%, transparent);
-	}
-
-	.listicle__trust-check {
-		flex-shrink: 0;
-		color: var(--listicle-teal);
-	}
-
-	.listicle__hero-promo {
-		margin: 16px auto 18px;
-		width: 100%;
-		max-width: min(700px, 100%);
-		--po-hero-panel: color-mix(in srgb, var(--listicle-teal) 9%, var(--bg) 91%);
-	}
-
-	.listicle__hero-promo :global(.promo-offer__wrap) {
-		max-width: 100%;
-	}
-
-	.listicle__hero-promo :global(.promo-offer__split) {
-		min-height: 280px;
-		gap: 0;
-		grid-template-columns: 1.08fr 0.92fr;
-		background: var(--po-hero-panel);
-	}
-
-	.listicle__hero-promo :global(.promo-offer__media) {
-		padding: 14px 0 14px 12px;
-		background: transparent;
-	}
-
-	.listicle__hero-promo :global(.promo-offer__media img) {
-		max-height: 240px;
-		width: auto;
-		max-width: 100%;
-	}
-
-	.listicle__hero-promo :global(.promo-offer__copy) {
-		padding: 20px 14px 28px 0;
-		gap: 14px;
-		background: transparent;
-	}
-
-	.listicle__hero-promo :global(.promo-offer__headline) {
-		font-size: clamp(18px, 2.6vw, 24px);
-	}
-
-	.listicle__hero-promo :global(.promo-offer__cta) {
-		padding: 12px 18px;
 	}
 
 	.listicle__mid-promo {
@@ -1326,6 +1336,16 @@
 		}
 
 		.listicle__hero--editorial {
+			gap: 14px;
+		}
+
+		.listicle__hero-band {
+			padding-bottom: clamp(32px, 5vw, 48px);
+		}
+
+		.listicle__trust-strip {
+			flex-direction: column;
+			align-items: center;
 			gap: 10px;
 		}
 
@@ -1333,73 +1353,9 @@
 			font-size: clamp(24px, 6.4vw, 34px);
 		}
 
-		.listicle__hero-promo {
-			margin: 8px auto 14px;
-		}
-
-		.listicle__hero-promo :global(.promo-offer__split) {
-			min-height: 0;
-			grid-template-columns: 1fr;
-			background: var(--po-hero-panel);
-		}
-
-		.listicle__hero-promo :global(.promo-offer__media) {
-			min-height: 0;
-			max-height: 200px;
-			padding: 14px 14px 10px;
-			background: transparent;
-		}
-
-		.listicle__hero-promo :global(.promo-offer__media img) {
-			max-height: 168px;
-		}
-
-		.listicle__hero-promo :global(.promo-offer__copy) {
-			padding: 10px 16px 22px;
-			gap: 12px;
-			background: transparent;
-		}
-
 		.listicle__hero--editorial .listicle__hero-callout {
 			margin-top: 18px;
 			padding: 16px 18px 18px 20px;
-		}
-
-		.listicle__hero-promo :global(.promo-offer__headline) {
-			font-size: clamp(17px, 4.8vw, 21px);
-		}
-
-		.listicle__hero-promo :global(.promo-offer__scarcity) {
-			font-size: 12px;
-			line-height: 1.45;
-		}
-
-		.listicle__trust-bar {
-			flex-direction: row;
-			flex-wrap: wrap;
-			align-items: center;
-			gap: 4px 6px;
-			margin-top: 0;
-			padding: 10px 12px;
-		}
-
-		.listicle__trust-brand {
-			flex: 1 1 100%;
-		}
-
-		.listicle__trust-sep {
-			display: inline;
-			font-size: 13px;
-		}
-
-		.listicle__trust-item {
-			font-size: 11px;
-			gap: 4px;
-		}
-
-		.listicle__trust-check {
-			width: 12px;
-			height: 12px;
 		}
 	}
 
