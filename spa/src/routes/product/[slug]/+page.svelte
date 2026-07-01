@@ -830,9 +830,10 @@
 <style>
 	.pdp {
 		--pdp-radius: 16px;
+		--pdp-gallery-max-h: min(50vh, 440px);
 		display: grid;
-		grid-template-columns: 1.1fr 1fr;
-		gap: 64px;
+		grid-template-columns: minmax(0, 480px) minmax(0, 1fr);
+		gap: 48px;
 		padding: 56px 28px 48px;
 		max-width: 1320px;
 		margin: 0 auto;
@@ -840,8 +841,14 @@
 	@media (max-width: 860px) {
 		.pdp {
 			grid-template-columns: 1fr;
-			gap: 32px;
+			gap: 28px;
 			padding: 32px 20px 32px;
+		}
+
+		.pdp__media {
+			max-width: min(100%, 400px);
+			margin-inline: auto;
+			position: static;
 		}
 	}
 
@@ -855,7 +862,9 @@
 	.pdp__media {
 		display: flex;
 		flex-direction: column;
-		gap: 14px;
+		gap: 12px;
+		width: 100%;
+		max-width: 480px;
 		position: sticky;
 		top: 100px;
 		align-self: start;
@@ -880,22 +889,19 @@
 		pointer-events: none;
 		z-index: 1;
 	}
-	@media (max-width: 860px) {
-		.pdp__media {
-			position: static;
-		}
-	}
 	.pdp__gallery {
 		width: 100%;
 		background: var(--bg-muted);
 		border: 1px solid var(--border);
 		border-radius: var(--pdp-radius);
-		overflow: hidden;
+		padding: 14px;
+		box-sizing: border-box;
 	}
 	.pdp__gallery--placeholder {
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		min-height: 240px;
 		aspect-ratio: 1;
 		color: var(--fg-faint);
 	}
@@ -904,30 +910,33 @@
 		align-items: center;
 		justify-content: center;
 		width: 100%;
-		min-height: min(280px, 52vw);
-		max-height: min(78vh, 720px);
+		margin: 0;
 		padding: 0;
 		border: 0;
 		background: transparent;
 		cursor: zoom-in;
+		line-height: 0;
 	}
 	.pdp__gallery-main img {
-		width: 100%;
-		height: auto;
-		max-height: min(78vh, 720px);
-		object-fit: contain;
 		display: block;
+		margin: 0 auto;
+		max-width: 100%;
+		max-height: var(--pdp-gallery-max-h);
+		width: auto;
+		height: auto;
+		object-fit: contain;
+		object-position: center;
 		user-select: none;
 		-webkit-user-drag: none;
 	}
 	.pdp__thumbs {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 10px;
+		gap: 8px;
 	}
 	.pdp__thumb {
-		width: 72px;
-		height: 72px;
+		width: 64px;
+		height: 64px;
 		padding: 0;
 		border: 2px solid color-mix(in srgb, var(--border) 88%, transparent);
 		border-radius: 14px;
