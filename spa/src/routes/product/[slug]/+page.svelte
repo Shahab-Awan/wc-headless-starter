@@ -581,7 +581,7 @@
 								<img
 									src={product.images[activeImage].src}
 									srcset={product.images[activeImage].srcset}
-									sizes={product.images[activeImage].sizes}
+									sizes="(min-width: 861px) 520px, min(92vw, 520px)"
 									alt={product.images[activeImage].alt || product.name}
 									loading={activeImage === 0 ? 'eager' : 'lazy'}
 									fetchpriority={activeImage === 0 ? 'high' : undefined}
@@ -830,9 +830,10 @@
 <style>
 	.pdp {
 		--pdp-radius: 16px;
-		--pdp-gallery-max-h: min(50vh, 440px);
+		--pdp-gallery-max-h: min(58vh, 520px);
+		--pdp-gallery-max-w: min(100%, 520px);
 		display: grid;
-		grid-template-columns: minmax(0, 480px) minmax(0, 1fr);
+		grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
 		gap: 48px;
 		padding: 56px 28px 48px;
 		max-width: 1320px;
@@ -862,15 +863,18 @@
 	.pdp__media {
 		display: flex;
 		flex-direction: column;
+		align-items: flex-start;
 		gap: 12px;
 		width: 100%;
-		max-width: 480px;
+		max-width: 520px;
 		position: sticky;
 		top: 100px;
 		align-self: start;
 	}
 	.pdp__gallery-wrap {
 		position: relative;
+		width: fit-content;
+		max-width: 100%;
 		border-radius: var(--pdp-radius);
 	}
 	.pdp__image-disclaimer {
@@ -890,12 +894,14 @@
 		z-index: 1;
 	}
 	.pdp__gallery {
-		width: 100%;
+		width: fit-content;
+		max-width: var(--pdp-gallery-max-w);
 		background: var(--bg-muted);
 		border: 1px solid var(--border);
 		border-radius: var(--pdp-radius);
-		padding: 14px;
+		padding: 0;
 		box-sizing: border-box;
+		overflow: hidden;
 	}
 	.pdp__gallery--placeholder {
 		display: flex;
@@ -906,10 +912,9 @@
 		color: var(--fg-faint);
 	}
 	.pdp__gallery-main {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 100%;
+		display: block;
+		width: fit-content;
+		max-width: 100%;
 		margin: 0;
 		padding: 0;
 		border: 0;
@@ -919,13 +924,13 @@
 	}
 	.pdp__gallery-main img {
 		display: block;
-		margin: 0 auto;
-		max-width: 100%;
+		max-width: var(--pdp-gallery-max-w);
 		max-height: var(--pdp-gallery-max-h);
 		width: auto;
 		height: auto;
 		object-fit: contain;
 		object-position: center;
+		border-radius: calc(var(--pdp-radius) - 1px);
 		user-select: none;
 		-webkit-user-drag: none;
 	}
