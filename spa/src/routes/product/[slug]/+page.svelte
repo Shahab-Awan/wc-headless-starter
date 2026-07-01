@@ -581,7 +581,7 @@
 								<img
 									src={product.images[activeImage].src}
 									srcset={product.images[activeImage].srcset}
-									sizes="(min-width: 861px) 520px, min(92vw, 520px)"
+									sizes="(min-width: 861px) 600px, min(94vw, 600px)"
 									alt={product.images[activeImage].alt || product.name}
 									loading={activeImage === 0 ? 'eager' : 'lazy'}
 									fetchpriority={activeImage === 0 ? 'high' : undefined}
@@ -830,10 +830,10 @@
 <style>
 	.pdp {
 		--pdp-radius: 16px;
-		--pdp-gallery-max-h: min(58vh, 520px);
-		--pdp-gallery-max-w: min(100%, 520px);
+		--pdp-gallery-max-h: min(64vh, 600px);
+		--pdp-gallery-max-w: min(100%, 600px);
 		display: grid;
-		grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
+		grid-template-columns: minmax(0, 600px) minmax(0, 1fr);
 		gap: 48px;
 		padding: 56px 28px 48px;
 		max-width: 1320px;
@@ -847,9 +847,8 @@
 		}
 
 		.pdp__media {
-			max-width: min(100%, 400px);
+			max-width: min(100%, 460px);
 			margin-inline: auto;
-			position: static;
 		}
 	}
 
@@ -866,10 +865,15 @@
 		align-items: flex-start;
 		gap: 12px;
 		width: 100%;
-		max-width: 520px;
-		position: sticky;
-		top: 100px;
+		max-width: 600px;
+		position: relative;
 		align-self: start;
+	}
+	@media (min-width: 861px) {
+		.pdp__media {
+			position: sticky;
+			top: 100px;
+		}
 	}
 	.pdp__gallery-wrap {
 		position: relative;
