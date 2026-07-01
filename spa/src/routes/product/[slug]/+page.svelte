@@ -92,9 +92,38 @@
 	let adding = $state(false);
 	let activeImage = $state(0);
 	let galleryTouchX = 0;
+	let galleryZoomed = $state(false);
+	let galleryStageEl = $state<HTMLElement | undefined>();
 
 	function selectGalleryImage(index: number) {
 		activeImage = index;
+		galleryZoomed = false;
+	}
+
+	function canGalleryHoverZoom(): boolean {
+		return typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+	}
+
+	function onGalleryMouseEnter() {
+		if (canGalleryHoverZoom()) galleryZoomed = true;
+	}
+
+	function onGalleryMouseLeave() {
+		galleryZoomed = false;
+		if (galleryStageEl) {
+			galleryStageEl.style.removeProperty('--zoom-x');
+			galleryStageEl.style.removeProperty('--zoom-y');
+		}
+	}
+
+	function onGalleryMouseMove(e: MouseEvent) {
+		if (!galleryZoomed || !galleryStageEl) return;
+		const rect = galleryStageEl.getBoundingClientRect();
+		if (rect.width <= 0 || rect.height <= 0) return;
+		const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+		const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+		galleryStageEl.style.setProperty('--zoom-x', `${x}%`);
+		galleryStageEl.style.setProperty('--zoom-y', `${y}%`);
 	}
 
 	function preloadGalleryImages(images: StoreProduct['images']) {
@@ -601,12 +630,20 @@
 						<button
 							type="button"
 							class="pdp__gallery-main"
+							class:pdp__gallery-main--zoom={galleryZoomed}
 							onclick={() => openLightbox(activeImage)}
+							onmouseenter={onGalleryMouseEnter}
+							onmouseleave={onGalleryMouseLeave}
+							onmousemove={onGalleryMouseMove}
 							ontouchstart={onGalleryTouchStart}
 							ontouchend={onGalleryTouchEnd}
 							aria-label="View image {activeImage + 1} full size"
 						>
-							<div class="pdp__gallery-stage">
+							<div
+								class="pdp__gallery-stage"
+								class:pdp__gallery-stage--zoom={galleryZoomed}
+								bind:this={galleryStageEl}
+							>
 								{#each product.images as img, i}
 									<img
 										src={img.src}
@@ -975,12 +1012,12 @@
 		touch-action: pan-y pinch-zoom;
 	}
 	.pdp__gallery-stage {
-		display: grid;
+		position: relative;
+		display: block;
 		width: fit-content;
 		max-width: 100%;
 	}
 	.pdp__gallery-stage img {
-		grid-area: 1 / 1;
 		display: block;
 		max-width: var(--pdp-gallery-max-w);
 		max-height: var(--pdp-gallery-max-h);
@@ -995,10 +1032,32 @@
 		opacity: 0;
 		pointer-events: none;
 	}
+	.pdp__gallery-stage img:not(.pdp__gallery-img--active) {
+		position: absolute;
+		top: 0;
+		left: 0;
+	}
 	.pdp__gallery-stage img.pdp__gallery-img--active {
+		position: relative;
+		z-index: 1;
 		visibility: visible;
 		opacity: 1;
 		pointer-events: auto;
+	}
+	@media (hover: hover) and (pointer: fine) {
+		.pdp__gallery-stage--zoom img.pdp__gallery-img--active {
+			transform: scale(2.25);
+			transform-origin: var(--zoom-x, 50%) var(--zoom-y, 50%);
+			will-change: transform;
+		}
+		.pdp__gallery-main--zoom {
+			cursor: crosshair;
+		}
+	}
+	@media (max-width: 860px) {
+		.pdp {
+			--pdp-gallery-max-h: min(88vh, 960px);
+		}
 	}
 	.pdp__thumbs {
 		display: flex;
