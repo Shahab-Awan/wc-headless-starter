@@ -84,18 +84,20 @@
 		}))
 	);
 
+	const purityLine = $derived.by(() => {
+		const metrics = cro?.coa_metrics ?? config.data.pdp?.coa_section?.default_metrics ?? [];
+		const row = metrics.find((m) => /hplc|purity/i.test(m.label));
+		if (row?.value?.trim()) {
+			const v = row.value.trim();
+			if (/purity/i.test(v)) return v;
+		}
+		return '≥99% Purity';
+	});
+
 	const puritySubtitle = $derived.by(() => {
 		const parts = Object.values(selection).filter(Boolean);
-		const pct =
-			maxTierPct > 0
-				? `≥${formatPct(maxTierPct)} Purity`
-				: product.on_sale
-					? 'On sale'
-					: '';
-		if (parts.length && pct) return `${parts.join(' · ')} — ${pct}`;
-		if (parts.length) return parts.join(' · ');
-		if (pct) return pct;
-		return product.sku ? `SKU ${product.sku}` : '';
+		if (parts.length) return `${parts.join(' · ')} — ${purityLine}`;
+		return purityLine;
 	});
 
 	let shipsTick = $state(0);
@@ -201,9 +203,7 @@
 	{#if puritySubtitle}
 		<div class="pdp-buy__subtitle-row">
 			<p class="pdp-buy__subtitle">{puritySubtitle}</p>
-			{#if maxTierPct > 0 || product.on_sale}
-				<span class="pdp-buy__verified">{pdpUi?.verified_label ?? 'VERIFIED'}</span>
-			{/if}
+			<span class="pdp-buy__verified">{pdpUi?.verified_label ?? 'VERIFIED'}</span>
 		</div>
 	{/if}
 

@@ -91,10 +91,37 @@
 	});
 	let adding = $state(false);
 	let activeImage = $state(0);
+	let galleryTouchX = 0;
 
 	function selectGalleryImage(index: number) {
 		activeImage = index;
 	}
+
+	function preloadGalleryImages(images: StoreProduct['images']) {
+		for (const img of images) {
+			const el = new Image();
+			el.src = img.src;
+			if (img.srcset) el.srcset = img.srcset;
+		}
+	}
+
+	function onGalleryTouchStart(e: TouchEvent) {
+		galleryTouchX = e.touches[0]?.clientX ?? 0;
+	}
+
+	function onGalleryTouchEnd(e: TouchEvent) {
+		if (!product || product.images.length < 2) return;
+		const endX = e.changedTouches[0]?.clientX ?? 0;
+		const dx = endX - galleryTouchX;
+		if (Math.abs(dx) < 48) return;
+		const n = product.images.length;
+		if (dx < 0) selectGalleryImage((activeImage + 1) % n);
+		else selectGalleryImage((activeImage - 1 + n) % n);
+	}
+
+	$effect(() => {
+		if (product?.images?.length) preloadGalleryImages(product.images);
+	});
 
 	// Jump gallery to variation image ONLY when the variant selection
 	// actually changes — NOT every time activeImage updates.
@@ -575,19 +602,25 @@
 							type="button"
 							class="pdp__gallery-main"
 							onclick={() => openLightbox(activeImage)}
+							ontouchstart={onGalleryTouchStart}
+							ontouchend={onGalleryTouchEnd}
 							aria-label="View image {activeImage + 1} full size"
 						>
-							{#key product.images[activeImage].id}
-								<img
-									src={product.images[activeImage].src}
-									srcset={product.images[activeImage].srcset}
-									sizes="(min-width: 861px) 600px, min(94vw, 600px)"
-									alt={product.images[activeImage].alt || product.name}
-									loading={activeImage === 0 ? 'eager' : 'lazy'}
-									fetchpriority={activeImage === 0 ? 'high' : undefined}
-									draggable="false"
-								/>
-							{/key}
+							<div class="pdp__gallery-stage">
+								{#each product.images as img, i}
+									<img
+										src={img.src}
+										srcset={img.srcset}
+										sizes="(min-width: 861px) 600px, min(94vw, 600px)"
+										alt={img.alt || product.name}
+										class:pdp__gallery-img--active={i === activeImage}
+										loading="eager"
+										fetchpriority={i === 0 ? 'high' : 'auto'}
+										draggable="false"
+										aria-hidden={i !== activeImage}
+									/>
+								{/each}
+							</div>
 						</button>
 					</div>
 					{#if config.data.pdp?.image_disclaimer}
@@ -729,14 +762,17 @@
 				<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
 			</button>
 		{/if}
-		{#key lightboxIndex}
-			<div class="lightbox__image" in:fade={{ duration: 120 }}>
+		<div class="lightbox__image">
+			{#each product.images as img, i}
 				<img
-					src={product.images[lightboxIndex].src}
-					alt={product.images[lightboxIndex].alt || product.name}
+					src={img.src}
+					alt={img.alt || product.name}
+					class:lightbox__img--active={i === lightboxIndex}
+					loading="eager"
+					aria-hidden={i !== lightboxIndex}
 				/>
-			</div>
-		{/key}
+			{/each}
+		</div>
 		{#if product.images.length > 1}
 			<div class="lightbox__counter">{lightboxIndex + 1} / {product.images.length}</div>
 		{/if}
@@ -936,8 +972,15 @@
 		background: transparent;
 		cursor: zoom-in;
 		line-height: 0;
+		touch-action: pan-y pinch-zoom;
 	}
-	.pdp__gallery-main img {
+	.pdp__gallery-stage {
+		display: grid;
+		width: fit-content;
+		max-width: 100%;
+	}
+	.pdp__gallery-stage img {
+		grid-area: 1 / 1;
 		display: block;
 		max-width: var(--pdp-gallery-max-w);
 		max-height: var(--pdp-gallery-max-h);
@@ -948,6 +991,14 @@
 		border-radius: calc(var(--pdp-radius) - 1px);
 		user-select: none;
 		-webkit-user-drag: none;
+		visibility: hidden;
+		opacity: 0;
+		pointer-events: none;
+	}
+	.pdp__gallery-stage img.pdp__gallery-img--active {
+		visibility: visible;
+		opacity: 1;
+		pointer-events: auto;
 	}
 	.pdp__thumbs {
 		display: flex;
@@ -1045,17 +1096,24 @@
 	.lightbox__image {
 		position: relative;
 		z-index: 1;
-		display: flex;
+		display: grid;
 		align-items: center;
 		justify-content: center;
 		max-width: calc(100vw - 120px);
 		max-height: calc(100vh - 80px);
 	}
 	.lightbox__image img {
-		max-width: 100%;
+		grid-area: 1 / 1;
+		max-width: calc(100vw - 120px);
 		max-height: calc(100vh - 80px);
 		object-fit: contain;
 		border-radius: var(--pdp-radius, 16px);
+		visibility: hidden;
+		opacity: 0;
+	}
+	.lightbox__image img.lightbox__img--active {
+		visibility: visible;
+		opacity: 1;
 	}
 	.lightbox__counter {
 		position: absolute;
