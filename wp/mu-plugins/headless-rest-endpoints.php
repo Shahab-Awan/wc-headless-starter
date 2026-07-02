@@ -2450,6 +2450,48 @@ function wchs_maybe_persist_vault_page_config( array $pages_cfg ): array {
 	return $pages_cfg;
 }
 
+/**
+ * Google Ads / B2B subdomain landing overrides (`/home-1`).
+ * SPA merges this with homepage modules and strips retail promo modules.
+ *
+ * @param array<string, mixed> $site_settings
+ * @return array<string, mixed>
+ */
+function wchs_get_home_1_landing_config( array $site_settings, float $shipping_free_threshold ): array {
+	$threshold = 200;
+	$bridge_hosts = [];
+
+	if ( defined( 'WCHS_HOME_1_BRIDGE_HOSTS' ) && is_string( WCHS_HOME_1_BRIDGE_HOSTS ) && '' !== trim( WCHS_HOME_1_BRIDGE_HOSTS ) ) {
+		$bridge_hosts = array_values(
+			array_filter(
+				array_map( 'trim', explode( ',', WCHS_HOME_1_BRIDGE_HOSTS ) )
+			)
+		);
+	}
+
+	$hosts_raw = trim( (string) ( $site_settings['home_1_bridge_hosts'] ?? '' ) );
+	if ( '' !== $hosts_raw ) {
+		$bridge_hosts = array_values(
+			array_unique(
+				array_merge(
+					$bridge_hosts,
+					array_filter( array_map( 'trim', explode( ',', $hosts_raw ) ) )
+				)
+			)
+		);
+	}
+
+	return [
+		'bridge_hosts'             => $bridge_hosts,
+		'announcement_bar_enabled' => true,
+		'announcement_bar_items'   => [
+			sprintf( 'FREE DELIVERY ON ALL ORDERS ABOVE $%d', $threshold ),
+			'Third-Party Tested',
+			'COA Published Every Batch',
+		],
+	];
+}
+
 function wchs_rest_config( \WP_REST_Request $request ) {
 	$wp_origin  = function_exists( 'wchs_public_origin' ) ? wchs_public_origin() : untrailingslashit( home_url( '/' ) );
 	$allowed    = function_exists( 'wchs_allowed_origin_list' ) ? wchs_allowed_origin_list() : wchs_allowed_origins();
@@ -2542,6 +2584,7 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 		}
 		$shipping_free_threshold = $min;
 	}
+	$home_1 = wchs_get_home_1_landing_config( $site_settings, $shipping_free_threshold );
 	$pdp            = \WCHS\Admin\AdminPage::get_pdp_config();
 	$pdp['modules'] = $_resolve_mods( $_migrate_mods( $pdp['modules'] ?? [] ) );
 	if ( function_exists( 'wchs_cro_cart_cross_sell_default_exclude_slugs' ) ) {
@@ -2723,6 +2766,7 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 		],
 		'seo_nosnippet_products' => $site_settings['seo_nosnippet_products'] ?? false,
 		'homepage'        => $homepage,
+		'home_1'          => $home_1,
 		'pdp'             => $pdp,
 		'shop'            => $shop_cfg,
 		'pages'           => $pages_cfg['pages'],

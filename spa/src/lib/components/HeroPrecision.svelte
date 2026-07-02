@@ -61,25 +61,27 @@
 				</h1>
 
 				<div class="hero-precision__trust">
-					<div class="hero-precision__trust-rating">
-						<div class="hero-precision__rating-row">
-							<span class="hero-precision__stars" aria-hidden="true">
-								{#each Array(5) as _}
-									<span class="hero-precision__star">
-										<svg viewBox="0 0 24 24" width="11" height="11" fill="#fff" stroke="none">
-											<polygon
-												points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
-											/>
-										</svg>
-									</span>
-								{/each}
-							</span>
-							<div class="hero-precision__rating-copy">
-								<strong class="hero-precision__rating-label">{p.rating_label}</strong>
-								<span class="hero-precision__trust-sub">{p.rating_subtext}</span>
+					{#if p.rating_label.trim()}
+						<div class="hero-precision__trust-rating">
+							<div class="hero-precision__rating-row">
+								<span class="hero-precision__stars" aria-hidden="true">
+									{#each Array(5) as _}
+										<span class="hero-precision__star">
+											<svg viewBox="0 0 24 24" width="11" height="11" fill="#fff" stroke="none">
+												<polygon
+													points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
+												/>
+											</svg>
+										</span>
+									{/each}
+								</span>
+								<div class="hero-precision__rating-copy">
+									<strong class="hero-precision__rating-label">{p.rating_label}</strong>
+									<span class="hero-precision__trust-sub">{p.rating_subtext}</span>
+								</div>
 							</div>
 						</div>
-					</div>
+					{/if}
 					<div class="hero-precision__trust-stat">
 						<strong>{p.stat_2_value}</strong>
 						<span class="hero-precision__trust-sub">{p.stat_2_label}</span>

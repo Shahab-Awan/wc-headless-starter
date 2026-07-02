@@ -22,6 +22,8 @@ import { resolveModules, siteDefaults } from './resolver';
 import { theme } from './theme.svelte';
 import { loadFont } from './hero-fonts';
 import { isCaptchaChallenge, handleCaptchaChallenge } from './siteground-captcha';
+import type { Home1LandingConfig } from './home-1-landing';
+import { resolveHome1Landing } from './home-1-landing';
 import type { HeroPrecisionConfig } from './hero-precision';
 import { HERO_PRECISION_DEFAULTS } from './hero-precision';
 import { mergeVaultPages } from './vault-page';
@@ -916,6 +918,8 @@ export type SiteConfig = {
 	};
 	seo_nosnippet_products: boolean;
 	homepage: HomepageConfig;
+	/** Google Ads / B2B subdomain landing (`/home-1`). */
+	home_1?: Home1LandingConfig | null;
 	pdp: PdpConfig;
 	shop: {
 		modules: HomepageModule[];
@@ -1734,6 +1738,7 @@ class ConfigStore {
 					...json,
 					features: { ...DEFAULTS.features, ...json.features },
 					homepage: mergedHomepage,
+					home_1: resolveHome1Landing(json.home_1, mergedHomepage),
 					pdp: mergeFetchedPdp(json.pdp),
 					pages: mergeVaultPages(json.pages ?? [], mergedHomepage.modules),
 				};

@@ -8,7 +8,7 @@
 	import { theme } from '$lib/theme.svelte';
 	import { pretext } from '$lib/pretext/engine';
 	import { config } from '$lib/config.svelte';
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import SlideCart from '$lib/components/SlideCart.svelte';
 	import FunnelKitCartShell from '$lib/components/FunnelKitCartShell.svelte';
 	import Footer from '$lib/components/Footer.svelte';
@@ -27,10 +27,12 @@
 	} from '$lib/analytics';
 	import {
 		bridgeAwareHref,
+		getActiveBridgeLandingPath,
 		isBridgePagePath,
 		shouldHandOffBridgeNavigation,
 		shouldSuppressLandingPopups,
 	} from '$lib/bridge-domain';
+	import { isHome1LandingPath } from '$lib/home-1-landing';
 	import { getWhyAlyveCta } from '$lib/why-alyve-cta';
 	import {
 		applyLandingPopupSuppression,
@@ -61,6 +63,16 @@
 	const logoOnlyHeader = $derived(
 		page.url.pathname.replace(/\/$/, '') === '/why-alyve'
 	);
+
+	$effect(() => {
+		if (!browser || !config.ready) return;
+		const landingPath = getActiveBridgeLandingPath();
+		if (!landingPath) return;
+		const path = page.url.pathname.replace(/\/$/, '') || '/';
+		if (path === '/') {
+			void goto(landingPath, { replaceState: true });
+		}
+	});
 
 	const whyAlyveCta = $derived(logoOnlyHeader ? getWhyAlyveCta(config.data.pages) : null);
 
@@ -473,9 +485,15 @@
 		);
 	}
 
-	const hasAnnouncementBar = $derived(
-		Boolean(config.data.announcement_bar_enabled && (config.data.announcement_bar_items?.length ?? 0) > 0)
-	);
+	const hasAnnouncementBar = $derived.by(() => {
+		if (isHome1LandingPath(page.url.pathname) && config.data.home_1) {
+			return (
+				Boolean(config.data.home_1.announcement_bar_enabled) &&
+				(config.data.home_1.announcement_bar_items?.length ?? 0) > 0
+			);
+		}
+		return Boolean(config.data.announcement_bar_enabled && (config.data.announcement_bar_items?.length ?? 0) > 0);
+	});
 
 	$effect(() => {
 		const isAdmin = auth.isAdmin;
