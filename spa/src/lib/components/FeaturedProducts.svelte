@@ -31,7 +31,14 @@
 		config.subheadline?.trim() ||
 			'Explore our most popular research compounds, chosen for their quality, purity, and consistency.'
 	);
-	const productBadge = $derived(config.product_badge?.trim() || 'Most Popular');
+	const productBadge = $derived.by(() => {
+		if (config.show_product_badge === false) return '';
+		const raw = config.product_badge;
+		if (raw !== undefined && raw.trim() === '') return '';
+		return raw?.trim() || 'Most Popular';
+	});
+	const hideDosePill = $derived(config.hide_dose_pill === true);
+	const selectCtaLabel = $derived(config.select_cta_label?.trim() || 'Select options');
 	const ctaText = $derived(config.cta_text?.trim() || 'Explore All Products');
 	const ctaHref = $derived(bridgeAwareHref(config.cta_href?.trim() || '/shop'));
 	const productLimit = $derived(Math.min(6, Math.max(1, Number(config.product_limit) || 3)));
@@ -91,7 +98,9 @@
 						<li class="fp__cell">
 							<ProductCard
 								{product}
-								highlightBadge={productBadge}
+								highlightBadge={productBadge || undefined}
+								hideDosePill={hideDosePill}
+								selectCtaLabel={selectCtaLabel}
 								listingSource="Homepage — Featured products"
 							/>
 						</li>

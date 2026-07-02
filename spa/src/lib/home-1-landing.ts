@@ -50,7 +50,7 @@ function patchHero(hero: HomepageHeroConfig): HomepageHeroConfig {
 		subheadline:
 			'Top-tier compounds for critical research. Independently verified batches with published Certificates of Analysis.',
 		research_badge: 'FOR LABORATORY RESEARCH USE ONLY — NOT FOR HUMAN CONSUMPTION',
-		cta_text: 'Shop All Products',
+		cta_text: 'Browse catalog',
 		cta_link: '/shop',
 		cta_secondary_text: 'View COA Library',
 		cta_secondary_link: '/coa-library',
@@ -72,7 +72,7 @@ function patchHero(hero: HomepageHeroConfig): HomepageHeroConfig {
 			stat_3_label: 'Free delivery',
 			body:
 				'For in-vitro laboratory research only — not for human or animal consumption. Every batch is third-party tested with a published Certificate of Analysis before release.',
-			cta_primary_text: 'Shop All Products',
+			cta_primary_text: 'Browse catalog',
 			cta_primary_link: '/shop',
 			cta_secondary_text: 'View COA Reports',
 			cta_secondary_link: '/coa-library',
@@ -128,12 +128,49 @@ function patchModules(mods: HomepageModule[]): HomepageModule[] {
 					...mod,
 					config: {
 						...mod.config,
+						show_product_badge: false,
+						hide_dose_pill: true,
 						product_badge: '',
 						eyebrow: 'Research catalog',
 						headline_prefix: 'Featured',
 						headline_accent: 'Compounds',
 						subheadline:
 							'Independently verified research-grade peptides with batch-linked documentation.',
+						select_cta_label: 'View details',
+						cta_text: 'Browse full catalog',
+						cta_href: '/shop',
+					},
+				};
+			}
+			if (mod.type === 'category_grid') {
+				return {
+					...mod,
+					config: {
+						...mod.config,
+						title: 'Compounds by category',
+						count_label: 'compounds',
+					},
+				};
+			}
+			if (mod.type === 'reviews_listicle') {
+				return {
+					...mod,
+					config: {
+						...mod.config,
+						headline: 'What research teams report after ordering',
+						proof_subheadline:
+							mod.config.proof_subheadline?.replace(/customers|shoppers/gi, 'researchers') ||
+							'Verified laboratory orders · batch documentation included.',
+					},
+				};
+			}
+			if (mod.type === 'listicle_faqs') {
+				return {
+					...mod,
+					config: {
+						...mod.config,
+						eyebrow: 'RESEARCH FAQ',
+						headline: 'Common compound questions',
 					},
 				};
 			}

@@ -390,6 +390,8 @@ export type CategoryGridModuleConfig = {
 	columns: number;
 	gap: number;
 	items: CategoryGridItem[];
+	/** Suffix for category counts — e.g. “compounds” instead of “products”. */
+	count_label?: string;
 };
 
 export type SplitFeatureItem = {
@@ -611,6 +613,11 @@ export type FeaturedProductsModuleConfig = {
 	headline_accent?: string;
 	subheadline?: string;
 	product_badge?: string;
+	/** When false, no highlight badge (e.g. “Most Popular”) on cards. */
+	show_product_badge?: boolean;
+	/** When true, hide dose pills on product cards in this module. */
+	hide_dose_pill?: boolean;
+	select_cta_label?: string;
 	source?: 'popular' | 'best_sellers';
 	product_limit?: number;
 	cta_text?: string;

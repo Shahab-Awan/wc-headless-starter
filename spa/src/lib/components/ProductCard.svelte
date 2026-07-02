@@ -44,11 +44,15 @@
 		cardWidth = 252,
 		listingSource,
 		highlightBadge,
+		hideDosePill = false,
+		selectCtaLabel = 'Select options',
 	}: {
 		product: Product;
 		cardWidth?: number;
 		listingSource?: string;
 		highlightBadge?: string;
+		hideDosePill?: boolean;
+		selectCtaLabel?: string;
 	} = $props();
 
 	let showBackInStock = $state(false);
@@ -148,7 +152,7 @@
 		return tpl;
 	});
 
-	const ctaAria = $derived(`Select options for ${product.name}`);
+	const ctaAria = $derived(`${selectCtaLabel} for ${product.name}`);
 
 	function reportProductLinkIntent(e: MouseEvent) {
 		const el = e.currentTarget;
@@ -208,7 +212,7 @@
 			{:else if product.on_sale && !highlightBadge}
 				<span class="store-card__badge">{saleBadgeRendered}</span>
 			{/if}
-			{#if dosePill}
+			{#if dosePill && !hideDosePill}
 				<span class="store-card__dose-pill">{dosePill}</span>
 			{/if}
 		</div>
@@ -235,7 +239,7 @@
 				</div>
 			{/if}
 
-			<a class="store-card__select" href={productHref} onclick={reportProductLinkIntent} aria-label={ctaAria}>Select options</a>
+			<a class="store-card__select" href={productHref} onclick={reportProductLinkIntent} aria-label={ctaAria}>{selectCtaLabel}</a>
 		</div>
 	</div>
 </div>

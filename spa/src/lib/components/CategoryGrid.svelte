@@ -23,6 +23,7 @@
 
 	const cols = $derived(Math.max(1, Math.min(6, config.columns || 4)));
 	const gap = $derived(Math.max(0, Math.min(32, config.gap ?? 12)));
+	const countLabel = $derived(config.count_label?.trim() || 'products');
 
 	// Match config items to fetched category data
 	const tiles = $derived(
@@ -77,7 +78,7 @@
 							<span class="cat-grid__desc">{tile.description}</span>
 						{/if}
 						{#if tile.count > 0}
-							<span class="cat-grid__count">{tile.count} {tile.count === 1 ? 'product' : 'products'}</span>
+							<span class="cat-grid__count">{tile.count} {tile.count === 1 ? countLabel.replace(/s$/, '') : countLabel}</span>
 						{/if}
 					</div>
 				</a>
