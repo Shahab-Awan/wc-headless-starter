@@ -100,27 +100,6 @@
 		return purityLine;
 	});
 
-	let shipsTick = $state(0);
-	onMount(() => {
-		const id = setInterval(() => {
-			shipsTick += 1;
-		}, 1000);
-		return () => clearInterval(id);
-	});
-
-	const shipsCountdown = $derived.by(() => {
-		shipsTick;
-		const now = new Date();
-		const end = new Date(now);
-		end.setHours(18, 0, 0, 0);
-		if (now >= end) end.setDate(end.getDate() + 1);
-		const diff = Math.max(0, end.getTime() - now.getTime());
-		const h = Math.floor(diff / 3_600_000);
-		const m = Math.floor((diff % 3_600_000) / 60_000);
-		const s = Math.floor((diff % 60_000) / 1000);
-		return `${h}h ${m}m ${s}s`;
-	});
-
 	const bundleRows = $derived(
 		resolveBundleRows(cro?.tiers ?? [], regularMinor, pdpUi?.bundle_bogo)
 	);
@@ -219,13 +198,6 @@
 	{/if}
 
 	<div class="pdp-buy__panel">
-		{#if pdpUi?.show_ships_banner !== false}
-			<div class="pdp-buy__ships">
-				<span class="pdp-buy__ships-dot" aria-hidden="true"></span>
-				<span>Order within <strong>{shipsCountdown}</strong> — Ships Today</span>
-			</div>
-		{/if}
-
 		{#if product.has_options}
 			{#each product.attributes as attr, attrIdx}
 				<div class="pdp-buy__section">
@@ -446,28 +418,6 @@
 		flex-direction: column;
 		gap: 20px;
 		box-shadow: 0 4px 24px color-mix(in srgb, var(--fg) 6%, transparent);
-	}
-	.pdp-buy__ships {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 10px;
-		padding: 12px 14px;
-		border-radius: var(--pdp-radius);
-		background: color-mix(in srgb, var(--success, #059669) 10%, var(--bg));
-		color: color-mix(in srgb, var(--success, #059669) 85%, var(--fg));
-		font-size: 13px;
-		font-weight: 500;
-	}
-	.pdp-buy__ships-dot {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		background: var(--success, #059669);
-		flex-shrink: 0;
-	}
-	.pdp-buy__ships strong {
-		font-weight: 700;
 	}
 	.pdp-buy__section-label {
 		margin: 0 0 10px;

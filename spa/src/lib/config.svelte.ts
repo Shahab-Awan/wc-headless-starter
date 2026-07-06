@@ -1282,7 +1282,6 @@ const DEFAULTS: SiteConfig = {
 	turnstile_site_key: '',
 	announcement_bar_enabled: true,
 	announcement_bar_items: [
-		'UP TO 40% OFF TODAY',
 		'Fast & Discreet Shipping',
 		'Third-Party Tested',
 		'Fulfilled in the USA',
