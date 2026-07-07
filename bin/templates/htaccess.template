@@ -118,6 +118,11 @@ RewriteRule ^[A-Za-z0-9_-]+/?$ /index.php [L]
 RewriteCond %{QUERY_STRING} (^|&)(wc-ajax|wc-api|rest_route)=
 RewriteRule ^$ /index.php [L]
 
+# 7b. CardsShield custom processor webhooks (?cs_paypal_webhook_notice= on /).
+#     Without this, payment callbacks hit the SPA index.html and orders never finalize.
+RewriteCond %{QUERY_STRING} (^|&)cs_paypal_webhook_notice=
+RewriteRule ^$ /index.php [L]
+
 # 7a. Elementor / FunnelKit editor preview (?elementor-preview= on / or any path).
 #     Without this, /?elementor-preview=POST_ID hits rule 8 and serves index.html.
 RewriteCond %{QUERY_STRING} (^|&)elementor-preview=

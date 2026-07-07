@@ -32,8 +32,26 @@ function wchs_spa_url(): string {
 }
 
 /** Paths we keep native — everything else redirects to the SPA. */
+function wchs_is_gateway_callback_request(): bool {
+	if ( ! empty( $_GET['wc-api'] ) || ! empty( $_GET['wc-ajax'] ) ) {
+		return true;
+	}
+	if ( ! empty( $_GET['cs_paypal_webhook_notice'] ) ) {
+		return true;
+	}
+	foreach ( array_keys( $_GET ) as $key ) {
+		if ( is_string( $key ) && str_starts_with( $key, 'cs_' ) ) {
+			return true;
+		}
+	}
+	return false;
+}
+
 function wchs_is_native_page(): bool {
 	if ( is_admin() || wp_doing_ajax() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+		return true;
+	}
+	if ( wchs_is_gateway_callback_request() ) {
 		return true;
 	}
 	// Elementor / FunnelKit editor iframe must stay on WordPress (never bounce to SPA).
