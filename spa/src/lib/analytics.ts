@@ -61,6 +61,25 @@ type EcomItem = {
 };
 
 let initialized = false;
+let gtagBootstrapped = false;
+let ga4MeasurementId = '';
+
+function ensureGtag(primaryScriptId: string): void {
+	if (typeof window === 'undefined' || !primaryScriptId) return;
+	window.dataLayer = window.dataLayer || [];
+	// @ts-expect-error — upstream-maintained shim
+	window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+	if (!gtagBootstrapped) {
+		window.gtag('js', new Date());
+		gtagBootstrapped = true;
+	}
+	if (!document.querySelector('script[src*="googletagmanager.com/gtag/js"]')) {
+		const s = document.createElement('script');
+		s.async = true;
+		s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(primaryScriptId)}`;
+		document.head.appendChild(s);
+	}
+}
 let omnisendInitialized = false;
 let pendingOmnisendPushes: unknown[][] = [];
 
@@ -239,6 +258,14 @@ export function trackOmnisendPlacedOrder(order: {
 	]);
 }
 
+export function initGA4(measurementId: string): void {
+	if (!measurementId || typeof window === 'undefined') return;
+	if (ga4MeasurementId === measurementId) return;
+	ga4MeasurementId = measurementId;
+	ensureGtag(measurementId);
+	window.gtag('config', measurementId);
+}
+
 /**
  * Load GTM dynamically. Called once after config provides the ID.
  */
@@ -259,12 +286,19 @@ export function initGTM(containerId: string): void {
  * Push a page view. Call on every SvelteKit navigation.
  */
 export function trackPageView(path: string, title?: string): void {
+	const pageTitle = title || (typeof document !== 'undefined' ? document.title : '');
 	window.dataLayer?.push({
 		event: 'page_view',
 		page_path: path,
-		page_title: title || document.title,
+		page_title: pageTitle,
 	});
-	trackCustomerLabsVirtualPageview(path, title || (typeof document !== 'undefined' ? document.title : ''));
+	if (ga4MeasurementId && window.gtag) {
+		window.gtag('event', 'page_view', {
+			page_path: path,
+			page_title: pageTitle,
+		});
+	}
+	trackCustomerLabsVirtualPageview(path, pageTitle);
 }
 
 /**
@@ -669,23 +703,13 @@ export function identifyHotjarContact(userId: string, attrs: Record<string, stri
 }
 
 // ── Google Ads Conversion ──────────────────────────────────────────────
-// Uses gtag, which GTM may also load; both sharing window.dataLayer is safe.
+// Uses gtag, which GTM / GA4 may also load; sharing window.dataLayer is safe.
 let googleAdsInitialized = false;
 export function initGoogleAds(conversionId: string): void {
 	if (googleAdsInitialized || !conversionId || typeof window === 'undefined') return;
 	googleAdsInitialized = true;
-	window.dataLayer = window.dataLayer || [];
-	// @ts-expect-error — upstream-maintained shim
-	window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
-	window.gtag('js', new Date());
+	ensureGtag(conversionId);
 	window.gtag('config', conversionId);
-	// Load gtag.js if GTM hasn't already loaded it
-	if (!document.querySelector(`script[src*="gtag/js?id="]`)) {
-		const s = document.createElement('script');
-		s.async = true;
-		s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(conversionId)}`;
-		document.head.appendChild(s);
-	}
 }
 export function trackGoogleAdsConversion(o: PixelOrder, conversionId: string, conversionLabel: string): void {
 	if (!conversionId || !conversionLabel) return;

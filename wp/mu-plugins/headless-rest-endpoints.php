@@ -2691,6 +2691,7 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 		'version'         => '0.1.0',
 		'access_mode'     => (int) ( $site_settings['access_mode'] ?? 3 ),
 		'gtm_id'          => $site_settings['gtm_id'] ?? '',
+		'ga4_measurement_id' => $site_settings['ga4_measurement_id'] ?? '',
 		'omnisend_brand_id'           => $site_settings['omnisend_brand_id'] ?? '',
 		'klaviyo_public_key'          => $site_settings['klaviyo_public_key'] ?? '',
 		'meta_pixel_id'               => $site_settings['meta_pixel_id'] ?? '',

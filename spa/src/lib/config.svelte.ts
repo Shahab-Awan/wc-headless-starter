@@ -890,6 +890,7 @@ export type SiteConfig = {
 	accent_color: string | null;
 	accent_fg: string | null;
 	gtm_id: string;
+	ga4_measurement_id: string;
 	omnisend_brand_id: string;
 	klaviyo_public_key: string;
 	meta_pixel_id: string;
@@ -1026,6 +1027,7 @@ const DEFAULTS: SiteConfig = {
 	accent_color: null,
 	accent_fg: null,
 	gtm_id: '',
+	ga4_measurement_id: '',
 	omnisend_brand_id: '',
 	klaviyo_public_key: '',
 	meta_pixel_id: '',

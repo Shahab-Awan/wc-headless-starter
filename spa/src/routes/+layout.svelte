@@ -19,7 +19,7 @@
 	import SiteGate from '$lib/components/SiteGate.svelte';
 	import { icons } from '$lib/icons';
 	import {
-		initGTM, trackPageView,
+		initGTM, trackPageView, initGA4,
 		initOmnisend, trackOmnisendPageViewed,
 		initKlaviyo, initMetaPixel, initTikTokPixel, initPinterestTag,
 		initClarity, initHotjar, initGoogleAds,
@@ -238,6 +238,7 @@
 			// (may create window.dataLayer used by Google Ads), then the
 			// rest in dashboard-tab order.
 			if (config.data.gtm_id) initGTM(config.data.gtm_id);
+			if (config.data.ga4_measurement_id) initGA4(config.data.ga4_measurement_id);
 			if (config.data.omnisend_brand_id && !suppressLandingPopups) {
 				initOmnisend(config.data.omnisend_brand_id);
 			}

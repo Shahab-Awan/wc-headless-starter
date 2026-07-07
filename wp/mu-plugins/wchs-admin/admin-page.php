@@ -300,6 +300,7 @@ class AdminPage {
 			'access_mode'                 => 3,
 			'accent_color'                => null,
 			'gtm_id'                      => '',
+			'ga4_measurement_id'          => 'G-0Y1YXRQJRD',
 			'omnisend_brand_id'           => '',
 			'klaviyo_public_key'          => '',
 			'meta_pixel_id'               => '',
@@ -1731,6 +1732,12 @@ class AdminPage {
 			$gtm_id = '';
 		}
 		$s['gtm_id'] = $gtm_id;
+
+		$ga4_id = sanitize_text_field( wp_unslash( $_POST['ga4_measurement_id'] ?? '' ) );
+		if ( $ga4_id && ! preg_match( '/^G-[A-Z0-9]+$/', $ga4_id ) ) {
+			$ga4_id = '';
+		}
+		$s['ga4_measurement_id'] = $ga4_id;
 
 		// Omnisend brand ID — 24-char hex from their dashboard Store Settings.
 		$omnisend_brand = sanitize_text_field( wp_unslash( $_POST['omnisend_brand_id'] ?? '' ) );
@@ -3303,6 +3310,7 @@ class AdminPage {
 	// ─── Integrations Tab ───────────────────────────────────────
 	private function render_integrations_tab( array $settings ): void {
 		$gtm_id       = $settings['gtm_id'] ?? '';
+		$ga4_id       = $settings['ga4_measurement_id'] ?? '';
 		$omnisend_bid = $settings['omnisend_brand_id'] ?? '';
 		$rp           = $settings['review_provider'] ?? 'woocommerce';
 		$rp_keys      = $settings['review_provider_keys'] ?? [];
@@ -3314,8 +3322,12 @@ class AdminPage {
 
 			<h2>Analytics</h2>
 			<div class="wchs-field">
-				<label>Google Tag Manager ID <?php echo self::hint_icon('Loads on SPA and WP pages.'); ?></label>
+				<label>Google Tag Manager ID <?php echo self::hint_icon('Loads on SPA and WP pages. Prefer GTM when you manage tags in a container; skip direct GA4 below if GA4 already runs inside GTM.'); ?></label>
 				<input type="text" name="gtm_id" value="<?php echo esc_attr( $gtm_id ); ?>" placeholder="GTM-XXXXXXX" />
+			</div>
+			<div class="wchs-field">
+				<label>GA4 Measurement ID <?php echo self::hint_icon('Direct gtag.js install (e.g. G-XXXXXXXX). Loads on SPA and WP checkout surfaces. Leave blank when GA4 is already configured inside GTM.'); ?></label>
+				<input type="text" name="ga4_measurement_id" value="<?php echo esc_attr( $ga4_id ); ?>" placeholder="G-XXXXXXXX" />
 			</div>
 
 			<h2>Omnisend Email / SMS</h2>

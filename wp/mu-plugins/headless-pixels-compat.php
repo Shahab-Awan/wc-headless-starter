@@ -121,17 +121,25 @@ pintrk('page');
 		<?php
 	}
 
-	// ── Google Ads ─────────────────────────────────────────────────────
+	// ── GA4 + Google Ads (shared gtag.js) ──────────────────────────────
+	$ga4_id  = (string) ( $s['ga4_measurement_id'] ?? '' );
 	$gads_id = (string) ( $s['google_ads_conversion_id'] ?? '' );
-	if ( $gads_id ) {
-		$g = esc_js( $gads_id );
+	$ga4_ok  = $ga4_id && preg_match( '/^G-[A-Z0-9]+$/', $ga4_id );
+	$gads_ok = $gads_id && preg_match( '/^AW-\d{9,12}$/', $gads_id );
+	if ( $ga4_ok || $gads_ok ) {
+		$loader_id = $ga4_ok ? esc_js( $ga4_id ) : esc_js( $gads_id );
 		?>
-<script data-wchs-google-ads-src async src="https://www.googletagmanager.com/gtag/js?id=<?php echo $g; ?>"></script>
-<script data-wchs-google-ads>
+<script data-wchs-gtag-src async src="https://www.googletagmanager.com/gtag/js?id=<?php echo $loader_id; ?>"></script>
+<script data-wchs-gtag>
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
-gtag('config', '<?php echo $g; ?>');
+<?php if ( $ga4_ok ) : ?>
+gtag('config', '<?php echo esc_js( $ga4_id ); ?>');
+<?php endif; ?>
+<?php if ( $gads_ok ) : ?>
+gtag('config', '<?php echo esc_js( $gads_id ); ?>');
+<?php endif; ?>
 </script>
 		<?php
 	}
