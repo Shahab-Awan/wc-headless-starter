@@ -39,3 +39,5 @@ PHASE1-PLAN.md
 # Docker volume data (if it ever leaks in)
 tmp/
 db-backups/
+.sql
+.sql.gz
