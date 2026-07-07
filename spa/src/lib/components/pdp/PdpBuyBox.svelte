@@ -181,10 +181,16 @@
 
 	{#if puritySubtitle}
 		<div class="pdp-buy__subtitle-row">
+
+				<span class="pdp-buy__free-shipping">Free Shipping Over $200</span>
+				
 			<p class="pdp-buy__subtitle">{puritySubtitle}</p>
 			<span class="pdp-buy__verified">{pdpUi?.verified_label ?? 'VERIFIED'}</span>
 		</div>
 	{/if}
+
+
+
 
 	{#if showReviews && product.review_count > 0 && onReviewsOpen}
 		<button type="button" class="pdp-buy__rating" onclick={onReviewsOpen}>
@@ -324,6 +330,23 @@
 	.pdp-buy__crumbs a:hover {
 		color: var(--accent);
 	}
+	.pdp-buy__free-shipping {
+		display: flex;
+		align-items: center;
+		margin: 0;
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+	}
+	.pdp-buy__free-shipping::after {
+		content: '';
+		display: fixed;
+		width: 2px;
+		height: 20px;
+		background: var(--border);
+		margin: 6px;
+	}
 	.pdp-buy__brand {
 		margin: 0 0 8px;
 		font-size: 11px;
@@ -350,6 +373,7 @@
 	.pdp-buy__subtitle {
 		margin: 0;
 		font-size: 15px;
+		font-weight: 500;
 		color: var(--fg-muted);
 	}
 	.pdp-buy__verified {

@@ -154,6 +154,8 @@ class CartStore {
 	/** Latest qty per line — coalesces rapid +/- clicks into one POST. */
 	private pendingQtyByKey = new Map<string, number>();
 	private qtyFlushChain: Promise<void> = Promise.resolve();
+	private qtyDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+	private static readonly QTY_SYNC_DEBOUNCE_MS = 600;
 
 	/**
 	 * Mutation mutex. Cart writes must serialize because the Store API's
@@ -438,6 +440,49 @@ class CartStore {
 		}
 	}
 
+	private clearQtyDebounce(): void {
+		if (this.qtyDebounceTimer !== null) {
+			clearTimeout(this.qtyDebounceTimer);
+			this.qtyDebounceTimer = null;
+		}
+	}
+
+	private scheduleQtySync(): void {
+		this.clearQtyDebounce();
+		this.qtyDebounceTimer = setTimeout(() => {
+			this.qtyDebounceTimer = null;
+			void this.flushPendingQtyUpdates();
+		}, CartStore.QTY_SYNC_DEBOUNCE_MS);
+	}
+
+	/** Push debounced qty edits to the Store API (checkout / drawer close call this immediately). */
+	flushPendingQtyUpdates(): Promise<void> {
+		this.clearQtyDebounce();
+		this.qtyFlushChain = this.qtyFlushChain.catch(() => {}).then(async () => {
+			while (this.pendingQtyByKey.size > 0) {
+				const batch = [...this.pendingQtyByKey.entries()];
+				for (const [key] of batch) {
+					const quantity = this.pendingQtyByKey.get(key);
+					if (quantity === undefined) continue;
+					this.pendingQtyByKey.delete(key);
+					try {
+						await this.mutate(
+							() =>
+								request<StoreApiCart>('/cart/update-item', {
+									method: 'POST',
+									body: { key, quantity }
+								}),
+							{ converge: false }
+						);
+					} catch {
+						await this.fetch().catch(() => {});
+					}
+				}
+			}
+		});
+		return this.qtyFlushChain;
+	}
+
 	private patchItemQuantity(key: string, quantity: number): void {
 		if (!this.cart) return;
 		const bogo = config.data.pdp?.bundle_bogo;
@@ -488,42 +533,19 @@ class CartStore {
 		};
 	}
 
-	private flushQtyUpdate(key: string): Promise<void> {
-		this.qtyFlushChain = this.qtyFlushChain.catch(() => {}).then(async () => {
-			let quantity = this.pendingQtyByKey.get(key);
-			while (quantity !== undefined) {
-				this.pendingQtyByKey.delete(key);
-				try {
-					await this.mutate(
-						() =>
-							request<StoreApiCart>('/cart/update-item', {
-								method: 'POST',
-								body: { key, quantity }
-							}),
-						{ converge: false }
-					);
-				} catch {
-					await this.fetch().catch(() => {});
-					break;
-				}
-				quantity = this.pendingQtyByKey.get(key);
-			}
-		});
-		return this.qtyFlushChain;
-	}
-
 	async updateItem(key: string, quantity: number) {
 		this.patchItemQuantity(key, quantity);
 		this.pendingQtyByKey.set(key, quantity);
-		try {
-			await this.flushQtyUpdate(key);
-		} catch {
-			await this.fetch().catch(() => {});
-		}
+		this.syncShadow();
+		this.scheduleQtySync();
 		dispatch('fkcart_quantity_updated', { key, quantity });
 	}
 
 	async removeItem(key: string) {
+		this.pendingQtyByKey.delete(key);
+		if (this.pendingQtyByKey.size === 0) {
+			this.clearQtyDebounce();
+		}
 		await this.mutate(
 			() => request<StoreApiCart>('/cart/remove-item', { method: 'POST', body: { key } }),
 			{ converge: false }
@@ -545,7 +567,11 @@ class CartStore {
 			await this.openCartDrawer();
 			return;
 		}
+		const wasOpen = this.open;
 		this.open = force ?? !this.open;
+		if (wasOpen && !this.open) {
+			void this.flushPendingQtyUpdates();
+		}
 		dispatch(this.open ? 'fkcart_cart_open' : 'fkcart_cart_closed', {});
 	}
 
@@ -562,6 +588,8 @@ class CartStore {
 
 	async beginCheckout(): Promise<string> {
 		const hadVisibleItems = this.visibleItemCount() > 0;
+
+		await this.flushPendingQtyUpdates();
 
 		// Prime before fetch — Safari can drop sessionStorage between cart edits
 		// and checkout; a fresh GET /cart re-establishes Cart-Token + nonce.

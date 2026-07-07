@@ -389,6 +389,73 @@ function wchs_cro_bogo_volume_title( int $min_qty ): string {
 	return 1 === $min_qty ? '1 Vial' : sprintf( '%d Vials', $min_qty );
 }
 
+function wchs_cro_cart_tier_badge( string $flag, int $qty ): string {
+	$flag = trim( $flag );
+	if ( '' === $flag ) {
+		return '';
+	}
+	if ( 'BULK' === $flag || 10 === $qty ) {
+		return '(bulk offer)';
+	}
+	return sprintf( '[%s]', $flag );
+}
+
+function wchs_cro_cart_item_bundle_label(
+	int $qty,
+	int $savings_line,
+	array $native_rules,
+	array $rules_data
+): string {
+	unset( $savings_line );
+	if ( ! empty( $native_rules['rules'] ) ) {
+		return '';
+	}
+	if ( empty( $rules_data['rules'] ) ) {
+		return '';
+	}
+	$bogo = wchs_cro_bogo_settings();
+	if ( empty( $bogo['enabled'] ) || $qty < 1 ) {
+		return '';
+	}
+
+	$base        = wchs_cro_bogo_volume_title( $qty );
+	$thresholds  = wchs_cro_tier_threshold_qtys( $rules_data );
+	$presets       = wchs_cro_bogo_repair_presets( $bogo['presets'] ?? [] );
+	$volume_mode   = wchs_cro_bogo_uses_volume_presets( $presets );
+
+	if ( ! in_array( $qty, $thresholds, true ) ) {
+		return $base;
+	}
+
+	foreach ( $presets as $preset ) {
+		if ( ! is_array( $preset ) ) {
+			continue;
+		}
+		$paid = (int) ( $preset['paid_qty'] ?? 0 );
+		if ( $paid < 1 ) {
+			continue;
+		}
+		if ( $volume_mode ) {
+			if ( ! wchs_cro_bogo_preset_is_volume( $preset ) || $paid !== $qty ) {
+				continue;
+			}
+		} else {
+			if ( wchs_cro_bogo_preset_is_volume( $preset ) ) {
+				continue;
+			}
+			$free  = array_key_exists( 'free_qty', $preset ) ? (int) $preset['free_qty'] : $paid;
+			$total = $paid + max( 0, $free );
+			if ( $total !== $qty ) {
+				continue;
+			}
+		}
+		$badge = wchs_cro_cart_tier_badge( (string) ( $preset['flag'] ?? '' ), $qty );
+		return '' !== $badge ? $base . ' ' . $badge : $base;
+	}
+
+	return $base;
+}
+
 function wchs_cro_build_bogo_bundle_rows( int $regular_minor ): array {
 	$bogo = wchs_cro_bogo_settings();
 	$rows = [];
@@ -743,51 +810,6 @@ function wchs_cro_product_schema() {
 			],
 		],
 	];
-}
-
-function wchs_cro_cart_item_bundle_label(
-	int $qty,
-	int $savings_line,
-	array $native_rules,
-	array $rules_data
-): string {
-	unset( $savings_line );
-	if ( ! empty( $native_rules['rules'] ) ) {
-		return '';
-	}
-	if ( empty( $rules_data['rules'] ) ) {
-		return '';
-	}
-	$thresholds = wchs_cro_tier_threshold_qtys( $rules_data );
-	if ( ! in_array( $qty, $thresholds, true ) ) {
-		return '';
-	}
-	$bogo = wchs_cro_bogo_settings();
-	if ( empty( $bogo['enabled'] ) ) {
-		return '';
-	}
-	foreach ( $bogo['presets'] ?? [] as $preset ) {
-		if ( ! is_array( $preset ) ) {
-			continue;
-		}
-		$paid = (int) ( $preset['paid_qty'] ?? 0 );
-		if ( $paid < 1 || $paid !== $qty ) {
-			continue;
-		}
-		if ( wchs_cro_bogo_preset_is_volume( $preset ) ) {
-			return wchs_cro_bogo_volume_title( $paid );
-		}
-		$free  = array_key_exists( 'free_qty', $preset ) ? (int) $preset['free_qty'] : $paid;
-		$total = $paid + max( 0, $free );
-		if ( $total !== $qty ) {
-			continue;
-		}
-		if ( $free < 1 ) {
-			return '';
-		}
-		return sprintf( 'Buy %d Get %d Free', $paid, $free );
-	}
-	return '';
 }
 
 function wchs_cro_cart_item_data( $cart_item ) {
