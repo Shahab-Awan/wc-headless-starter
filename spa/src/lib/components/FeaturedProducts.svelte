@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import ProductCard from './ProductCard.svelte';
 	import { bridgeAwareHref } from '$lib/bridge-domain';
-	import { listProducts, type StoreProduct } from '$lib/wc/products';
+	import { getCuratedProducts, listProducts, type StoreProduct } from '$lib/wc/products';
 	import { config as siteConfig, isCartCrossSellBlockedProduct } from '$lib/config.svelte';
 	import { auth } from '$lib/wc/auth.svelte';
 	import { pickPopularProducts } from '$lib/popular-products';
@@ -42,22 +42,35 @@
 	const ctaText = $derived(config.cta_text?.trim() || 'Explore All Products');
 	const ctaHref = $derived(bridgeAwareHref(config.cta_href?.trim() || '/shop'));
 	const productLimit = $derived(Math.min(6, Math.max(1, Number(config.product_limit) || 3)));
-	const source = $derived(config.source === 'best_sellers' ? 'best_sellers' : 'popular');
+	const source = $derived(
+		config.source === 'best_sellers'
+			? 'best_sellers'
+			: config.source === 'curated' || (config.curated_products?.length ?? 0) > 0
+				? 'curated'
+				: 'popular'
+	);
 
 	let products = $state<StoreProduct[]>([]);
 	let loading = $state(true);
 
 	onMount(async () => {
 		try {
-			const pool = await listProducts({
-				per_page: source === 'best_sellers' ? productLimit : 100,
-				orderby: source === 'best_sellers' ? 'popularity' : 'date',
-			});
-			const filtered = pool.filter((p) => !isCartCrossSellBlockedProduct(p.id, p.slug));
-			products =
-				source === 'best_sellers'
-					? filtered.slice(0, productLimit)
-					: pickPopularProducts(filtered, productLimit);
+			const curated = config.curated_products?.filter((p) => p.slug?.trim()) ?? [];
+			if (source === 'curated' && curated.length > 0) {
+				products = (await getCuratedProducts(curated)).filter(
+					(p) => !isCartCrossSellBlockedProduct(p.id, p.slug)
+				);
+			} else {
+				const pool = await listProducts({
+					per_page: source === 'best_sellers' ? productLimit : 100,
+					orderby: source === 'best_sellers' ? 'popularity' : 'date',
+				});
+				const filtered = pool.filter((p) => !isCartCrossSellBlockedProduct(p.id, p.slug));
+				products =
+					source === 'best_sellers'
+						? filtered.slice(0, productLimit)
+						: pickPopularProducts(filtered, productLimit);
+			}
 		} catch {
 			products = [];
 		} finally {

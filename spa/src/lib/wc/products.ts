@@ -218,6 +218,21 @@ export async function getProductsByIds(ids: number[]): Promise<StoreProduct[]> {
 	return filterCatalogProducts(rows).map(normalizeProduct);
 }
 
+export type CuratedProductRef = { slug: string; display_name?: string };
+
+/** Resolve a fixed product list by slug, preserving order and optional card titles. */
+export async function getCuratedProducts(refs: CuratedProductRef[]): Promise<StoreProduct[]> {
+	if (!refs.length) return [];
+	const resolved = await Promise.all(
+		refs.map(async (ref) => {
+			const product = await getProduct(ref.slug);
+			if (!product) return null;
+			return ref.display_name ? { ...product, name: ref.display_name } : product;
+		})
+	);
+	return resolved.filter((p): p is StoreProduct => p !== null);
+}
+
 /**
  * Fetch full details for a set of variation IDs. Use this on a PDP after
  * the parent product tells you which variations exist.

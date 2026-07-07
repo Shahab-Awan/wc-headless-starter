@@ -24,7 +24,19 @@ export function normalizeHome1AnnouncementItems(items: string[]): string[] {
 }
 
 /** Module types stripped from the Google Ads / B2B landing (retail promos, BOGO, etc.). */
-export const HOME_1_EXCLUDED_MODULE_TYPES = new Set<string>(['split_value', 'promo_offer']);
+export const HOME_1_EXCLUDED_MODULE_TYPES = new Set<string>([
+	'split_value',
+	'promo_offer',
+	'reviews_listicle',
+	'review_slider',
+]);
+
+/** Merchant-facing featured compounds for Google Ads landing (display names ≠ WC titles). */
+export const HOME_1_CURATED_FEATURED_PRODUCTS = [
+	{ slug: 'ipamorelin', display_name: 'Ipamorelin' },
+	{ slug: 'rt-glp', display_name: 'GLP-Reta' },
+	{ slug: 'glow-blend-bpc-tb-ghk-cu', display_name: 'Glow Blend' },
+] as const;
 
 export type Home1LandingConfig = {
 	/** Subdomain hostnames (no www) that should show this landing at `/` and hand off shop links to spa_origin. */
@@ -128,6 +140,8 @@ function patchModules(mods: HomepageModule[]): HomepageModule[] {
 					...mod,
 					config: {
 						...mod.config,
+						source: 'curated',
+						curated_products: HOME_1_CURATED_FEATURED_PRODUCTS.map((p) => ({ ...p })),
 						show_product_badge: false,
 						hide_dose_pill: true,
 						product_badge: '',
@@ -149,18 +163,6 @@ function patchModules(mods: HomepageModule[]): HomepageModule[] {
 						...mod.config,
 						title: 'Compounds by category',
 						count_label: 'compounds',
-					},
-				};
-			}
-			if (mod.type === 'reviews_listicle') {
-				return {
-					...mod,
-					config: {
-						...mod.config,
-						headline: 'What research teams report after ordering',
-						proof_subheadline:
-							mod.config.proof_subheadline?.replace(/customers|shoppers/gi, 'researchers') ||
-							'Verified laboratory orders · batch documentation included.',
 					},
 				};
 			}

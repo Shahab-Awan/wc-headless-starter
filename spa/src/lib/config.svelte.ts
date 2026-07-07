@@ -607,6 +607,12 @@ export type VaultCtaModuleConfig = {
 	secondary_cta_href?: string;
 };
 
+export type CuratedFeaturedProductRef = {
+	slug: string;
+	/** Card title override — WooCommerce product name unchanged. */
+	display_name?: string;
+};
+
 export type FeaturedProductsModuleConfig = {
 	eyebrow?: string;
 	headline_prefix?: string;
@@ -618,7 +624,9 @@ export type FeaturedProductsModuleConfig = {
 	/** When true, hide dose pills on product cards in this module. */
 	hide_dose_pill?: boolean;
 	select_cta_label?: string;
-	source?: 'popular' | 'best_sellers';
+	source?: 'popular' | 'best_sellers' | 'curated';
+	/** Fixed slug order with optional display names (e.g. Google Merchant landing). */
+	curated_products?: CuratedFeaturedProductRef[];
 	product_limit?: number;
 	cta_text?: string;
 	cta_href?: string;
