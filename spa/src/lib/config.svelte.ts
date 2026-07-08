@@ -325,6 +325,8 @@ export type ListicleModuleConfig = {
 	section_eyebrow?: string;
 	/** split = image + copy columns; editorial = headline, trust bar, callout stack. */
 	hero_layout?: 'split' | 'editorial';
+	/** Optional full-section background image behind the listicle content. */
+	bg_image?: string;
 	headline?: string;
 	hero_image?: string;
 	hero_image_alt?: string;

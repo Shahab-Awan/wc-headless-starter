@@ -475,6 +475,7 @@
 				section_eyebrow: '',
 				hero_layout: 'editorial',
 				headline: '8 Reasons Researchers Choose Alyve For their Research Compounds',
+				bg_image: '',
 				trust_brand: 'Alyve Peptides',
 				trust_items: [
 					'99%+ HPLC Verified',
@@ -1378,6 +1379,7 @@
 				setVal(container, '[data-field="lc_section_eyebrow"]', cfg.section_eyebrow || '');
 				setVal(container, '[data-field="lc_hero_layout"]', cfg.hero_layout || 'editorial');
 				setVal(container, '[data-field="lc_headline"]', cfg.headline || '');
+				setVal(container, '[data-field="lc_bg_image"]', cfg.bg_image || '');
 				setVal(container, '[data-field="lc_trust_brand"]', cfg.trust_brand || '');
 				setVal(container, '[data-field="lc_trust_items"]', listicleTrustItemsForInput(cfg.trust_items));
 				setVal(container, '[data-field="lc_hero_cta_image"]', cfg.hero_cta_image || '');
@@ -1397,6 +1399,7 @@
 				setVal(container, '[data-field="lc_closing"]', cfg.closing || '');
 				setVal(container, '[data-field="lc_cta_label"]', cfg.cta_label || '');
 				setVal(container, '[data-field="lc_cta_href"]', cfg.cta_href || '');
+				syncListicleBgMedia(container);
 				syncListicleHeroMedia(container);
 				syncListicleHeroCtaMedia(container);
 				syncListicleCoaEmbedMedia(container);
@@ -1834,6 +1837,7 @@
 				cfg.section_eyebrow = getVal(container, '[data-field="lc_section_eyebrow"]') || '';
 				cfg.hero_layout = getVal(container, '[data-field="lc_hero_layout"]') || 'editorial';
 				cfg.headline = getVal(container, '[data-field="lc_headline"]') || '';
+				cfg.bg_image = getVal(container, '[data-field="lc_bg_image"]') || '';
 				cfg.trust_brand = getVal(container, '[data-field="lc_trust_brand"]') || '';
 				cfg.trust_items = listicleTrustItemsFromInput(getVal(container, '[data-field="lc_trust_items"]'));
 				cfg.hero_cta_image = getVal(container, '[data-field="lc_hero_cta_image"]') || '';
@@ -2370,6 +2374,10 @@
 			}
 		}
 		return out;
+	}
+
+	function syncListicleBgMedia(ctx) {
+		syncListicleMediaField(ctx, '[data-field="lc_bg_image"]');
 	}
 
 	function syncListicleHeroMedia(ctx) {

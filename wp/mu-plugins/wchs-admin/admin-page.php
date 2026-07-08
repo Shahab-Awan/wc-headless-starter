@@ -5214,6 +5214,15 @@ class AdminPage {
 					</select>
 				</div>
 				<div class="wchs-field wchs-field--full"><label>Headline</label><input type="text" data-field="lc_headline" placeholder="8 Reasons Researchers Choose Alyve…" /></div>
+				<div class="wchs-field wchs-field--full">
+					<label>Section background image <?php echo self::hint_icon( 'Optional full-width backdrop behind the listicle hero. Scales to cover; leave blank for the default solid background.' ); ?></label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="lc_bg_image" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:180px;margin-top:8px;border:1px solid #e0e0e0;border-radius:8px" />
+				</div>
 				<div class="wchs-field wchs-field--full"><label>Trust bar brand</label><input type="text" data-field="lc_trust_brand" placeholder="Alyve Peptides" /></div>
 				<div class="wchs-field wchs-field--full"><label>Trust bar claims <?php echo self::hint_icon( 'Comma-separated. Each claim shows with a checkmark in the editorial hero.' ); ?></label><input type="text" data-field="lc_trust_items" placeholder="99%+ HPLC Verified, 3rd-Party Tested Every Batch, COA Pre-Purchase" /></div>
 				<p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Hero CTA (editorial layout)</p>

@@ -61,6 +61,12 @@
 		resolved?.accent_color ? `--accent: ${resolved.accent_color};` : ''
 	);
 
+	const bgImage = $derived(config.bg_image?.trim() || '');
+	const hasBgImage = $derived(Boolean(bgImage));
+	const listicleStyle = $derived(
+		`${accentStyle}${bgImage ? `;--listicle-bg-image: url(${JSON.stringify(bgImage)});` : ''}`
+	);
+
 	const EDITORIAL_DEFAULTS = {
 		section_eyebrow: 'RESEARCH-GRADE SUPPLY',
 		headline: '8 Reasons Researchers Choose Alyve For their Research Compounds',
@@ -299,12 +305,13 @@
 {#if showEditorialHero || showSplitHero || items.length}
 	<section
 		class="listicle"
+		class:has-bg-image={hasBgImage}
 		class:has-editorial-hero={showEditorialHero}
 		class:is-v-compact={spacing_v === 'compact'}
 		class:is-v-spacious={spacing_v === 'spacious'}
 		class:is-h-compact={spacing_h === 'compact'}
 		class:is-h-spacious={spacing_h === 'spacious'}
-		style={accentStyle}
+		style={listicleStyle}
 	>
 		<div class="listicle__inner">
 			{#if showEditorialHero}
@@ -563,6 +570,8 @@
 		--listicle-teal: var(--accent, #0d9488);
 		--listicle-teal-soft: color-mix(in srgb, var(--listicle-teal) 12%, var(--bg) 88%);
 		--listicle-teal-border: color-mix(in srgb, var(--listicle-teal) 28%, var(--border) 72%);
+		position: relative;
+		overflow: hidden;
 		background: var(--bg);
 		color: var(--fg);
 		padding: var(--mod-pt) var(--mod-px) var(--mod-pb);
@@ -585,6 +594,25 @@
 	.listicle__inner {
 		max-width: var(--listicle-max);
 		margin: 0 auto;
+		position: relative;
+		z-index: 1;
+	}
+
+	.listicle.has-bg-image::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		pointer-events: none;
+		background-image: linear-gradient(
+			to bottom,
+			color-mix(in srgb, var(--bg) 92%, transparent) 0%,
+			color-mix(in srgb, var(--bg) 78%, transparent) 42%,
+			var(--bg) 100%
+		), var(--listicle-bg-image);
+		background-size: cover;
+		background-position: center;
+		background-repeat: no-repeat;
 	}
 
 	.listicle__hero {

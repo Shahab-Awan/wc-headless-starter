@@ -210,6 +210,7 @@
 		--mod-px: 28px;
 		--mod-max-w: 960px;
 		max-width: var(--mod-max-w);
+		width: 100%;
 		margin: 0 auto;
 		padding: var(--mod-pt) var(--mod-px) var(--mod-pb);
 	}

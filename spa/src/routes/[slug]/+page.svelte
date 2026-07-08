@@ -43,7 +43,27 @@
 
 	const hidePageTitle = $derived.by(() => {
 		const first = (pageData?.modules?.filter(isModuleVisibleNow) ?? [])[0]?.type;
-		return first === 'listicle' || first === 'vault_hero';
+		// Many modules already render their own in-section header/label (e.g.
+		// TextBlock title, ContactForm label, Accordion title). To avoid “two
+		// headings” on content pages (About/Contact/etc.), hide the big page
+		// <h1> whenever the first visible module provides its own heading.
+		return (
+			first === 'listicle' ||
+			first === 'vault_hero' ||
+			first === 'text_block' ||
+			first === 'contact_form' ||
+			first === 'gallery' ||
+			first === 'category_grid' ||
+			first === 'accordion' ||
+			first === 'listicle_faqs' ||
+			first === 'reviews_listicle' ||
+			first === 'promo_offer' ||
+			first === 'split_features' ||
+			first === 'split_value' ||
+			first === 'feature_highlights' ||
+			first === 'hero' ||
+			first === 'order_handling'
+		);
 	});
 
 	const isVaultPage = $derived((page.params.slug ?? '').replace(/\/$/, '') === 'vault');
@@ -379,6 +399,7 @@
 		padding: 0 0 var(--wchs-page-section-bottom);
 		display: flex;
 		flex-direction: column;
+		margin-top: 20px;
 	}
 
 	.content-page--listicle > :global(section.listicle),

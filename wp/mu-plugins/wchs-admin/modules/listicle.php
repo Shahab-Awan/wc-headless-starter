@@ -34,6 +34,11 @@ return [
 			'default' => '8 Reasons Researchers Choose Alyve For their Research Compounds',
 		],
 		[
+			'id'      => 'bg_image',
+			'type'    => 'image',
+			'default' => '',
+		],
+		[
 			'id'      => 'trust_brand',
 			'type'    => 'text',
 			'default' => 'Alyve Peptides',
