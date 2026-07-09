@@ -325,8 +325,16 @@ export type ListicleModuleConfig = {
 	section_eyebrow?: string;
 	/** split = image + copy columns; editorial = headline, trust bar, callout stack. */
 	hero_layout?: 'split' | 'editorial';
-	/** Optional full-section background image behind the listicle content. */
+	/** Optional full-section background image behind the listicle hero. */
 	bg_image?: string;
+	/** modern = gradient + floating vials; photo = bg_image only (no gradient/vials). */
+	hero_backdrop?: 'modern' | 'photo';
+	vial_primary?: string;
+	vial_primary_alt?: string;
+	vial_secondary?: string;
+	vial_secondary_alt?: string;
+	vial_tertiary?: string;
+	vial_tertiary_alt?: string;
 	headline?: string;
 	hero_image?: string;
 	hero_image_alt?: string;
@@ -448,6 +456,34 @@ export type FeatureHighlightsModuleConfig = {
 	items: FeatureHighlightItem[];
 	cta_label: string;
 	cta_href: string;
+};
+
+export type PriceComparisonBullet = {
+	variant: string;
+	headline: string;
+	description: string;
+};
+
+export type PriceComparisonCompetitor = {
+	letter: string;
+	name: string;
+	price: string;
+};
+
+export type PriceComparisonModuleConfig = {
+	headline: string;
+	body: string;
+	bullets: PriceComparisonBullet[];
+	cta_label: string;
+	cta_href: string;
+	status_label: string;
+	product_label: string;
+	lowest_badge: string;
+	brand_name: string;
+	brand_price: string;
+	brand_tags: string;
+	competitors: PriceComparisonCompetitor[];
+	footnote: string;
 };
 
 export type OrderHandlingStep = {
@@ -649,6 +685,7 @@ export type HomepageModule =
 	| (ModuleBase & { type: 'category_grid'; config: CategoryGridModuleConfig })
 	| (ModuleBase & { type: 'split_features'; config: SplitFeaturesModuleConfig })
 	| (ModuleBase & { type: 'split_value'; config: SplitValueModuleConfig })
+	| (ModuleBase & { type: 'price_comparison'; config: PriceComparisonModuleConfig })
 	| (ModuleBase & { type: 'feature_highlights'; config: FeatureHighlightsModuleConfig })
 	| (ModuleBase & { type: 'order_handling'; config: OrderHandlingModuleConfig })
 	| (ModuleBase & { type: 'shop_grid'; config: ShopGridModuleConfig })

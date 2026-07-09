@@ -8,6 +8,7 @@
 	import CategoryGrid from '$lib/components/CategoryGrid.svelte';
 	import SplitFeatures from '$lib/components/SplitFeatures.svelte';
 	import SplitValue from '$lib/components/SplitValue.svelte';
+	import PriceComparison from '$lib/components/PriceComparison.svelte';
 	import FeatureHighlights from '$lib/components/FeatureHighlights.svelte';
 	import OrderHandling from '$lib/components/OrderHandling.svelte';
 	import ShopCatalog from '$lib/components/ShopCatalog.svelte';
@@ -130,6 +131,8 @@
 			<SplitFeatures config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 		{:else if mod.type === 'split_value'}
 			<SplitValue config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
+		{:else if mod.type === 'price_comparison'}
+			<PriceComparison config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 		{:else if mod.type === 'feature_highlights'}
 			<FeatureHighlights config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 		{:else if mod.type === 'shop_grid'}

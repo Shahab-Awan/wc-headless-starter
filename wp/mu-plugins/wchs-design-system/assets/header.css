@@ -32,6 +32,7 @@
 /* Scrolling promo / trust strip (accent bar) */
 .site-announcement {
 	overflow: hidden;
+	width: 100%;
 	background: var(--accent, var(--fg));
 	color: var(--accent-fg, var(--bg));
 	border-bottom: 1px solid color-mix(in oklab, var(--accent-fg, #fff) 12%, transparent);
@@ -54,6 +55,11 @@
 	gap: 0;
 	animation: site-announcement-scroll 42s linear infinite;
 }
+.site-announcement__group {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+}
 @media (prefers-reduced-motion: reduce) {
 	.site-announcement__track {
 		animation: none;
@@ -63,6 +69,15 @@
 		max-width: 100%;
 		padding: 8px 16px;
 		gap: 8px 20px;
+	}
+	.site-announcement__group {
+		flex-wrap: wrap;
+		justify-content: center;
+		width: 100%;
+		gap: 8px 20px;
+	}
+	.site-announcement__group[aria-hidden='true'] {
+		display: none;
 	}
 }
 .site-announcement__item {
@@ -705,6 +720,7 @@ body.has-mode-banner .site-header-drawer {
 	min-height: 56px;
 	padding-top: 14px;
 	padding-bottom: 14px;
+	border-bottom: none;
 }
 @media (min-width: 640px) {
 	.site-header--logo-only {

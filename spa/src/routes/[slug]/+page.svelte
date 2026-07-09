@@ -503,17 +503,16 @@
 	}
 
 	.content-page--why-alyve {
+		margin-top: 0;
+		padding-top: 0;
 		padding-bottom: var(--wchs-page-section-bottom, 72px);
 		max-width: 100%;
-		overflow-x: clip;
+		overflow-x: visible;
 	}
 
 	.content-page--why-alyve > :global(section.listicle.has-editorial-hero:first-child) {
 		--mod-pt: 0;
-	}
-
-	.content-page--why-alyve > :global(section.listicle.has-editorial-hero .listicle__hero-band) {
-		padding-top: clamp(48px, 7vw, 80px);
+		margin-top: 0;
 	}
 
 	/* Section headings — match Why Alyve comparison title; skip listicle H1 + reason titles */
@@ -532,6 +531,8 @@
 	@media (max-width: 639px) {
 		.content-page--why-alyve {
 			padding-bottom: calc(var(--wchs-page-section-bottom, 48px) + 84px);
+			padding-inline: 0;
+			overflow-x: visible;
 		}
 	}
 	.content-page__title {

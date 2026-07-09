@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatPrice as fmt } from '$lib/utils/format';
+	import { competitorSavingsPct as savingsPctForProduct } from '$lib/utils/competitor-savings';
 	import { config } from '$lib/config.svelte';
 	import { canPurchase, isOutOfStock } from '$lib/wc/stock';
 	import { noteProductStockStatus } from '$lib/wc/restock-badge.svelte';
@@ -126,6 +127,17 @@
 		return null;
 	});
 
+	const priceCentsForSavings = $derived.by(() => {
+		if (hasVariations && product.prices.price_range?.min_amount) {
+			return parseInt(product.prices.price_range.min_amount, 10) || 0;
+		}
+		return parseInt(product.prices.price ?? '0', 10) || 0;
+	});
+
+	const competitorSavingsPct = $derived(
+		priceCentsForSavings > 0 ? savingsPctForProduct(product.id, priceCentsForSavings) : 0
+	);
+
 	const dosePill = $derived(formatDosePill(product));
 
 	$effect(() => {
@@ -236,6 +248,9 @@
 						{/if}
 						<span class="store-card__price tabular-nums">{displayPrice}</span>
 					</div>
+					{#if competitorSavingsPct > 0}
+						<span class="store-card__competitor-save">≈ {competitorSavingsPct}% below competitors</span>
+					{/if}
 				</div>
 			{/if}
 
@@ -524,6 +539,13 @@
 		font-size: 14px;
 		font-weight: 450;
 		color: var(--fg-muted);
+		letter-spacing: -0.01em;
+	}
+	.store-card__competitor-save {
+		font-size: 12px;
+		font-weight: 500;
+		line-height: 1.3;
+		color: color-mix(in srgb, var(--accent) 72%, var(--fg));
 		letter-spacing: -0.01em;
 	}
 	.store-card__sold-out {

@@ -39,6 +39,21 @@ return [
 			'default' => '',
 		],
 		[
+			'id'      => 'hero_backdrop',
+			'type'    => 'enum',
+			'default' => 'modern',
+			'options' => [
+				'modern' => 'Gradient + floating vials',
+				'photo'  => 'Background photo',
+			],
+		],
+		[ 'id' => 'vial_primary', 'type' => 'image', 'default' => '' ],
+		[ 'id' => 'vial_primary_alt', 'type' => 'text', 'default' => '' ],
+		[ 'id' => 'vial_secondary', 'type' => 'image', 'default' => '' ],
+		[ 'id' => 'vial_secondary_alt', 'type' => 'text', 'default' => '' ],
+		[ 'id' => 'vial_tertiary', 'type' => 'image', 'default' => '' ],
+		[ 'id' => 'vial_tertiary_alt', 'type' => 'text', 'default' => '' ],
+		[
 			'id'      => 'trust_brand',
 			'type'    => 'text',
 			'default' => 'Alyve Peptides',

@@ -62,9 +62,22 @@
 	);
 
 	const bgImage = $derived(config.bg_image?.trim() || '');
-	const hasBgImage = $derived(Boolean(bgImage));
-	const listicleStyle = $derived(
-		`${accentStyle}${bgImage ? `;--listicle-bg-image: url(${JSON.stringify(bgImage)});` : ''}`
+	const heroBackdrop = $derived.by((): 'modern' | 'photo' => {
+		const mode = config.hero_backdrop === 'photo' ? 'photo' : 'modern';
+		if (mode === 'photo' && bgImage) return 'photo';
+		return 'modern';
+	});
+	const isPhotoBackdrop = $derived(heroBackdrop === 'photo');
+	const isModernBackdrop = $derived(heroBackdrop === 'modern');
+
+	const DEFAULT_VIAL =
+		'/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp';
+
+	const vialLeftTop = $derived(config.vial_primary?.trim() || DEFAULT_VIAL);
+	const vialRightTop = $derived(config.vial_secondary?.trim() || DEFAULT_VIAL);
+	const vialLeftBottom = $derived(config.vial_tertiary?.trim() || DEFAULT_VIAL);
+	const showHeroVials = $derived(
+		isModernBackdrop && Boolean(vialLeftTop || vialRightTop || vialLeftBottom)
 	);
 
 	const EDITORIAL_DEFAULTS = {
@@ -305,13 +318,12 @@
 {#if showEditorialHero || showSplitHero || items.length}
 	<section
 		class="listicle"
-		class:has-bg-image={hasBgImage}
 		class:has-editorial-hero={showEditorialHero}
 		class:is-v-compact={spacing_v === 'compact'}
 		class:is-v-spacious={spacing_v === 'spacious'}
 		class:is-h-compact={spacing_h === 'compact'}
 		class:is-h-spacious={spacing_h === 'spacious'}
-		style={listicleStyle}
+		style={accentStyle || undefined}
 	>
 		<div class="listicle__inner">
 			{#if showEditorialHero}
@@ -319,7 +331,50 @@
 					class="listicle__hero listicle__hero--editorial"
 					class:has-items-headline={Boolean(itemsHeadline && items.length && !showEditorialHero)}
 				>
-					<div class="listicle__hero-band">
+					<div
+						class="listicle__hero-band"
+						class:is-photo-backdrop={isPhotoBackdrop}
+						class:is-modern-backdrop={isModernBackdrop}
+						class:has-vials={showHeroVials}
+						style={accentStyle || undefined}
+					>
+						{#if isPhotoBackdrop && bgImage}
+							<div
+								class="listicle__hero-band-photo"
+								style:background-image="url('{bgImage.replace(/'/g, '%27')}')"
+								role="presentation"
+							></div>
+						{/if}
+
+						{#if showHeroVials}
+							<div class="listicle__hero-vials" aria-hidden="true">
+								{#if vialLeftTop}
+									<img
+										class="listicle__hero-vial listicle__hero-vial--left-top"
+										src={vialLeftTop}
+										alt=""
+										loading="eager"
+									/>
+								{/if}
+								{#if vialRightTop}
+									<img
+										class="listicle__hero-vial listicle__hero-vial--right-top"
+										src={vialRightTop}
+										alt=""
+										loading="eager"
+									/>
+								{/if}
+								{#if vialLeftBottom}
+									<img
+										class="listicle__hero-vial listicle__hero-vial--left-bottom"
+										src={vialLeftBottom}
+										alt=""
+										loading="eager"
+									/>
+								{/if}
+							</div>
+						{/if}
+
 						<div class="listicle__hero-band-inner">
 							{#if heroBadge}
 								<p class="listicle__hero-badge">{heroBadge}</p>
@@ -598,23 +653,6 @@
 		z-index: 1;
 	}
 
-	.listicle.has-bg-image::before {
-		content: '';
-		position: absolute;
-		inset: 0;
-		z-index: 0;
-		pointer-events: none;
-		background-image: linear-gradient(
-			to bottom,
-			color-mix(in srgb, var(--bg) 92%, transparent) 0%,
-			color-mix(in srgb, var(--bg) 78%, transparent) 42%,
-			var(--bg) 100%
-		), var(--listicle-bg-image);
-		background-size: cover;
-		background-position: center;
-		background-repeat: no-repeat;
-	}
-
 	.listicle__hero {
 		display: flex;
 		flex-direction: column;
@@ -651,12 +689,18 @@
 		--hero-grad-teal: var(--listicle-teal);
 		--hero-grad-sky: color-mix(in srgb, var(--listicle-teal) 35%, #0ea5e9 65%);
 		--hero-grad-indigo: color-mix(in srgb, var(--listicle-teal) 45%, #4f46e5 55%);
+		position: relative;
+		overflow: hidden;
 		width: 100vw;
 		max-width: 100vw;
 		margin-left: calc(50% - 50vw);
 		margin-right: calc(50% - 50vw);
 		padding: clamp(40px, 6vw, 72px) clamp(20px, 4vw, 32px);
 		box-sizing: border-box;
+		min-height: clamp(320px, 42vw, 480px);
+	}
+
+	.listicle__hero-band.is-modern-backdrop {
 		background: linear-gradient(
 			128deg,
 			color-mix(in srgb, var(--hero-grad-teal) 18%, var(--bg) 82%) 0%,
@@ -666,7 +710,73 @@
 		);
 	}
 
+	.listicle__hero-band.is-photo-backdrop {
+		background: var(--bg);
+	}
+
+	.listicle__hero-band-photo {
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		background-size: cover;
+		background-position: center;
+		background-repeat: no-repeat;
+	}
+
+	.listicle__hero-vials {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		pointer-events: none;
+	}
+
+	.listicle__hero-vial {
+		position: absolute;
+		height: auto;
+		object-fit: contain;
+		filter: drop-shadow(0 18px 28px color-mix(in srgb, var(--fg) 14%, transparent));
+	}
+
+	.listicle__hero-vial--left-top {
+		--vial-rotate: -11deg;
+		left: clamp(2%, 4vw, 6%);
+		top: clamp(4%, 6vw, 10%);
+		width: min(18vw, 118px);
+		transform: rotate(var(--vial-rotate));
+		animation: listicle-vial-float 5.4s ease-in-out infinite;
+	}
+
+	.listicle__hero-vial--right-top {
+		--vial-rotate: 14deg;
+		right: clamp(3%, 5vw, 8%);
+		top: clamp(2%, 4vw, 8%);
+		width: min(32vw, 228px);
+		transform: rotate(var(--vial-rotate));
+		animation: listicle-vial-float 4.6s ease-in-out infinite 0.4s;
+	}
+
+	.listicle__hero-vial--left-bottom {
+		--vial-rotate: -7deg;
+		left: clamp(4%, 6vw, 10%);
+		bottom: clamp(6%, 8vw, 12%);
+		width: min(22vw, 168px);
+		transform: rotate(var(--vial-rotate));
+		animation: listicle-vial-float 5.1s ease-in-out infinite 0.75s;
+	}
+
+	@keyframes listicle-vial-float {
+		0%,
+		100% {
+			transform: translateY(0) rotate(var(--vial-rotate));
+		}
+		50% {
+			transform: translateY(-10px) rotate(calc(var(--vial-rotate) + 2deg));
+		}
+	}
+
 	.listicle__hero-band-inner {
+		position: relative;
+		z-index: 2;
 		max-width: min(920px, 100%);
 		margin: 0 auto;
 		display: flex;
@@ -1365,6 +1475,7 @@
 	@media (max-width: 640px) {
 		.listicle.has-editorial-hero {
 			--mod-px: 14px;
+			overflow: visible;
 		}
 
 		.listicle__hero--editorial {
@@ -1372,7 +1483,46 @@
 		}
 
 		.listicle__hero-band {
-			padding-bottom: clamp(32px, 5vw, 48px);
+			display: flex;
+			flex-direction: column;
+			align-items: stretch;
+			width: 100vw;
+			max-width: 100vw;
+			margin-left: calc(50% - 50vw);
+			margin-right: calc(50% - 50vw);
+			min-height: 0;
+			padding: clamp(20px, 4vw, 28px) 0 clamp(32px, 5vw, 48px);
+		}
+
+		.listicle__hero-vials {
+			position: relative;
+			inset: auto;
+			width: 100%;
+			height: clamp(84px, 22vw, 120px);
+			margin: 0 0 clamp(14px, 3.5vw, 22px);
+			flex-shrink: 0;
+		}
+
+		.listicle__hero-vial--left-top {
+			left: clamp(8px, 2vw, 14px);
+			top: 10%;
+			bottom: auto;
+			width: min(28vw, 96px);
+		}
+
+		.listicle__hero-vial--right-top {
+			right: clamp(8px, 2vw, 14px);
+			top: 0;
+			bottom: auto;
+			width: min(46vw, 172px);
+		}
+
+		.listicle__hero-vial--left-bottom {
+			display: none;
+		}
+
+		.listicle__hero-band-inner {
+			padding-inline: clamp(14px, 4vw, 20px);
 		}
 
 		.listicle__trust-strip {
@@ -1480,6 +1630,12 @@
 
 		.listicle__point-title {
 			max-width: none;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.listicle__hero-vial {
+			animation: none;
 		}
 	}
 </style>

@@ -5214,8 +5214,15 @@ class AdminPage {
 					</select>
 				</div>
 				<div class="wchs-field wchs-field--full"><label>Headline</label><input type="text" data-field="lc_headline" placeholder="8 Reasons Researchers Choose Alyve…" /></div>
+				<div class="wchs-field wchs-field--full"><label>Hero backdrop</label>
+					<select data-field="lc_hero_backdrop">
+						<option value="modern">Gradient + floating vials</option>
+						<option value="photo">Background photo</option>
+					</select>
+					<?php echo self::hint_icon( 'Modern uses the teal gradient with animated vials. Photo uses the background image only — no gradient or vials.' ); ?>
+				</div>
 				<div class="wchs-field wchs-field--full">
-					<label>Section background image <?php echo self::hint_icon( 'Optional full-width backdrop behind the listicle hero. Scales to cover; leave blank for the default solid background.' ); ?></label>
+					<label>Section background image <?php echo self::hint_icon( 'Photo backdrop only. Full-width cover behind the editorial hero. Ignored when backdrop is Modern.' ); ?></label>
 					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
 						<input type="text" data-field="lc_bg_image" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
 						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
@@ -5223,6 +5230,34 @@ class AdminPage {
 					</div>
 					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:180px;margin-top:8px;border:1px solid #e0e0e0;border-radius:8px" />
 				</div>
+				<p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Floating vials (modern backdrop)</p>
+				<div class="wchs-field wchs-field--full"><label>Left top vial</label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="lc_vial_primary" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:100px;margin-top:8px;border:1px solid #e0e0e0;border-radius:8px" />
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Left top vial alt</label><input type="text" data-field="lc_vial_primary_alt" /></div>
+				<div class="wchs-field wchs-field--full"><label>Right top vial</label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="lc_vial_secondary" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:100px;margin-top:8px;border:1px solid #e0e0e0;border-radius:8px" />
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Right top vial alt</label><input type="text" data-field="lc_vial_secondary_alt" /></div>
+				<div class="wchs-field wchs-field--full"><label>Left bottom vial</label>
+					<div class="wchs-media-field" style="display:flex;gap:8px;align-items:center">
+						<input type="text" data-field="lc_vial_tertiary" class="wchs-media-url" placeholder="No image selected" style="flex:1;min-width:0" />
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+						<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="display:none">Remove</button>
+					</div>
+					<img class="wchs-media-preview" src="" alt="" style="display:none;max-width:100px;margin-top:8px;border:1px solid #e0e0e0;border-radius:8px" />
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Left bottom vial alt</label><input type="text" data-field="lc_vial_tertiary_alt" /></div>
 				<div class="wchs-field wchs-field--full"><label>Trust bar brand</label><input type="text" data-field="lc_trust_brand" placeholder="Alyve Peptides" /></div>
 				<div class="wchs-field wchs-field--full"><label>Trust bar claims <?php echo self::hint_icon( 'Comma-separated. Each claim shows with a checkmark in the editorial hero.' ); ?></label><input type="text" data-field="lc_trust_items" placeholder="99%+ HPLC Verified, 3rd-Party Tested Every Batch, COA Pre-Purchase" /></div>
 				<p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Hero CTA (editorial layout)</p>
@@ -6057,6 +6092,60 @@ class AdminPage {
 					Accent color override
 					<?php echo self::hint_icon( 'Optional accent for badge, metrics, and arrows.' ); ?>
 				</label>
+				<?php echo self::accent_override_swatches(); ?>
+			</div>
+			<?php $this->render_module_common_fields(); ?>
+		</div>
+
+		<!-- Price comparison -->
+		<div id="wchs-mod-tpl-price_comparison" style="display:none">
+			<div class="wchs-module__fields" style="display:flex;flex-direction:column;gap:14px">
+				<div class="wchs-field wchs-field--full"><label>Headline</label><input type="text" data-field="pc_headline" placeholder="Priced Below The Market, Guaranteed." /></div>
+				<div class="wchs-field wchs-field--full"><label>Body</label><textarea data-field="pc_body" rows="3"></textarea></div>
+				<div class="wchs-field wchs-field--full">
+					<label>Bullet points</label>
+					<div class="wchs-pc-bullets wchs-accordion-items" style="display:flex;flex-direction:column;gap:10px">
+						<div class="wchs-accordion-item wchs-pc-bullet" style="display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #ddd;background:#fafafa">
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Icon</label>
+							<select data-field="pc_bullet_variant">
+								<option value="globe">Globe / market watch</option>
+								<option value="price_search">Price / beat competitors</option>
+								<option value="award">Award / apples-to-apples</option>
+							</select>
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Title</label>
+							<input type="text" placeholder="Title" />
+							<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:8px 0 0">Description</label>
+							<input type="text" placeholder="Description" />
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-pc-bullet-modal" style="margin-top:10px">+ Add bullet</button>
+				</div>
+				<div class="wchs-field"><label>CTA label</label><input type="text" data-field="pc_cta_label" placeholder="Browse Catalog" /></div>
+				<div class="wchs-field"><label>CTA link</label><input type="text" data-field="pc_cta_href" placeholder="/shop" /></div>
+				<p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Comparison card</p>
+				<div class="wchs-field"><label>Status label</label><input type="text" data-field="pc_status_label" placeholder="LIVE PRICE COMPARISON" /></div>
+				<div class="wchs-field"><label>Product label</label><input type="text" data-field="pc_product_label" placeholder="BPC-157 5MG" /></div>
+				<div class="wchs-field"><label>Lowest badge</label><input type="text" data-field="pc_lowest_badge" placeholder="LOWEST" /></div>
+				<div class="wchs-field"><label>Your brand name</label><input type="text" data-field="pc_brand_name" placeholder="Leave blank to use site brand" /></div>
+				<div class="wchs-field"><label>Your price</label><input type="text" data-field="pc_brand_price" placeholder="28.00" /></div>
+				<div class="wchs-field wchs-field--full"><label>Your tags line</label><input type="text" data-field="pc_brand_tags" placeholder="IN STOCK · SHIPS FAST · COA ON FILE" /></div>
+				<div class="wchs-field wchs-field--full">
+					<label>Competitors</label>
+					<div class="wchs-pc-competitors wchs-accordion-items" style="display:flex;flex-direction:column;gap:10px">
+						<div class="wchs-accordion-item wchs-pc-competitor" style="display:grid;grid-template-columns:48px 1fr 88px auto;gap:8px;align-items:center;padding:8px;border:1px solid #ddd;background:#fafafa">
+							<input type="text" placeholder="A" />
+							<input type="text" placeholder="Vendor name" />
+							<input type="text" placeholder="34.00" />
+							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+						</div>
+					</div>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-pc-competitor-modal" style="margin-top:10px">+ Add competitor</button>
+				</div>
+				<div class="wchs-field wchs-field--full"><label>Footnote</label><textarea data-field="pc_footnote" rows="2"></textarea></div>
+			</div>
+			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
+				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">Accent color override</label>
 				<?php echo self::accent_override_swatches(); ?>
 			</div>
 			<?php $this->render_module_common_fields(); ?>

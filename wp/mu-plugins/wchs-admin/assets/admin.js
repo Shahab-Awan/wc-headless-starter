@@ -183,6 +183,7 @@
 		gallery: 'Gallery', contact_form: 'Contact Form', shop_grid: 'Shop Grid',
 		category_grid: 'Category Grid', 		split_features: 'Split Features',
 		split_value: 'Value split (BOGO)',
+		price_comparison: 'Price comparison',
 		feature_highlights: 'Feature highlights',
 		order_handling: 'Order handling',
 		cta: 'CTA button', spacer: 'Spacer', logo_strip: 'Logo strip',
@@ -201,7 +202,7 @@
 		shop_grid: 'commerce', category_grid: 'commerce',
 		accordion: 'content', listicle: 'content', reviews_listicle: 'content', listicle_faqs: 'content', text_block: 'content', gallery: 'content',
 		promo_offer: 'commerce',
-		split_features: 'content', split_value: 'commerce', feature_highlights: 'content',
+		split_features: 'content', split_value: 'commerce', price_comparison: 'commerce', feature_highlights: 'content',
 		order_handling: 'content',
 		cta: 'content', spacer: 'content',
 		video: 'content',
@@ -221,6 +222,7 @@
 		trust_bar: ['homepage','shop','pdp','pages'],
 		split_features: ['homepage','shop','pdp','pages'],
 		split_value: ['homepage','shop','pdp','pages'],
+		price_comparison: ['homepage','shop','pdp','pages'],
 		feature_highlights: ['homepage','shop','pdp','pages'],
 		order_handling: ['homepage','shop','pdp','pages'],
 		product_slider: ['homepage','shop','pdp','pages'],
@@ -470,12 +472,45 @@
 				cta_href: '/shop',
 			};
 		}
+		if (type === 'price_comparison') {
+			return {
+				headline: 'Priced Below The Market, Guaranteed.',
+				body: 'We watch pricing across the research peptide market and adjust ours to stay below verified competitors — for the same purity, batch documentation, and fulfillment standards.',
+				bullets: [
+					{ variant: 'globe', headline: 'We watch the market', description: 'Daily monitoring of comparable SKUs from verified research peptide vendors.' },
+					{ variant: 'price_search', headline: 'We price to beat it', description: 'When a verified competitor undercuts us on an apples-to-apples match, we adjust.' },
+					{ variant: 'award', headline: 'Apples-to-apples, always', description: 'Same dose, purity tier, and documentation standard — no bait-and-switch SKUs.' },
+				],
+				cta_label: 'Browse Catalog',
+				cta_href: '/shop',
+				status_label: 'LIVE PRICE COMPARISON',
+				product_label: 'BPC-157 5MG',
+				lowest_badge: 'LOWEST',
+				brand_name: '',
+				brand_price: '28.00',
+				brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
+				competitors: [
+					{ letter: 'A', name: 'Modern Aminos', price: '34.00' },
+					{ letter: 'B', name: 'Soma Chems', price: '39.99' },
+					{ letter: 'C', name: 'Onyx Research', price: '45.00' },
+					{ letter: 'D', name: 'Ascension Peptides', price: '55.00' },
+				],
+				footnote: 'Prices tracked from publicly listed research peptide vendors for comparable SKU, dose, and purity tier. Updated regularly; for research use only.',
+			};
+		}
 		if (type === 'listicle') {
 			return {
 				section_eyebrow: '',
 				hero_layout: 'editorial',
 				headline: '8 Reasons Researchers Choose Alyve For their Research Compounds',
 				bg_image: '',
+				hero_backdrop: 'modern',
+				vial_primary: '/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp',
+				vial_primary_alt: 'Alyve research-grade peptide vial',
+				vial_secondary: '/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp',
+				vial_secondary_alt: 'Alyve research-grade peptide vial',
+				vial_tertiary: '/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp',
+				vial_tertiary_alt: 'Alyve research-grade peptide vial',
 				trust_brand: 'Alyve Peptides',
 				trust_items: [
 					'99%+ HPLC Verified',
@@ -1379,7 +1414,14 @@
 				setVal(container, '[data-field="lc_section_eyebrow"]', cfg.section_eyebrow || '');
 				setVal(container, '[data-field="lc_hero_layout"]', cfg.hero_layout || 'editorial');
 				setVal(container, '[data-field="lc_headline"]', cfg.headline || '');
+				setVal(container, '[data-field="lc_hero_backdrop"]', cfg.hero_backdrop || 'modern');
 				setVal(container, '[data-field="lc_bg_image"]', cfg.bg_image || '');
+				setVal(container, '[data-field="lc_vial_primary"]', cfg.vial_primary || '');
+				setVal(container, '[data-field="lc_vial_primary_alt"]', cfg.vial_primary_alt || '');
+				setVal(container, '[data-field="lc_vial_secondary"]', cfg.vial_secondary || '');
+				setVal(container, '[data-field="lc_vial_secondary_alt"]', cfg.vial_secondary_alt || '');
+				setVal(container, '[data-field="lc_vial_tertiary"]', cfg.vial_tertiary || '');
+				setVal(container, '[data-field="lc_vial_tertiary_alt"]', cfg.vial_tertiary_alt || '');
 				setVal(container, '[data-field="lc_trust_brand"]', cfg.trust_brand || '');
 				setVal(container, '[data-field="lc_trust_items"]', listicleTrustItemsForInput(cfg.trust_items));
 				setVal(container, '[data-field="lc_hero_cta_image"]', cfg.hero_cta_image || '');
@@ -1400,6 +1442,7 @@
 				setVal(container, '[data-field="lc_cta_label"]', cfg.cta_label || '');
 				setVal(container, '[data-field="lc_cta_href"]', cfg.cta_href || '');
 				syncListicleBgMedia(container);
+				syncListicleVialMedia(container);
 				syncListicleHeroMedia(container);
 				syncListicleHeroCtaMedia(container);
 				syncListicleCoaEmbedMedia(container);
@@ -1675,6 +1718,32 @@
 					if (inputs[1]) inputs[1].value = item.description || '';
 				});
 				break;
+			case 'price_comparison':
+				setVal(container, '[data-field="pc_headline"]', cfg.headline || '');
+				setVal(container, '[data-field="pc_body"]', cfg.body || '');
+				setVal(container, '[data-field="pc_cta_label"]', cfg.cta_label || '');
+				setVal(container, '[data-field="pc_cta_href"]', cfg.cta_href || '');
+				setVal(container, '[data-field="pc_status_label"]', cfg.status_label || '');
+				setVal(container, '[data-field="pc_product_label"]', cfg.product_label || '');
+				setVal(container, '[data-field="pc_lowest_badge"]', cfg.lowest_badge || '');
+				setVal(container, '[data-field="pc_brand_name"]', cfg.brand_name || '');
+				setVal(container, '[data-field="pc_brand_price"]', cfg.brand_price || '');
+				setVal(container, '[data-field="pc_brand_tags"]', cfg.brand_tags || '');
+				setVal(container, '[data-field="pc_footnote"]', cfg.footnote || '');
+				populateRepeaterItems(container, '.wchs-pc-bullets', pcBulletsForAdmin(cfg), function (item, el) {
+					var sel = el.querySelector('[data-field="pc_bullet_variant"]');
+					if (sel) sel.value = item.variant || 'globe';
+					var inputs = el.querySelectorAll('input[type="text"]');
+					if (inputs[0]) inputs[0].value = item.headline || '';
+					if (inputs[1]) inputs[1].value = item.description || '';
+				});
+				populateRepeaterItems(container, '.wchs-pc-competitors', pcCompetitorsForAdmin(cfg), function (item, el) {
+					var inputs = el.querySelectorAll('input[type="text"]');
+					if (inputs[0]) inputs[0].value = item.letter || '';
+					if (inputs[1]) inputs[1].value = item.name || '';
+					if (inputs[2]) inputs[2].value = item.price || '';
+				});
+				break;
 			case 'order_handling':
 				setVal(container, '[data-field="oh_badge_text"]', cfg.badge_text || '');
 				setVal(container, '[data-field="oh_headline"]', cfg.headline || '');
@@ -1837,7 +1906,14 @@
 				cfg.section_eyebrow = getVal(container, '[data-field="lc_section_eyebrow"]') || '';
 				cfg.hero_layout = getVal(container, '[data-field="lc_hero_layout"]') || 'editorial';
 				cfg.headline = getVal(container, '[data-field="lc_headline"]') || '';
+				cfg.hero_backdrop = getVal(container, '[data-field="lc_hero_backdrop"]') || 'modern';
 				cfg.bg_image = getVal(container, '[data-field="lc_bg_image"]') || '';
+				cfg.vial_primary = getVal(container, '[data-field="lc_vial_primary"]') || '';
+				cfg.vial_primary_alt = getVal(container, '[data-field="lc_vial_primary_alt"]') || '';
+				cfg.vial_secondary = getVal(container, '[data-field="lc_vial_secondary"]') || '';
+				cfg.vial_secondary_alt = getVal(container, '[data-field="lc_vial_secondary_alt"]') || '';
+				cfg.vial_tertiary = getVal(container, '[data-field="lc_vial_tertiary"]') || '';
+				cfg.vial_tertiary_alt = getVal(container, '[data-field="lc_vial_tertiary_alt"]') || '';
 				cfg.trust_brand = getVal(container, '[data-field="lc_trust_brand"]') || '';
 				cfg.trust_items = listicleTrustItemsFromInput(getVal(container, '[data-field="lc_trust_items"]'));
 				cfg.hero_cta_image = getVal(container, '[data-field="lc_hero_cta_image"]') || '';
@@ -2037,6 +2113,22 @@
 				cfg.items = readFhItems(container);
 				delete cfg.title;
 				break;
+			case 'price_comparison':
+				cfg.headline = getVal(container, '[data-field="pc_headline"]') || '';
+				cfg.body = getVal(container, '[data-field="pc_body"]') || '';
+				cfg.cta_label = getVal(container, '[data-field="pc_cta_label"]') || '';
+				cfg.cta_href = getVal(container, '[data-field="pc_cta_href"]') || '';
+				cfg.status_label = getVal(container, '[data-field="pc_status_label"]') || '';
+				cfg.product_label = getVal(container, '[data-field="pc_product_label"]') || '';
+				cfg.lowest_badge = getVal(container, '[data-field="pc_lowest_badge"]') || '';
+				cfg.brand_name = getVal(container, '[data-field="pc_brand_name"]') || '';
+				cfg.brand_price = getVal(container, '[data-field="pc_brand_price"]') || '';
+				cfg.brand_tags = getVal(container, '[data-field="pc_brand_tags"]') || '';
+				cfg.footnote = getVal(container, '[data-field="pc_footnote"]') || '';
+				cfg.bullets = readPcBullets(container);
+				cfg.competitors = readPcCompetitors(container);
+				delete cfg.title;
+				break;
 			case 'order_handling':
 				cfg.badge_text = getVal(container, '[data-field="oh_badge_text"]') || '';
 				cfg.headline = getVal(container, '[data-field="oh_headline"]') || '';
@@ -2144,6 +2236,34 @@
 				variant: variant,
 				headline: inputs[0] ? inputs[0].value : '',
 				description: inputs[1] ? inputs[1].value : '',
+			});
+		});
+		return items;
+	}
+
+	function readPcBullets(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-pc-bullets .wchs-accordion-item').forEach(function (el) {
+			var sel = el.querySelector('[data-field="pc_bullet_variant"]');
+			var variant = sel ? sel.value : 'globe';
+			var inputs = el.querySelectorAll('input[type="text"]');
+			items.push({
+				variant: variant,
+				headline: inputs[0] ? inputs[0].value : '',
+				description: inputs[1] ? inputs[1].value : '',
+			});
+		});
+		return items;
+	}
+
+	function readPcCompetitors(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-pc-competitors .wchs-accordion-item').forEach(function (el) {
+			var inputs = el.querySelectorAll('input[type="text"]');
+			items.push({
+				letter: inputs[0] ? inputs[0].value : '',
+				name: inputs[1] ? inputs[1].value : '',
+				price: inputs[2] ? inputs[2].value : '',
 			});
 		});
 		return items;
@@ -2342,6 +2462,40 @@
 		return out;
 	}
 
+	function pcBulletsForAdmin(cfg) {
+		var saved = cfg.bullets || [];
+		var defaults = defaultConfigFor('price_comparison').bullets || [];
+		if (!defaults.length) return saved;
+		if (!saved.length) return defaults.slice();
+		var out = [];
+		for (var i = 0; i < defaults.length; i++) {
+			out.push(Object.assign({}, defaults[i], saved[i] || {}));
+		}
+		if (saved.length > defaults.length) {
+			for (var j = defaults.length; j < saved.length; j++) {
+				out.push(saved[j]);
+			}
+		}
+		return out;
+	}
+
+	function pcCompetitorsForAdmin(cfg) {
+		var saved = cfg.competitors || [];
+		var defaults = defaultConfigFor('price_comparison').competitors || [];
+		if (!defaults.length) return saved;
+		if (!saved.length) return defaults.slice();
+		var out = [];
+		for (var i = 0; i < defaults.length; i++) {
+			out.push(Object.assign({}, defaults[i], saved[i] || {}));
+		}
+		if (saved.length > defaults.length) {
+			for (var j = defaults.length; j < saved.length; j++) {
+				out.push(saved[j]);
+			}
+		}
+		return out;
+	}
+
 	function ohStepsForAdmin(cfg) {
 		var saved = cfg.steps || [];
 		var defaults = defaultConfigFor('order_handling').steps || [];
@@ -2378,6 +2532,12 @@
 
 	function syncListicleBgMedia(ctx) {
 		syncListicleMediaField(ctx, '[data-field="lc_bg_image"]');
+	}
+
+	function syncListicleVialMedia(ctx) {
+		syncListicleMediaField(ctx, '[data-field="lc_vial_primary"]');
+		syncListicleMediaField(ctx, '[data-field="lc_vial_secondary"]');
+		syncListicleMediaField(ctx, '[data-field="lc_vial_tertiary"]');
 	}
 
 	function syncListicleHeroMedia(ctx) {
@@ -3369,6 +3529,32 @@
 			if (fhSel) fhSel.value = 'pin';
 			fhEl.querySelectorAll('input[type="text"]').forEach(function (inp) { inp.value = ''; });
 			fhWrap.appendChild(fhEl);
+		}
+		var addPcBulletModal = e.target.closest('.wchs-add-pc-bullet-modal');
+		if (addPcBulletModal) {
+			var pcBulletWrap = addPcBulletModal.previousElementSibling;
+			if (!pcBulletWrap || !pcBulletWrap.classList.contains('wchs-pc-bullets')) return;
+			var pcBulletTpl = pcBulletWrap.querySelector('.wchs-accordion-item');
+			if (!pcBulletTpl) return;
+			var pcBulletDiv = document.createElement('div');
+			pcBulletDiv.innerHTML = pcBulletTpl.outerHTML;
+			var pcBulletEl = pcBulletDiv.firstElementChild;
+			var pcBulletSel = pcBulletEl.querySelector('[data-field="pc_bullet_variant"]');
+			if (pcBulletSel) pcBulletSel.value = 'globe';
+			pcBulletEl.querySelectorAll('input[type="text"]').forEach(function (inp) { inp.value = ''; });
+			pcBulletWrap.appendChild(pcBulletEl);
+		}
+		var addPcCompetitorModal = e.target.closest('.wchs-add-pc-competitor-modal');
+		if (addPcCompetitorModal) {
+			var pcCompWrap = addPcCompetitorModal.previousElementSibling;
+			if (!pcCompWrap || !pcCompWrap.classList.contains('wchs-pc-competitors')) return;
+			var pcCompTpl = pcCompWrap.querySelector('.wchs-accordion-item');
+			if (!pcCompTpl) return;
+			var pcCompDiv = document.createElement('div');
+			pcCompDiv.innerHTML = pcCompTpl.outerHTML;
+			var pcCompEl = pcCompDiv.firstElementChild;
+			pcCompEl.querySelectorAll('input[type="text"]').forEach(function (inp) { inp.value = ''; });
+			pcCompWrap.appendChild(pcCompEl);
 		}
 		var addOhStepModal = e.target.closest('.wchs-add-oh-step-modal');
 		if (addOhStepModal) {
