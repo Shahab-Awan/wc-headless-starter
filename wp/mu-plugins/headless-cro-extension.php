@@ -738,6 +738,10 @@ function wchs_cro_product_data( $product ) {
 		'coa_batch'      => wchs_cro_coa_meta( $product_id, '_wchs_coa_batch', $parent_id ),
 		'coa_lab'        => wchs_cro_coa_meta( $product_id, '_wchs_coa_lab', $parent_id ),
 		'coa_metrics'    => wchs_cro_coa_metrics( $product_id, $parent_id ),
+		'back_in_stock'  => function_exists( 'wchs_product_back_in_stock_active' )
+			? wchs_product_back_in_stock_active( $product_id )
+				|| ( $parent_id > 0 && wchs_product_back_in_stock_active( $parent_id ) )
+			: false,
 	];
 }
 
@@ -808,6 +812,12 @@ function wchs_cro_product_schema() {
 					'value' => [ 'type' => 'string' ],
 				],
 			],
+		],
+		'back_in_stock' => [
+			'description' => 'Whether the product should show a Back in stock card badge.',
+			'type'        => 'boolean',
+			'context'     => [ 'view', 'edit' ],
+			'readonly'    => true,
 		],
 	];
 }

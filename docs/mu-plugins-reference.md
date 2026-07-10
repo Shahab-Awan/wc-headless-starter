@@ -17,6 +17,7 @@ does NOT own, and gotchas worth knowing before you modify it.
 | [`headless-abandoned-cart.php`](#headless-abandoned-cart) | Capture + email-recover abandoned checkouts |
 | [`headless-access-control.php`](#headless-access-control) | 4-mode site gating (maintenance / locked / browse-only / open) |
 | [`headless-address-validation.php`](#headless-address-validation) | EasyPost address verification at checkout |
+| [`headless-back-in-stock.php`](#headless-back-in-stock) | Product checkbox → 20-day “Back in stock” card badge |
 | [`headless-cart-bridge.php`](#headless-cart-bridge) | JWT → classic WC session handoff for native checkout |
 | [`headless-funnelkit-cart.php`](#headless-funnelkit-cart) | Optional FunnelKit Cart on SPA (sync + shell iframe) |
 | [`headless-funnelkit-compat.php`](#headless-funnelkit-compat) | FunnelKit Store Checkout handoff path + checkout chrome skip |
@@ -118,6 +119,16 @@ does NOT own, and gotchas worth knowing before you modify it.
 - API key plaintext in admin option. Rotate if admin panel breaches.
 - Network failure: configure fail-open vs fail-closed per site. Default fails open.
 - Requires address shape matching EasyPost's schema (street1/street2/city/state/zip/country).
+
+---
+
+## headless-back-in-stock
+
+Owns the product General-tab checkbox **Show Back in stock**. When enabled,
+stores a 20-day expiry and exposes `extensions.wchs_cro.back_in_stock` via
+`headless-cro-extension.php` so product cards can render a black badge.
+
+Does not own stock status itself — OOS products still show Out of stock.
 
 ---
 

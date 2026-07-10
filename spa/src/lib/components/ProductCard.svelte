@@ -3,7 +3,6 @@
 	import { competitorSavingsPct as savingsPctForProduct } from '$lib/utils/competitor-savings';
 	import { config } from '$lib/config.svelte';
 	import { canPurchase, isOutOfStock } from '$lib/wc/stock';
-	import { noteProductStockStatus } from '$lib/wc/restock-badge.svelte';
 
 	type ProductAttributeTerm = { id?: number; name: string; slug?: string };
 
@@ -36,6 +35,7 @@
 				regular_price: number;
 				tier_type: 'fixed' | 'percentage' | null;
 				tiers: { min_qty: number; savings_pct: number }[];
+				back_in_stock?: boolean;
 			};
 		};
 	};
@@ -56,13 +56,14 @@
 		selectCtaLabel?: string;
 	} = $props();
 
-	let showBackInStock = $state(false);
-
 	const cro = $derived(product.extensions?.wchs_cro);
 	const hasVariations = $derived(!!(product.has_options && product.prices.price_range));
 	const inStock = $derived(canPurchase(product));
 	const outOfStock = $derived(isOutOfStock(product));
 	const productHref = $derived(`/product/${product.slug}`);
+	const showBackInStock = $derived(
+		!outOfStock && !highlightBadge && Boolean(cro?.back_in_stock)
+	);
 
 	const maxTierPct = $derived.by(() => {
 		if (!cro?.tiers?.length) return 0;
@@ -140,12 +141,6 @@
 
 	const dosePill = $derived(formatDosePill(product));
 
-	$effect(() => {
-		if (typeof window === 'undefined') return;
-		showBackInStock =
-			!outOfStock && !highlightBadge && noteProductStockStatus(product.id, outOfStock);
-	});
-
 	const salePercent = $derived.by(() => {
 		if (maxTierPct > 0) return Math.round(maxTierPct);
 		const reg = parseFloat(product.prices.regular_price ?? '0');
@@ -185,16 +180,19 @@
 	}
 </script>
 
-<div class="store-card" class:is-oos={outOfStock} class:store-card--highlight={!!highlightBadge && !outOfStock}>
+<div class="store-card" class:is-oos={outOfStock} class:store-card--highlight={!!highlightBadge && !outOfStock} class:store-card--restock={showBackInStock}>
 	<a
 		class="store-card__media-link"
 		class:store-card__media-link--highlight={!!highlightBadge && !outOfStock}
+		class:store-card__media-link--restock={showBackInStock}
 		href={productHref}
 		aria-label={product.name}
 		onclick={reportProductLinkIntent}
 	>
 		{#if highlightBadge && !outOfStock}
 			<span class="store-card__badge store-card__badge--highlight">{highlightBadge}</span>
+		{:else if showBackInStock}
+			<span class="store-card__badge store-card__badge--restock">Back in stock</span>
 		{/if}
 		<div class="store-card__media">
 			{#if product.images[0]}
@@ -219,9 +217,7 @@
 			{/if}
 			{#if outOfStock}
 				<span class="store-card__badge store-card__badge--oos">Out of stock</span>
-			{:else if showBackInStock}
-				<span class="store-card__badge store-card__badge--restock">Back in stock</span>
-			{:else if product.on_sale && !highlightBadge}
+			{:else if product.on_sale && !highlightBadge && !showBackInStock}
 				<span class="store-card__badge">{saleBadgeRendered}</span>
 			{/if}
 			{#if dosePill && !hideDosePill}
@@ -305,7 +301,8 @@
 		text-decoration: none;
 	}
 
-	.store-card__media-link--highlight {
+	.store-card__media-link--highlight,
+	.store-card__media-link--restock {
 		position: relative;
 	}
 
@@ -372,6 +369,10 @@
 		background: var(--accent);
 		color: var(--accent-fg, #fff);
 	}
+	.store-card__badge--restock {
+		background: #111;
+		color: #fff;
+	}
 
 	.store-card--highlight .store-card__media {
 		border: 1px solid var(--accent);
@@ -379,11 +380,13 @@
 	}
 
 	@media (max-width: 820px) {
-		.store-card--highlight .store-card__media-link--highlight {
+		.store-card--highlight .store-card__media-link--highlight,
+		.store-card--restock .store-card__media-link--restock {
 			padding-top: 11px;
 		}
 
-		.store-card--highlight .store-card__badge--highlight {
+		.store-card--highlight .store-card__badge--highlight,
+		.store-card--restock .store-card__badge--restock {
 			top: 11px;
 			left: 50%;
 			right: auto;
@@ -391,8 +394,6 @@
 			padding: 5px 18px 6px;
 			border-radius: var(--card-button-radius, 14px);
 			border: 2px solid var(--bg);
-			background: var(--accent);
-			color: var(--accent-fg, #fff);
 			font-size: 9px;
 			font-weight: 700;
 			letter-spacing: 0.06em;
@@ -402,16 +403,18 @@
 			max-width: calc(100% - 12px);
 			z-index: 2;
 		}
+
+		.store-card--highlight .store-card__badge--highlight {
+			background: var(--accent);
+			color: var(--accent-fg, #fff);
+		}
+
+		.store-card--restock .store-card__badge--restock {
+			background: #111;
+			color: #fff;
+		}
 	}
 
-	.store-card__badge--restock {
-		background: #f59e0b;
-		color: #111827;
-	}
-	:global(html[data-theme='dark']) .store-card__badge--restock {
-		background: #fbbf24;
-		color: #111827;
-	}
 	.store-card__dose-pill {
 		position: absolute;
 		bottom: 10px;

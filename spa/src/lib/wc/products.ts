@@ -46,6 +46,7 @@ export type WchsCroProduct = {
 	coa_batch?: string;
 	coa_lab?: string;
 	coa_metrics?: WchsCoaMetric[];
+	back_in_stock?: boolean;
 };
 
 export type StoreProductCategory = { id: number; name: string; slug: string };
