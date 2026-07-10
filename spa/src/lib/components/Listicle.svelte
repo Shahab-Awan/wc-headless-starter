@@ -1483,38 +1483,25 @@
 		}
 
 		.listicle__hero-band {
-			display: flex;
-			flex-direction: column;
-			align-items: stretch;
 			width: 100vw;
 			max-width: 100vw;
 			margin-left: calc(50% - 50vw);
 			margin-right: calc(50% - 50vw);
 			min-height: 0;
-			padding: clamp(20px, 4vw, 28px) 0 clamp(32px, 5vw, 48px);
+			padding: clamp(88px, 22vw, 120px) clamp(14px, 4vw, 20px) clamp(32px, 5vw, 48px);
 		}
 
-		.listicle__hero-vials {
-			position: relative;
-			inset: auto;
-			width: 100%;
-			height: clamp(84px, 22vw, 120px);
-			margin: 0 0 clamp(14px, 3.5vw, 22px);
-			flex-shrink: 0;
-		}
-
+		/* Keep vials floating in the same band (no separate strip / divider). */
 		.listicle__hero-vial--left-top {
-			left: clamp(8px, 2vw, 14px);
-			top: 10%;
-			bottom: auto;
-			width: min(28vw, 96px);
+			left: clamp(4px, 1.5vw, 10px);
+			top: 2%;
+			width: min(26vw, 92px);
 		}
 
 		.listicle__hero-vial--right-top {
-			right: clamp(8px, 2vw, 14px);
-			top: 0;
-			bottom: auto;
-			width: min(46vw, 172px);
+			right: clamp(4px, 1.5vw, 10px);
+			top: -2%;
+			width: min(38vw, 140px);
 		}
 
 		.listicle__hero-vial--left-bottom {
@@ -1522,7 +1509,7 @@
 		}
 
 		.listicle__hero-band-inner {
-			padding-inline: clamp(14px, 4vw, 20px);
+			padding-inline: 0;
 		}
 
 		.listicle__trust-strip {

@@ -807,18 +807,34 @@ body.has-mode-banner .site-header-drawer {
 
 @media (max-width: 639px) {
 	.site-header--logo-only {
+		display: flex;
 		justify-content: center;
+		align-items: center;
 		position: relative;
+		min-height: 0;
+		height: auto;
+		padding: 6px 16px;
 	}
 	.site-header--logo-only .site-header__brand {
-		position: absolute;
-		left: 50%;
-		top: 50%;
-		transform: translate(-50%, -50%);
+		position: static;
+		left: auto;
+		top: auto;
+		transform: none;
 		width: auto;
 		max-width: calc(100% - 32px);
 		flex: none;
-		text-align: center;
+		display: inline-flex;
+		align-items: center;
 		justify-content: center;
+		line-height: 0;
+		text-align: center;
+	}
+	.site-header--logo-only .site-header__logo {
+		display: block;
+		height: 24px;
+		margin-right: 0;
+	}
+	.site-header--logo-only .site-header__landing-cta {
+		display: none;
 	}
 }
