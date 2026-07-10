@@ -189,6 +189,16 @@
 	color: var(--wchs-mc-fg);
 }
 
+.wchs-mini-cart__now--free {
+	color: var(--wchs-mc-teal);
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+.wchs-mini-cart__item.is-shipping-protection .wchs-mini-cart__stepper {
+	display: none;
+}
+
 .wchs-mini-cart__remove {
 	display: inline-flex;
 	align-items: center;

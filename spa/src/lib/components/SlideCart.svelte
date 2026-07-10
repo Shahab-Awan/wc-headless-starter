@@ -25,11 +25,18 @@
 		shippingProtectionTierIndex
 	} from '$lib/shipping-protection';
 	import { clampCartLineQty } from '$lib/cart/bundle-qty';
+	import {
+		findPurchasableDefaultSelection,
+		findVariationId,
+		getBacWaterProduct,
+		getVariations
+	} from '$lib/wc/products';
 
 	let fontsReady = $state(false);
 	let checkouting = $state(false);
 	let shipProtectBusy = $state(false);
 	let checkoutPlusOn = $state(true);
+	let bacPaidBusy = $state(false);
 
 	let shipProtectTierTracked = -1;
 	let checkoutPlusTipOpen = $state(false);
@@ -106,6 +113,33 @@
 		const next = resolvedQty(item, current + 1);
 		flashKey(key);
 		void cart.updateItem(key, next);
+	}
+
+	/** Free BAC stays qty 1 / $0; + adds a separate paid BAC line. */
+	async function incrementFreeBacGift(key: string) {
+		if (bacPaidBusy) return;
+		bacPaidBusy = true;
+		flashKey(key);
+		try {
+			const product = await getBacWaterProduct();
+			if (!product) return;
+			if (product.has_options && product.variations.length > 0) {
+				const variations = await getVariations(product.variations.map((v) => v.id));
+				const defaults = findPurchasableDefaultSelection(product, variations);
+				if (!defaults) return;
+				const vid = findVariationId(product.variations, defaults);
+				if (!vid) return;
+				const variation = Object.entries(defaults).map(([attribute, value]) => ({
+					attribute,
+					value
+				}));
+				await cart.addItem(vid, 1, variation, { clicked_from: 'slide_cart_free_bac_extra' });
+			} else {
+				await cart.addItem(product.id, 1, [], { clicked_from: 'slide_cart_free_bac_extra' });
+			}
+		} finally {
+			bacPaidBusy = false;
+		}
 	}
 
 	function flashKey(key: string) {
@@ -422,7 +456,32 @@
 							</div>
 
 							<div class="fkcart-item__foot">
-								{#if !isFreeGift && !item.sold_individually && item.quantity_limits.editable}
+								{#if isFreeGift}
+									<div class="fkcart-qty" role="group" aria-label="Quantity for {item.name}">
+										<button
+											type="button"
+											class="fkcart-qty__btn"
+											onclick={() => cart.removeItem(item.key)}
+											aria-label="Remove free BAC water"
+										>
+											<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+												<path d="M5 12h14" />
+											</svg>
+										</button>
+										<span class="fkcart-qty__value tabular-nums" aria-live="polite">1</span>
+										<button
+											type="button"
+											class="fkcart-qty__btn"
+											onclick={() => void incrementFreeBacGift(item.key)}
+											disabled={bacPaidBusy || checkouting}
+											aria-label="Add another BAC water (paid)"
+										>
+											<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+												<path d="M12 5v14M5 12h14" />
+											</svg>
+										</button>
+									</div>
+								{:else if !item.sold_individually && item.quantity_limits.editable}
 									<div class="fkcart-qty" role="group" aria-label="Quantity for {item.name}">
 										<button
 											type="button"

@@ -1200,6 +1200,28 @@ function wchs_bac_water_default_add_args(): array {
 }
 
 /**
+ * Add paid BAC water (no free-gift flag). Used when the shopper increases
+ * qty on the free gift line — extras stay charged at catalog price.
+ */
+function wchs_bac_water_add_paid( int $qty = 1 ): bool {
+	if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+		return false;
+	}
+	$qty  = max( 1, $qty );
+	$args = wchs_bac_water_default_add_args();
+	if ( (int) ( $args['product_id'] ?? 0 ) < 1 ) {
+		return false;
+	}
+	$key = WC()->cart->add_to_cart(
+		(int) $args['product_id'],
+		$qty,
+		(int) $args['variation_id'],
+		(array) $args['variation']
+	);
+	return is_string( $key ) && $key !== '';
+}
+
+/**
  * Auto-add/remove the free BAC water gift when the cart crosses the rewards threshold.
  */
 function wchs_sync_free_bac_water_gift(): void {

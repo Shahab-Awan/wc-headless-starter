@@ -87,6 +87,8 @@ function wchs_checkout_mini_cart_fallback_css(): string {
 .wchs-mini-cart__was{font-size:12px;font-weight:500;color:var(--wchs-mc-was);text-decoration:line-through}
 .wchs-mini-cart__was .amount,.wchs-mini-cart__now .amount{color:inherit}
 .wchs-mini-cart__now{font-size:14px;font-weight:600;color:var(--wchs-mc-fg)}
+.wchs-mini-cart__now--free{color:var(--wchs-mc-teal);text-transform:uppercase;letter-spacing:.02em}
+.wchs-mini-cart__item.is-shipping-protection .wchs-mini-cart__stepper{display:none}
 .wchs-mini-cart__remove{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:1px solid #c5cad1;border-radius:50%;background:transparent;color:#9aa1aa;font-size:16px;line-height:1;cursor:pointer}
 .wchs-mini-cart__remove:hover{border-color:#8b939e;color:#5b6470}
 .wchs-mini-cart__coupon{display:flex;gap:8px;margin:16px 0 0}
@@ -178,6 +180,17 @@ function wchs_checkout_mini_cart_print_footer_js(): void {
 }
 
 /**
+ * @return bool
+ */
+function wchs_checkout_mini_cart_is_shipping_protection( array $line ): bool {
+	if ( ! function_exists( 'wchs_shipping_protection_product_id' ) ) {
+		return false;
+	}
+	$protect_id = wchs_shipping_protection_product_id();
+	return $protect_id > 0 && (int) ( $line['product_id'] ?? 0 ) === $protect_id;
+}
+
+/**
  * @return array{items:array<int,array<string,mixed>>,coupons:array<int,string>,subtotal:string,shipping:string,shipping_is_free:bool,total:string,savings_amount:string,savings_pct:int,empty:bool}
  */
 function wchs_checkout_mini_cart_payload(): array {
@@ -199,12 +212,22 @@ function wchs_checkout_mini_cart_payload(): array {
 			$thumb = wc_placeholder_img_src( 'woocommerce_gallery_thumbnail' );
 		}
 
+		$is_ship_protect = wchs_checkout_mini_cart_is_shipping_protection( $line );
+		$is_free_bac     = ! empty( $line['wchs_free_bac_gift'] );
+
 		$line_total = (float) ( $line['line_total'] ?? 0 );
 		$regular    = (float) $product->get_regular_price();
 		if ( $regular <= 0 && $product->is_type( 'variation' ) ) {
 			$parent = wc_get_product( $product->get_parent_id() );
 			if ( $parent ) {
 				$regular = (float) $parent->get_regular_price();
+			}
+		}
+		// Free gift uses set_price(0); pull catalog regular for the strikethrough.
+		if ( $is_free_bac && $regular <= 0 && function_exists( 'wchs_bac_water_product_id' ) ) {
+			$bac = wc_get_product( wchs_bac_water_product_id() );
+			if ( $bac instanceof WC_Product ) {
+				$regular = (float) $bac->get_regular_price();
 			}
 		}
 		$compare_line = $regular > 0 ? $regular * $qty : $line_total;
@@ -214,13 +237,17 @@ function wchs_checkout_mini_cart_payload(): array {
 		$compare_minor += max( $compare_line, $line_total );
 
 		$items[] = [
-			'key'           => (string) $key,
-			'name'          => $name,
-			'qty'           => $qty,
-			'thumb'         => $thumb,
-			'price'         => wc_price( $line_total ),
-			'compare_price' => $has_compare ? wc_price( $compare_line ) : '',
-			'has_compare'   => $has_compare,
+			'key'                   => (string) $key,
+			'name'                  => $name,
+			'qty'                   => $qty,
+			'thumb'                 => $thumb,
+			'price'                 => $is_free_bac ? '' : wc_price( $line_total ),
+			'price_label'           => $is_free_bac ? 'FREE' : '',
+			'compare_price'         => $has_compare ? wc_price( $compare_line ) : '',
+			'has_compare'           => $has_compare,
+			'is_shipping_protection'=> $is_ship_protect,
+			'is_free_bac_gift'      => $is_free_bac,
+			'qty_editable'          => ! $is_ship_protect,
 		];
 	}
 
@@ -263,39 +290,54 @@ function wchs_checkout_mini_cart_render( string $title = 'Your Cart' ): void {
 			<?php else : ?>
 				<ul class="wchs-mini-cart__items">
 					<?php foreach ( $data['items'] as $item ) : ?>
-						<li class="wchs-mini-cart__item" data-key="<?php echo esc_attr( $item['key'] ); ?>">
+						<?php
+						$item_classes = 'wchs-mini-cart__item';
+						if ( ! empty( $item['is_shipping_protection'] ) ) {
+							$item_classes .= ' is-shipping-protection';
+						}
+						if ( ! empty( $item['is_free_bac_gift'] ) ) {
+							$item_classes .= ' is-free-bac-gift';
+						}
+						?>
+						<li class="<?php echo esc_attr( $item_classes ); ?>" data-key="<?php echo esc_attr( $item['key'] ); ?>">
 							<div class="wchs-mini-cart__media">
 								<img src="<?php echo esc_url( $item['thumb'] ); ?>" alt="" width="56" height="56" loading="lazy" />
 								<span class="wchs-mini-cart__qty" aria-label="Quantity"><?php echo esc_html( (string) $item['qty'] ); ?></span>
 							</div>
 							<div class="wchs-mini-cart__info">
 								<p class="wchs-mini-cart__name"><?php echo esc_html( $item['name'] ); ?></p>
-								<div class="wchs-mini-cart__stepper" role="group" aria-label="<?php echo esc_attr( sprintf( 'Quantity for %s', $item['name'] ) ); ?>">
-									<button
-										type="button"
-										class="wchs-mini-cart__step"
-										data-action="qty-dec"
-										data-key="<?php echo esc_attr( $item['key'] ); ?>"
-										data-qty="<?php echo esc_attr( (string) $item['qty'] ); ?>"
-										aria-label="Decrease quantity"
-									>−</button>
-									<span class="wchs-mini-cart__step-val" aria-live="polite"><?php echo esc_html( (string) $item['qty'] ); ?></span>
-									<button
-										type="button"
-										class="wchs-mini-cart__step"
-										data-action="qty-inc"
-										data-key="<?php echo esc_attr( $item['key'] ); ?>"
-										data-qty="<?php echo esc_attr( (string) $item['qty'] ); ?>"
-										aria-label="Increase quantity"
-									>+</button>
-								</div>
+								<?php if ( ! empty( $item['qty_editable'] ) ) : ?>
+									<div class="wchs-mini-cart__stepper" role="group" aria-label="<?php echo esc_attr( sprintf( 'Quantity for %s', $item['name'] ) ); ?>">
+										<button
+											type="button"
+											class="wchs-mini-cart__step"
+											data-action="qty-dec"
+											data-key="<?php echo esc_attr( $item['key'] ); ?>"
+											data-qty="<?php echo esc_attr( (string) $item['qty'] ); ?>"
+											aria-label="Decrease quantity"
+										>−</button>
+										<span class="wchs-mini-cart__step-val" aria-live="polite"><?php echo esc_html( (string) $item['qty'] ); ?></span>
+										<button
+											type="button"
+											class="wchs-mini-cart__step"
+											data-action="qty-inc"
+											data-key="<?php echo esc_attr( $item['key'] ); ?>"
+											data-qty="<?php echo esc_attr( (string) $item['qty'] ); ?>"
+											aria-label="Increase quantity"
+										>+</button>
+									</div>
+								<?php endif; ?>
 							</div>
 							<div class="wchs-mini-cart__aside">
 								<div class="wchs-mini-cart__prices">
 									<?php if ( $item['has_compare'] ) : ?>
 										<span class="wchs-mini-cart__was"><?php echo wp_kses_post( $item['compare_price'] ); ?></span>
 									<?php endif; ?>
-									<span class="wchs-mini-cart__now"><?php echo wp_kses_post( $item['price'] ); ?></span>
+									<?php if ( $item['price_label'] !== '' ) : ?>
+										<span class="wchs-mini-cart__now wchs-mini-cart__now--free"><?php echo esc_html( $item['price_label'] ); ?></span>
+									<?php else : ?>
+										<span class="wchs-mini-cart__now"><?php echo wp_kses_post( $item['price'] ); ?></span>
+									<?php endif; ?>
 								</div>
 								<button
 									type="button"
@@ -457,6 +499,33 @@ function wchs_checkout_mini_cart_ajax_update_qty(): void {
 	if ( $key === '' ) {
 		wp_send_json_error( [ 'message' => 'Missing item.' ], 400 );
 	}
+
+	$cart_item = WC()->cart->get_cart_item( $key );
+	if ( ! is_array( $cart_item ) || $cart_item === [] ) {
+		wp_send_json_error( [ 'message' => 'Item not found.' ], 404 );
+	}
+
+	// Shipping protection is toggle-only — never change qty.
+	if ( wchs_checkout_mini_cart_is_shipping_protection( $cart_item ) ) {
+		wchs_checkout_mini_cart_ajax_html();
+		return;
+	}
+
+	// Free BAC gift stays qty 1 / $0. Extra units become a separate paid line.
+	if ( ! empty( $cart_item['wchs_free_bac_gift'] ) ) {
+		if ( $qty < 1 ) {
+			WC()->cart->remove_cart_item( $key );
+		} elseif ( $qty > 1 ) {
+			$extra = $qty - 1;
+			if ( function_exists( 'wchs_bac_water_add_paid' ) ) {
+				wchs_bac_water_add_paid( $extra );
+			}
+		}
+		wchs_checkout_mini_cart_after_mutate();
+		wchs_checkout_mini_cart_ajax_html();
+		return;
+	}
+
 	if ( $qty < 1 ) {
 		WC()->cart->remove_cart_item( $key );
 	} else {
