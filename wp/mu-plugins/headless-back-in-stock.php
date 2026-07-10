@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Headless Back In Stock Badge
  * Description: Product checkbox to show a "Back in stock" card badge for 20 days.
- * Version:     1.0.1
+ * Version:     1.0.3
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -45,7 +45,7 @@ function wchs_product_back_in_stock_active( int $product_id ): bool {
 }
 
 add_action(
-	'woocommerce_product_options_general_product_data',
+	'woocommerce_product_options_sku',
 	static function (): void {
 		global $post;
 		$product_id = $post instanceof \WP_Post ? (int) $post->ID : 0;
@@ -58,26 +58,26 @@ add_action(
 		if ( $checked && $until > time() ) {
 			$hint = sprintf(
 				/* translators: %s: localized date */
-				__( 'Badge visible until %s. This checkbox clears automatically after that.', 'wchs' ),
+				__( 'Active until %s. Unchecks automatically after that.', 'wchs' ),
 				wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $until )
 			);
 		}
 
-		echo '<div class="options_group">';
 		woocommerce_wp_checkbox(
 			[
-				'id'          => 'wchs_show_back_in_stock',
-				'label'       => __( 'Show Back in stock', 'wchs' ),
-				'description' => __( 'Shows a black “Back in stock” badge on product cards for 20 days. The checkbox unchecks itself when that window ends.', 'wchs' ),
-				'desc_tip'    => true,
-				'value'       => $checked ? 'yes' : 'no',
+				'id'            => 'wchs_show_back_in_stock',
+				'label'         => __( 'Show back in stock badge on PDP (activate for next 20 days)', 'wchs' ),
+				'description'   => __( 'Shows a black “Back in stock” badge on product cards for 20 days. The checkbox unchecks itself when that window ends.', 'wchs' ),
+				'desc_tip'      => true,
+				'value'         => $checked ? 'yes' : 'no',
+				'wrapper_class' => 'show_if_simple show_if_variable',
 			]
 		);
 		if ( $hint !== '' ) {
 			echo '<p class="form-field" style="margin-top:-8px"><span class="description">' . esc_html( $hint ) . '</span></p>';
 		}
-		echo '</div>';
-	}
+	},
+	1
 );
 
 add_action(

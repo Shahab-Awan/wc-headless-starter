@@ -124,7 +124,7 @@ does NOT own, and gotchas worth knowing before you modify it.
 
 ## headless-back-in-stock
 
-Owns the product General-tab checkbox **Show Back in stock**. When enabled,
+Owns the Inventory-tab checkbox **Show back in stock badge on PDP (activate for next 20 days)**. When enabled,
 stores a 20-day expiry and exposes `extensions.wchs_cro.back_in_stock` via
 `headless-cro-extension.php` so product cards can render a black badge.
 
