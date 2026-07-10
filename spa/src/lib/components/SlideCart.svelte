@@ -38,7 +38,7 @@
 	// briefly highlight it. Keyed by item.key → timestamp; CSS transition
 	// does the work.
 	let flashedKeys = $state<Record<string, number>>({});
-	let upsellMobileOpen = $state(true);
+	let upsellMobileOpen = $state(false);
 
 	onMount(async () => {
 		await pretext.ready();
@@ -61,6 +61,17 @@
 		if (checkouting) return;
 		checkouting = true;
 		try {
+			if (
+				checkoutPlusOn &&
+				shipProtectAvailable &&
+				!hasShipProtect &&
+				!shipProtectBusy &&
+				displayCartItems.length > 0
+			) {
+				await addShippingProtection();
+			} else if (!checkoutPlusOn && hasShipProtect) {
+				await removeShippingProtection();
+			}
 			window.location.href = await cart.beginCheckout();
 		} finally {
 			checkouting = false;
@@ -243,9 +254,9 @@
 		shipProtectBusy = true;
 		try {
 			await cart.addItem(pid, 1, [], {
-				clicked_from: 'slide_cart_ship_protect_toggle'
+				clicked_from: 'slide_cart_ship_protect_toggle',
+				openDrawer: false
 			});
-			await cart.fetch().catch(() => {});
 		} finally {
 			shipProtectBusy = false;
 		}
@@ -256,7 +267,6 @@
 		shipProtectBusy = true;
 		try {
 			await cart.removeItem(shipProtectLine.key);
-			await cart.fetch().catch(() => {});
 		} finally {
 			shipProtectBusy = false;
 		}
@@ -283,20 +293,13 @@
 	});
 
 	$effect(() => {
-		if (!cart.open || !checkoutPlusOn || hasShipProtect || shipProtectBusy) return;
-		if (!shipProtectAvailable) return;
-		if (displayCartItems.length === 0) return;
-		void addShippingProtection();
-	});
-
-	$effect(() => {
 		if (!hasShipProtect || !cart.cart) {
 			shipProtectTierTracked = -1;
 			return;
 		}
 		const tier = shippingProtectionTierIndex(shipProtectSubtotalMajor);
 		if (shipProtectTierTracked >= 0 && tier !== shipProtectTierTracked) {
-			void cart.fetch();
+			void cart.fetch({ silent: true });
 		}
 		shipProtectTierTracked = tier;
 	});

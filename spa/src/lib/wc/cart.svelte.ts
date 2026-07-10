@@ -10,7 +10,7 @@
  * and replay the adds. Users don't lose their cart after 48h.
  */
 
-import { request, currentCartToken, primeSession } from './store-api';
+import { request, currentCartToken } from './store-api';
 import {
 	readShadow,
 	writeShadow,
@@ -209,13 +209,7 @@ class CartStore {
 	}
 
 	private async ensureCartHandoffToken(): Promise<string | null> {
-		let token = currentCartToken();
-		if (token) return token;
-
-		await primeSession().catch(() => {});
-		token = currentCartToken();
-		if (token) return token;
-
+		if (currentCartToken()) return currentCartToken();
 		try {
 			await request<StoreApiCart>('/cart');
 		} catch {
@@ -272,8 +266,11 @@ class CartStore {
 		writeShadow(items);
 	}
 
-	async fetch() {
-		this.loading = true;
+	async fetch(options?: { silent?: boolean }) {
+		const silent = options?.silent ?? false;
+		if (!silent) {
+			this.loading = true;
+		}
 		this.error = null;
 		this.restored = false;
 		try {
@@ -284,7 +281,9 @@ class CartStore {
 		} catch (e) {
 			this.error = e instanceof Error ? e.message : String(e);
 		} finally {
-			this.loading = false;
+			if (!silent) {
+				this.loading = false;
+			}
 		}
 	}
 
@@ -393,14 +392,16 @@ class CartStore {
 		id: number,
 		quantity = 1,
 		variation: { attribute: string; value: string }[] = [],
-		analytics?: { clicked_from?: string },
+		analytics?: { clicked_from?: string; openDrawer?: boolean },
 	) {
 		const beforeQuantities = new Map((this.cart?.items ?? []).map((item) => [item.key, item.quantity]));
 		await this.mutate(
 			() => request<StoreApiCart>('/cart/add-item', { method: 'POST', body: { id, quantity, variation } }),
 			{ converge: false }
 		);
-		await this.openCartDrawer();
+		if (analytics?.openDrawer !== false) {
+			await this.openCartDrawer();
+		}
 		dispatch('added_to_cart', { id, quantity });
 		// GA4 + Omnisend + Klaviyo + Meta + TikTok + Pinterest ecommerce
 		// tracking — find the item in the cart to get name/price. Every
@@ -587,20 +588,25 @@ class CartStore {
 	}
 
 	async beginCheckout(): Promise<string> {
-		const hadVisibleItems = this.visibleItemCount() > 0;
-
 		await this.flushPendingQtyUpdates();
 
-		// Prime before fetch — Safari can drop sessionStorage between cart edits
-		// and checkout; a fresh GET /cart re-establishes Cart-Token + nonce.
-		await primeSession().catch(() => {});
-		await this.fetch().catch(() => {});
+		let token = currentCartToken();
+		const hadItems = this.visibleItemCount() > 0;
 
-		if (this.visibleItemCount() < 1 && hadVisibleItems) {
-			for (let attempt = 0; attempt < 2 && this.visibleItemCount() < 1; attempt++) {
-				await primeSession().catch(() => {});
-				await this.fetch().catch(() => {});
-			}
+		// Fast path: qty is synced and we already hold a cart token (in-memory
+		// or storage). Skip redundant GET /cart round-trips before navigation.
+		if (token && hadItems) {
+			this.fireCheckoutAnalytics();
+			return config.checkoutUrl(token);
+		}
+
+		// Slow path: one silent refresh re-establishes token + nonce (Safari).
+		await this.fetch({ silent: true }).catch(() => {});
+
+		token = currentCartToken();
+		if (!token) {
+			await this.fetch({ silent: true }).catch(() => {});
+			token = currentCartToken();
 		}
 
 		if (this.visibleItemCount() < 1) {
@@ -608,15 +614,21 @@ class CartStore {
 			return this.cartEntryUrl();
 		}
 
-		const token = await this.ensureCartHandoffToken();
+		token = token ?? (await this.ensureCartHandoffToken());
 		const href = token ? config.checkoutUrl(token) : this.wpCheckoutBaseUrl();
 
-		if (token && this.cart?.items?.length && typeof window !== 'undefined') {
-			const { trackCustomerLabsCheckoutMade } = await import('$lib/analytics');
-			trackCustomerLabsCheckoutMade(this.cart!);
-		}
+		this.fireCheckoutAnalytics();
 
 		return href;
+	}
+
+	private fireCheckoutAnalytics(): void {
+		if (!this.cart?.items?.length || typeof window === 'undefined') return;
+		void import('$lib/analytics').then(({ trackCustomerLabsCheckoutMade }) => {
+			if (this.cart?.items?.length) {
+				trackCustomerLabsCheckoutMade(this.cart);
+			}
+		});
 	}
 
 	/**
