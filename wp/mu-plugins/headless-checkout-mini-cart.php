@@ -99,9 +99,15 @@ function wchs_checkout_mini_cart_fallback_css(): string {
 .wchs-mini-cart__coupon-btn:hover{filter:brightness(.96)}
 .wchs-mini-cart__coupon-msg{margin:8px 0 0;font-size:12px;color:#b45309}
 .wchs-mini-cart__coupon-msg.is-error{color:#b91c1c}
-.wchs-mini-cart__coupon-list{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
-.wchs-mini-cart__coupon-list li{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;background:rgba(42,157,143,.12);color:var(--wchs-mc-teal);font-size:12px;font-weight:600}
-.wchs-mini-cart__coupon-remove{padding:0;border:0;background:transparent;color:inherit;font-size:14px;line-height:1;cursor:pointer}
+.wchs-mini-cart__row--coupon{align-items:center;color:var(--wchs-mc-teal);font-size:13px}
+.wchs-mini-cart__coupon-label{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0}
+.wchs-mini-cart__coupon-label-text{color:var(--wchs-mc-fg);font-size:14px}
+.wchs-mini-cart__coupon-code{display:inline-flex;align-items:center;gap:4px;min-width:0;font-weight:600;color:var(--wchs-mc-teal);word-break:break-all}
+.wchs-mini-cart__coupon-icon{flex-shrink:0;color:#9aa1aa}
+.wchs-mini-cart__coupon-value{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap}
+.wchs-mini-cart__coupon-amount{font-weight:600;color:var(--wchs-mc-teal)}
+.wchs-mini-cart__coupon-remove-link{padding:0;border:0;background:transparent;color:var(--wchs-mc-teal);font:inherit;font-size:12px;font-weight:600;line-height:1;cursor:pointer;text-decoration:none}
+.wchs-mini-cart__coupon-remove-link:hover{text-decoration:underline}
 .wchs-mini-cart__totals{margin-top:16px;padding-top:14px;border-top:1px solid rgba(0,0,0,.1);display:flex;flex-direction:column;gap:8px}
 .wchs-mini-cart__row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:var(--wchs-mc-fg)}
 .wchs-mini-cart__row--total{margin-top:4px;padding-top:10px;border-top:1px solid rgba(0,0,0,.1);font-size:18px;font-weight:700}
@@ -115,7 +121,7 @@ CSS;
 /** @return string */
 function wchs_checkout_mini_cart_fallback_js(): string {
 	return <<<'JS'
-(function(){"use strict";if(window.__wchsMiniCartBound)return;window.__wchsMiniCartBound=true;var cfg=window.wchsMiniCart||{};if(!cfg.ajaxUrl||!cfg.nonce)return;function rootFrom(el){return el&&el.closest?el.closest("[data-wchs-mini-cart]"):null}function setBusy(root,on){if(!root)return;root.classList.toggle("is-busy",!!on);var overlay=root.querySelector(".wchs-mini-cart__busy");if(overlay)overlay.hidden=!on}function triggerCheckoutRefresh(){try{if(window.jQuery){window.jQuery(document.body).trigger("update_checkout");window.jQuery(document.body).trigger("wc_fragment_refresh")}document.body.dispatchEvent(new CustomEvent("wchs_mini_cart_updated",{bubbles:true}))}catch(e){}}function replaceRoot(root,html){var wrap=document.createElement("div");wrap.innerHTML=html.trim();var next=wrap.querySelector("[data-wchs-mini-cart]")||wrap.firstElementChild;if(!next||!root.parentNode)return root;root.parentNode.replaceChild(next,root);return next}function post(action,fields){var body=new URLSearchParams();body.set("action",action);body.set("nonce",cfg.nonce);Object.keys(fields||{}).forEach(function(k){body.set(k,fields[k])});return fetch(cfg.ajaxUrl,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8"},body:body.toString()}).then(function(res){return res.json().then(function(json){if(!res.ok||!json||!json.success){var msg=(json&&json.data&&json.data.message)||"Something went wrong. Please try again.";throw new Error(msg)}return json.data})})}function run(root,action,fields){if(!root||root.classList.contains("is-busy"))return;var title=root.getAttribute("data-title")||"Your Cart";fields=fields||{};fields.title=title;setBusy(root,true);post(action,fields).then(function(data){if(data&&data.html){replaceRoot(root,data.html)}triggerCheckoutRefresh()}).catch(function(err){setBusy(root,false);var msgEl=root.querySelector("[data-coupon-msg]");if(msgEl){msgEl.hidden=false;msgEl.classList.add("is-error");msgEl.textContent=err.message||"Request failed."}else{window.alert(err.message||"Request failed.")}})}document.addEventListener("click",function(e){var btn=e.target&&e.target.closest?e.target.closest("[data-action]"):null;if(!btn)return;var root=rootFrom(btn);if(!root)return;var action=btn.getAttribute("data-action");if(action==="remove"){e.preventDefault();run(root,"wchs_mini_cart_remove",{key:btn.getAttribute("data-key")||""});return}if(action==="remove-coupon"){e.preventDefault();run(root,"wchs_mini_cart_remove_coupon",{code:btn.getAttribute("data-code")||""});return}if(action==="qty-inc"||action==="qty-dec"){e.preventDefault();var key=btn.getAttribute("data-key")||"";var current=parseInt(btn.getAttribute("data-qty")||"1",10);if(!key||!Number.isFinite(current))return;var nextQty=action==="qty-inc"?current+1:current-1;if(nextQty<1){run(root,"wchs_mini_cart_remove",{key:key})}else{run(root,"wchs_mini_cart_update_qty",{key:key,qty:String(nextQty)})}}});document.addEventListener("submit",function(e){var form=e.target&&e.target.closest?e.target.closest("[data-coupon-form]"):null;if(!form)return;var root=rootFrom(form);if(!root)return;e.preventDefault();var input=form.querySelector('input[name="coupon_code"]');var code=input?String(input.value||"").trim():"";var msgEl=root.querySelector("[data-coupon-msg]");if(msgEl){msgEl.hidden=true;msgEl.textContent=""}if(!code){if(msgEl){msgEl.hidden=false;msgEl.classList.add("is-error");msgEl.textContent="Enter a coupon code."}return}run(root,"wchs_mini_cart_apply_coupon",{code:code})})})();
+(function(){"use strict";if(window.__wchsMiniCartBound)return;window.__wchsMiniCartBound=true;var cfg=window.wchsMiniCart||{};if(!cfg.ajaxUrl||!cfg.nonce)return;var refreshTimer=null,refreshing=false;function rootFrom(el){return el&&el.closest?el.closest("[data-wchs-mini-cart]"):null}function activeRoot(){return document.querySelector("[data-wchs-mini-cart]")}function setBusy(root,on){if(!root)return;root.classList.toggle("is-busy",!!on);var overlay=root.querySelector(".wchs-mini-cart__busy");if(overlay)overlay.hidden=!on}function triggerCheckoutRefresh(){try{if(window.jQuery){window.jQuery(document.body).trigger("update_checkout");window.jQuery(document.body).trigger("wc_fragment_refresh")}document.body.dispatchEvent(new CustomEvent("wchs_mini_cart_updated",{bubbles:true}))}catch(e){}}function replaceRoot(root,html){var wrap=document.createElement("div");wrap.innerHTML=html.trim();var next=wrap.querySelector("[data-wchs-mini-cart]")||wrap.firstElementChild;if(!next||!root.parentNode)return root;root.parentNode.replaceChild(next,root);return next}function post(action,fields){var body=new URLSearchParams();body.set("action",action);body.set("nonce",cfg.nonce);Object.keys(fields||{}).forEach(function(k){body.set(k,fields[k])});return fetch(cfg.ajaxUrl,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8"},body:body.toString()}).then(function(res){return res.json().then(function(json){if(!res.ok||!json||!json.success){var msg=(json&&json.data&&json.data.message)||"Something went wrong. Please try again.";throw new Error(msg)}return json.data})})}function refreshFromServer(){var root=activeRoot();if(!root||refreshing)return;var title=root.getAttribute("data-title")||"Your Cart";refreshing=true;post("wchs_mini_cart_refresh",{title:title}).then(function(data){root=activeRoot()||root;if(data&&data.html)replaceRoot(root,data.html)}).catch(function(){}).then(function(){refreshing=false})}function scheduleRefreshFromCheckout(){if(refreshTimer)clearTimeout(refreshTimer);refreshTimer=setTimeout(function(){refreshTimer=null;refreshFromServer()},50)}function run(root,action,fields){if(!root||root.classList.contains("is-busy"))return;var title=root.getAttribute("data-title")||"Your Cart";fields=fields||{};fields.title=title;setBusy(root,true);post(action,fields).then(function(data){if(data&&data.html)replaceRoot(root,data.html);triggerCheckoutRefresh()}).catch(function(err){setBusy(root,false);var msgEl=root.querySelector("[data-coupon-msg]");if(msgEl){msgEl.hidden=false;msgEl.classList.add("is-error");msgEl.textContent=err.message||"Request failed."}else{window.alert(err.message||"Request failed.")}})}document.addEventListener("click",function(e){var btn=e.target&&e.target.closest?e.target.closest("[data-action]"):null;if(!btn)return;var root=rootFrom(btn);if(!root)return;var action=btn.getAttribute("data-action");if(action==="remove"){e.preventDefault();run(root,"wchs_mini_cart_remove",{key:btn.getAttribute("data-key")||""});return}if(action==="remove-coupon"){e.preventDefault();run(root,"wchs_mini_cart_remove_coupon",{code:btn.getAttribute("data-code")||""});return}if(action==="qty-inc"||action==="qty-dec"){e.preventDefault();var key=btn.getAttribute("data-key")||"";var current=parseInt(btn.getAttribute("data-qty")||"1",10);if(!key||!Number.isFinite(current))return;var nextQty=action==="qty-inc"?current+1:current-1;if(nextQty<1){run(root,"wchs_mini_cart_remove",{key:key})}else{run(root,"wchs_mini_cart_update_qty",{key:key,qty:String(nextQty)})}}});document.addEventListener("submit",function(e){var form=e.target&&e.target.closest?e.target.closest("[data-coupon-form]"):null;if(!form)return;var root=rootFrom(form);if(!root)return;e.preventDefault();var input=form.querySelector('input[name="coupon_code"]');var code=input?String(input.value||"").trim():"";var msgEl=root.querySelector("[data-coupon-msg]");if(msgEl){msgEl.hidden=true;msgEl.textContent=""}if(!code){if(msgEl){msgEl.hidden=false;msgEl.classList.add("is-error");msgEl.textContent="Enter a coupon code."}return}run(root,"wchs_mini_cart_apply_coupon",{code:code})});if(window.jQuery){window.jQuery(document.body).on("updated_checkout",scheduleRefreshFromCheckout)}})();
 JS;
 }
 
@@ -191,7 +197,112 @@ function wchs_checkout_mini_cart_is_shipping_protection( array $line ): bool {
 }
 
 /**
- * @return array{items:array<int,array<string,mixed>>,coupons:array<int,string>,subtotal:string,shipping:string,shipping_is_free:bool,total:string,savings_amount:string,savings_pct:int,empty:bool}
+ * Resolve shipping display from the same WC packages / chosen rates
+ * FunnelKit uses (ShipStation live rates land here after update_checkout).
+ *
+ * @return array{html:string,is_free:bool,pending:bool,is_plain:bool}
+ */
+function wchs_checkout_mini_cart_shipping_display( WC_Cart $cart ): array {
+	if ( ! $cart->needs_shipping() ) {
+		return [
+			'html'     => 'Free',
+			'is_free'  => true,
+			'pending'  => false,
+			'is_plain' => true,
+		];
+	}
+
+	$customer = function_exists( 'WC' ) ? WC()->customer : null;
+	$has_dest = $customer instanceof WC_Customer
+		&& (
+			$customer->get_shipping_country() !== ''
+			|| $customer->get_billing_country() !== ''
+			|| $customer->get_shipping_postcode() !== ''
+			|| $customer->get_billing_postcode() !== ''
+		);
+
+	if ( $has_dest && function_exists( 'WC' ) && WC()->shipping() ) {
+		$packages = WC()->shipping()->get_packages();
+		if ( empty( $packages ) ) {
+			$cart->calculate_shipping();
+			$packages = WC()->shipping()->get_packages();
+		}
+	} else {
+		$packages = function_exists( 'WC' ) && WC()->shipping()
+			? WC()->shipping()->get_packages()
+			: [];
+	}
+
+	$chosen     = ( function_exists( 'WC' ) && WC()->session )
+		? (array) WC()->session->get( 'chosen_shipping_methods', [] )
+		: [];
+	$cost       = 0.0;
+	$has_rate   = false;
+	$incl_tax   = $cart->display_prices_including_tax();
+
+	foreach ( $packages as $i => $package ) {
+		$method_id = isset( $chosen[ $i ] ) ? (string) $chosen[ $i ] : '';
+		if ( $method_id === '' || empty( $package['rates'][ $method_id ] ) ) {
+			continue;
+		}
+		/** @var WC_Shipping_Rate $rate */
+		$rate = $package['rates'][ $method_id ];
+		$has_rate = true;
+		$cost    += (float) $rate->get_cost();
+		if ( $incl_tax ) {
+			$cost += (float) $rate->get_shipping_tax();
+		}
+	}
+
+	if ( ! $has_rate ) {
+		$shipping_total = (float) $cart->get_shipping_total();
+		if ( $incl_tax ) {
+			$shipping_total += (float) $cart->get_shipping_tax();
+		}
+		$chosen_any = array_filter( array_map( 'strval', $chosen ) );
+		if ( empty( $chosen_any ) && $shipping_total <= 0.009 ) {
+			return [
+				'html'     => '—',
+				'is_free'  => false,
+				'pending'  => true,
+				'is_plain' => true,
+			];
+		}
+		if ( $shipping_total <= 0.009 ) {
+			return [
+				'html'     => 'Free',
+				'is_free'  => true,
+				'pending'  => false,
+				'is_plain' => true,
+			];
+		}
+		return [
+			'html'     => wc_price( $shipping_total ),
+			'is_free'  => false,
+			'pending'  => false,
+			'is_plain' => false,
+		];
+	}
+
+	if ( $cost <= 0.009 ) {
+		return [
+			'html'     => 'Free',
+			'is_free'  => true,
+			'pending'  => false,
+			'is_plain' => true,
+		];
+	}
+
+	return [
+		'html'     => wc_price( $cost ),
+		'is_free'  => false,
+		'pending'  => false,
+		'is_plain' => false,
+	];
+}
+
+/**
+ * @return array{items:array<int,array<string,mixed>>,coupons:array<int,string>,subtotal:string,shipping:string,shipping_is_free:bool,shipping_is_plain:bool,shipping_pending:bool,total:string,savings_amount:string,savings_pct:int,empty:bool}
  */
 function wchs_checkout_mini_cart_payload(): array {
 	$cart = WC()->cart;
@@ -251,13 +362,25 @@ function wchs_checkout_mini_cart_payload(): array {
 		];
 	}
 
-	$shipping_total = (float) $cart->get_shipping_total();
-	$needs_shipping = $cart->needs_shipping();
-	$shipping_free  = ! $needs_shipping || $shipping_total <= 0.009;
+	$ship = wchs_checkout_mini_cart_shipping_display( $cart );
 
 	$coupons = [];
 	foreach ( $cart->get_applied_coupons() as $code ) {
-		$coupons[] = (string) $code;
+		$code = (string) $code;
+		// 2nd arg is $ex_tax: true = amount without tax (default Woo review table).
+		$ex_tax = ! $cart->display_prices_including_tax();
+		$amount = (float) $cart->get_coupon_discount_amount( $code, $ex_tax );
+		if ( $amount < 0.009 && method_exists( $cart, 'get_coupon_discount_totals' ) ) {
+			$totals_map = $cart->get_coupon_discount_totals();
+			if ( isset( $totals_map[ $code ] ) ) {
+				$amount = (float) $totals_map[ $code ];
+			}
+		}
+		$coupons[] = [
+			'code'          => $code,
+			'discount_html' => '-' . wp_strip_all_tags( wc_price( $amount ) ),
+			'amount'        => $amount,
+		];
 	}
 
 	$savings_pct = $compare_minor > 0
@@ -265,15 +388,17 @@ function wchs_checkout_mini_cart_payload(): array {
 		: 0;
 
 	return [
-		'items'            => $items,
-		'coupons'          => $coupons,
-		'subtotal'         => wc_price( (float) $cart->get_subtotal() ),
-		'shipping'         => $shipping_free ? 'Free' : wc_price( $shipping_total ),
-		'shipping_is_free' => $shipping_free,
-		'total'            => wc_price( (float) $cart->get_total( 'edit' ) ),
-		'savings_amount'   => $savings_minor > 0.009 ? wc_price( $savings_minor ) : '',
-		'savings_pct'      => $savings_pct,
-		'empty'            => count( $items ) < 1,
+		'items'              => $items,
+		'coupons'            => $coupons,
+		'subtotal'           => wc_price( (float) $cart->get_subtotal() ),
+		'shipping'           => $ship['html'],
+		'shipping_is_free'   => $ship['is_free'],
+		'shipping_is_plain'  => $ship['is_plain'],
+		'shipping_pending'   => $ship['pending'],
+		'total'              => wc_price( (float) $cart->get_total( 'edit' ) ),
+		'savings_amount'     => $savings_minor > 0.009 ? wc_price( $savings_minor ) : '',
+		'savings_pct'        => $savings_pct,
+		'empty'              => count( $items ) < 1,
 	];
 }
 
@@ -366,31 +491,45 @@ function wchs_checkout_mini_cart_render( string $title = 'Your Cart' ): void {
 				</form>
 				<p class="wchs-mini-cart__coupon-msg" data-coupon-msg hidden></p>
 
-				<?php if ( ! empty( $data['coupons'] ) ) : ?>
-					<ul class="wchs-mini-cart__coupon-list">
-						<?php foreach ( $data['coupons'] as $code ) : ?>
-							<li>
-								<span><?php echo esc_html( $code ); ?></span>
-								<button
-									type="button"
-									class="wchs-mini-cart__coupon-remove"
-									data-action="remove-coupon"
-									data-code="<?php echo esc_attr( $code ); ?>"
-									aria-label="<?php echo esc_attr( sprintf( 'Remove coupon %s', $code ) ); ?>"
-								>×</button>
-							</li>
-						<?php endforeach; ?>
-					</ul>
-				<?php endif; ?>
-
 				<div class="wchs-mini-cart__totals">
 					<div class="wchs-mini-cart__row">
 						<span>Subtotal</span>
 						<span><?php echo wp_kses_post( $data['subtotal'] ); ?></span>
 					</div>
-					<div class="wchs-mini-cart__row">
+					<?php foreach ( $data['coupons'] as $coupon ) : ?>
+						<div class="wchs-mini-cart__row wchs-mini-cart__row--coupon">
+							<span class="wchs-mini-cart__coupon-label">
+								<span class="wchs-mini-cart__coupon-label-text">Coupon</span>
+								<span class="wchs-mini-cart__coupon-code" title="<?php echo esc_attr( $coupon['code'] ); ?>">
+									<svg class="wchs-mini-cart__coupon-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+										<circle cx="7.5" cy="7.5" r="1.5" fill="currentColor" stroke="none" />
+									</svg>
+									<?php echo esc_html( $coupon['code'] ); ?>
+								</span>
+							</span>
+							<span class="wchs-mini-cart__coupon-value">
+								<span class="wchs-mini-cart__coupon-amount"><?php echo esc_html( $coupon['discount_html'] ); ?></span>
+								<button
+									type="button"
+									class="wchs-mini-cart__coupon-remove-link"
+									data-action="remove-coupon"
+									data-code="<?php echo esc_attr( $coupon['code'] ); ?>"
+								>[Remove]</button>
+							</span>
+						</div>
+					<?php endforeach; ?>
+					<div class="wchs-mini-cart__row" data-shipping-row<?php echo ! empty( $data['shipping_pending'] ) ? ' data-shipping-pending' : ''; ?>>
 						<span>Shipping</span>
-						<span><?php echo $data['shipping_is_free'] ? esc_html( $data['shipping'] ) : wp_kses_post( $data['shipping'] ); ?></span>
+						<span>
+							<?php
+							if ( ! empty( $data['shipping_is_plain'] ) ) {
+								echo esc_html( $data['shipping'] );
+							} else {
+								echo wp_kses_post( $data['shipping'] );
+							}
+							?>
+						</span>
 					</div>
 					<div class="wchs-mini-cart__row wchs-mini-cart__row--total">
 						<span>Total</span>
@@ -417,6 +556,8 @@ function wchs_checkout_mini_cart_render( string $title = 'Your Cart' ): void {
 
 function wchs_checkout_mini_cart_after_mutate(): void {
 	if ( function_exists( 'WC' ) && WC()->cart ) {
+		// Recalc packages so ShipStation / chosen rates feed get_shipping_total().
+		WC()->cart->calculate_shipping();
 		WC()->cart->calculate_totals();
 	}
 	if ( function_exists( 'wchs_push_classic_cart_to_bridged_store_api' ) ) {
@@ -535,6 +676,15 @@ function wchs_checkout_mini_cart_ajax_update_qty(): void {
 	wchs_checkout_mini_cart_ajax_html();
 }
 
+function wchs_checkout_mini_cart_ajax_refresh(): void {
+	wchs_checkout_mini_cart_verify();
+	if ( function_exists( 'WC' ) && WC()->cart ) {
+		WC()->cart->calculate_shipping();
+		WC()->cart->calculate_totals();
+	}
+	wchs_checkout_mini_cart_ajax_html();
+}
+
 add_action( 'wp_ajax_wchs_mini_cart_remove', 'wchs_checkout_mini_cart_ajax_remove' );
 add_action( 'wp_ajax_nopriv_wchs_mini_cart_remove', 'wchs_checkout_mini_cart_ajax_remove' );
 add_action( 'wp_ajax_wchs_mini_cart_apply_coupon', 'wchs_checkout_mini_cart_ajax_apply_coupon' );
@@ -543,3 +693,5 @@ add_action( 'wp_ajax_wchs_mini_cart_remove_coupon', 'wchs_checkout_mini_cart_aja
 add_action( 'wp_ajax_nopriv_wchs_mini_cart_remove_coupon', 'wchs_checkout_mini_cart_ajax_remove_coupon' );
 add_action( 'wp_ajax_wchs_mini_cart_update_qty', 'wchs_checkout_mini_cart_ajax_update_qty' );
 add_action( 'wp_ajax_nopriv_wchs_mini_cart_update_qty', 'wchs_checkout_mini_cart_ajax_update_qty' );
+add_action( 'wp_ajax_wchs_mini_cart_refresh', 'wchs_checkout_mini_cart_ajax_refresh' );
+add_action( 'wp_ajax_nopriv_wchs_mini_cart_refresh', 'wchs_checkout_mini_cart_ajax_refresh' );

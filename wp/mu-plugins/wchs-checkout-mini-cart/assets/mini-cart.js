@@ -1,5 +1,5 @@
 /**
- * WCHS checkout mini-cart — remove / coupon AJAX + refresh FunnelKit checkout.
+ * WCHS checkout mini-cart — remove / coupon / qty AJAX + sync shipping after FunnelKit update_checkout.
  */
 (function () {
 	'use strict';
@@ -10,8 +10,15 @@
 	var cfg = window.wchsMiniCart || {};
 	if (!cfg.ajaxUrl || !cfg.nonce) return;
 
+	var refreshTimer = null;
+	var refreshing = false;
+
 	function rootFrom(el) {
 		return el && el.closest ? el.closest('[data-wchs-mini-cart]') : null;
+	}
+
+	function activeRoot() {
+		return document.querySelector('[data-wchs-mini-cart]');
 	}
 
 	function setBusy(root, on) {
@@ -24,6 +31,7 @@
 	function triggerCheckoutRefresh() {
 		try {
 			if (window.jQuery) {
+				// FunnelKit/ShipStation rates land on updated_checkout — refresh us then.
 				window.jQuery(document.body).trigger('update_checkout');
 				window.jQuery(document.body).trigger('wc_fragment_refresh');
 			}
@@ -36,7 +44,6 @@
 	function replaceRoot(root, html) {
 		var wrap = document.createElement('div');
 		wrap.innerHTML = html.trim();
-		// AJAX may return a <style> + cart; prefer the cart root node.
 		var next = wrap.querySelector('[data-wchs-mini-cart]') || wrap.firstElementChild;
 		if (!next || !root.parentNode) return root;
 		root.parentNode.replaceChild(next, root);
@@ -68,6 +75,34 @@
 		});
 	}
 
+	function refreshFromServer() {
+		var root = activeRoot();
+		if (!root || refreshing) return;
+		var title = root.getAttribute('data-title') || 'Your Cart';
+		refreshing = true;
+		post('wchs_mini_cart_refresh', { title: title })
+			.then(function (data) {
+				root = activeRoot() || root;
+				if (data && data.html) {
+					replaceRoot(root, data.html);
+				}
+			})
+			.catch(function () {
+				/* keep current totals */
+			})
+			.then(function () {
+				refreshing = false;
+			});
+	}
+
+	function scheduleRefreshFromCheckout() {
+		if (refreshTimer) clearTimeout(refreshTimer);
+		refreshTimer = setTimeout(function () {
+			refreshTimer = null;
+			refreshFromServer();
+		}, 50);
+	}
+
 	function run(root, action, fields) {
 		if (!root || root.classList.contains('is-busy')) return;
 		var title = root.getAttribute('data-title') || 'Your Cart';
@@ -79,6 +114,7 @@
 				if (data && data.html) {
 					replaceRoot(root, data.html);
 				}
+				// Shipping rates update after FunnelKit recalculates — second paint via updated_checkout.
 				triggerCheckoutRefresh();
 			})
 			.catch(function (err) {
@@ -148,4 +184,9 @@
 		}
 		run(root, 'wchs_mini_cart_apply_coupon', { code: code });
 	});
+
+	// When address / ShipStation rates change in FunnelKit, pull fresh shipping + total.
+	if (window.jQuery) {
+		window.jQuery(document.body).on('updated_checkout', scheduleRefreshFromCheckout);
+	}
 })();

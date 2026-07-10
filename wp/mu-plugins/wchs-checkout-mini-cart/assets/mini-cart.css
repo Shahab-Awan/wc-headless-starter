@@ -276,35 +276,68 @@
 	color: #b91c1c;
 }
 
-.wchs-mini-cart__coupon-list {
-	list-style: none !important;
-	margin: 10px 0 0 !important;
-	padding: 0 !important;
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
+.wchs-mini-cart__row--coupon {
+	align-items: center;
+	color: var(--wchs-mc-teal);
+	font-size: 13px;
 }
 
-.wchs-mini-cart__coupon-list li {
+.wchs-mini-cart__coupon-label {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+	min-width: 0;
+}
+
+.wchs-mini-cart__coupon-label-text {
+	color: var(--wchs-mc-fg);
+	font-size: 14px;
+}
+
+.wchs-mini-cart__coupon-code {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+	font-weight: 600;
+	color: var(--wchs-mc-teal);
+	word-break: break-all;
+}
+
+.wchs-mini-cart__coupon-icon {
+	flex-shrink: 0;
+	color: #9aa1aa;
+}
+
+.wchs-mini-cart__coupon-value {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	padding: 4px 8px;
-	border-radius: 999px;
-	background: rgba(42, 157, 143, 0.12);
-	color: var(--wchs-mc-teal);
-	font-size: 12px;
-	font-weight: 600;
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
-.wchs-mini-cart__coupon-remove {
+.wchs-mini-cart__coupon-amount {
+	font-weight: 600;
+	color: var(--wchs-mc-teal);
+}
+
+.wchs-mini-cart__coupon-remove-link {
 	padding: 0;
 	border: 0;
 	background: transparent;
-	color: inherit;
-	font-size: 14px;
+	color: var(--wchs-mc-teal);
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
 	line-height: 1;
 	cursor: pointer;
+	text-decoration: none;
+}
+
+.wchs-mini-cart__coupon-remove-link:hover {
+	text-decoration: underline;
 }
 
 .wchs-mini-cart__totals {
