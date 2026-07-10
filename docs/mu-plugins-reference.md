@@ -124,9 +124,10 @@ does NOT own, and gotchas worth knowing before you modify it.
 
 ## headless-back-in-stock
 
-Owns the Inventory-tab checkbox **Show back in stock badge on PDP (activate for next 20 days)**. When enabled,
-stores a 20-day expiry and exposes `extensions.wchs_cro.back_in_stock` via
-`headless-cro-extension.php` so product cards can render a black badge.
+Owns the Inventory-tab checkbox **Show back in stock badge on PDP (activate for next 20 days)**.
+Auto-checks when product/variation stock rises from 0, requires sellable stock to stay on,
+exposes `extensions.wchs_cro.back_in_stock` via `headless-cro-extension.php`, and clears after
+20 days or when stock returns to 0.
 
 Does not own stock status itself — OOS products still show Out of stock.
 
