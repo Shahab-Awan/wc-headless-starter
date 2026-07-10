@@ -369,7 +369,14 @@
 			// cart shows empty, mutations fail with appropriate API errors.
 			try {
 				await primeSession();
-				await cart.fetch();
+				// Returning from FunnelKit/Elementor checkout: pull classic
+				// mini-cart qty edits into the Store API session first.
+				const syncedFromCheckout = await cart.refreshAfterExternalCartChange({
+					allowReferrer: true
+				});
+				if (!syncedFromCheckout) {
+					await cart.fetch();
+				}
 			} catch {
 				// Cart unavailable — swallow. The loading gate is already
 				// resolved by this point so the app renders regardless.
@@ -418,7 +425,10 @@
 		// The admin may have switched access modes while the user was away,
 		// or the user may have logged in/out in another tab. Both config
 		// and auth update silently in the background (no loading gate).
+		// Also refresh cart — bfcache back from FunnelKit checkout leaves a
+		// stale in-memory Store API cart until we reverse-sync + fetch.
 		document.addEventListener('visibilitychange', onVisibilityChange);
+		window.addEventListener('pageshow', onPageShow);
 		document.addEventListener('keydown', onDrawerKey);
 
 		return () => {
@@ -426,6 +436,7 @@
 			document.body.removeEventListener('added_to_cart', bumpCart);
 			document.body.removeEventListener('removed_from_cart', bumpCart);
 			document.removeEventListener('visibilitychange', onVisibilityChange);
+			window.removeEventListener('pageshow', onPageShow);
 			document.removeEventListener('keydown', onDrawerKey);
 		};
 	});
@@ -435,6 +446,14 @@
 			// Refresh config first so access_mode is current, then auth.
 			// The layout's reactive expression will pick up any changes.
 			config.refresh().then(() => auth.refresh(true));
+			void cart.refreshAfterExternalCartChange();
+		}
+	}
+
+	function onPageShow(event: PageTransitionEvent) {
+		// bfcache restore: visibilitychange may not fire; cart must resync.
+		if (event.persisted) {
+			void cart.refreshAfterExternalCartChange();
 		}
 	}
 

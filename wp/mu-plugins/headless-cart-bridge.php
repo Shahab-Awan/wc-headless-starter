@@ -232,8 +232,136 @@ function wchs_import_store_cart_from_token( string $token ) {
 
 	wchs_import_cart_into_classic_session( $session_data );
 
+	// Remember which Store API session this classic checkout cart belongs to,
+	// so Elementor/FunnelKit mini-cart qty edits can be written back.
+	if ( function_exists( 'WC' ) && WC()->session ) {
+		WC()->session->set( 'wchs_bridged_store_customer_id', $customer_id );
+		if ( method_exists( WC()->session, 'save_data' ) ) {
+			WC()->session->save_data();
+		}
+	}
+	wchs_set_bridged_store_customer_cookie( $customer_id );
+
 	return true;
 }
+
+/**
+ * Clear the bridged Store API customer cookie after SPA has pulled classic state.
+ */
+function wchs_clear_bridged_store_customer_cookie(): void {
+	if ( headers_sent() ) {
+		return;
+	}
+	// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.cookies_setcookie
+	setcookie(
+		'wchs_bridged_store_cid',
+		'',
+		[
+			'expires'  => time() - YEAR_IN_SECONDS,
+			'path'     => COOKIEPATH ? COOKIEPATH : '/',
+			'domain'   => COOKIE_DOMAIN ?: '',
+			'secure'   => is_ssl(),
+			'httponly' => true,
+			'samesite' => 'Lax',
+		]
+	);
+	unset( $_COOKIE['wchs_bridged_store_cid'] );
+}
+
+/**
+ * Short-lived cookie so AJAX mini-cart updates can find the Store API session
+ * even if the classic session key was rotated.
+ */
+function wchs_set_bridged_store_customer_cookie( string $customer_id ): void {
+	if ( $customer_id === '' || headers_sent() ) {
+		return;
+	}
+	if ( ! preg_match( '/^(t_[a-f0-9]{20,40}|[0-9]{1,20})$/', $customer_id ) ) {
+		return;
+	}
+	$secure   = is_ssl();
+	$httponly = true;
+	// phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.cookies_setcookie
+	setcookie(
+		'wchs_bridged_store_cid',
+		$customer_id,
+		[
+			'expires'  => time() + DAY_IN_SECONDS,
+			'path'     => COOKIEPATH ? COOKIEPATH : '/',
+			'domain'   => COOKIE_DOMAIN ?: '',
+			'secure'   => $secure,
+			'httponly' => $httponly,
+			'samesite' => 'Lax',
+		]
+	);
+	$_COOKIE['wchs_bridged_store_cid'] = $customer_id;
+}
+
+/**
+ * Store API customer id linked to the current classic checkout session.
+ */
+function wchs_bridged_store_customer_id(): string {
+	if ( function_exists( 'WC' ) && WC()->session ) {
+		$id = WC()->session->get( 'wchs_bridged_store_customer_id' );
+		if ( is_string( $id ) && $id !== '' ) {
+			return $id;
+		}
+	}
+	if ( ! empty( $_COOKIE['wchs_bridged_store_cid'] ) ) {
+		return sanitize_text_field( wp_unslash( (string) $_COOKIE['wchs_bridged_store_cid'] ) );
+	}
+	return '';
+}
+
+/**
+ * After Elementor/FunnelKit mini-cart changes the classic cart, mirror it
+ * into the Store API session the SPA SlideCart reads.
+ */
+function wchs_push_classic_cart_to_bridged_store_api(): void {
+	static $pushing = false;
+	if ( $pushing || ! function_exists( 'WC' ) || ! WC()->session ) {
+		return;
+	}
+
+	$store_id = wchs_bridged_store_customer_id();
+	if ( $store_id === '' || ! preg_match( '/^(t_[a-f0-9]{20,40}|[0-9]{1,20})$/', $store_id ) ) {
+		return;
+	}
+
+	$pushing = true;
+	try {
+		if ( WC()->cart ) {
+			WC()->cart->calculate_totals();
+		}
+
+		$safe = [];
+		foreach ( WCHS_BRIDGE_KEYS as $key ) {
+			$val = WC()->session->get( $key );
+			if ( null !== $val ) {
+				$safe[ $key ] = $val;
+			}
+		}
+
+		// Prefer the live cart object — session get can lag one tick behind AJAX qty updates.
+		if ( WC()->cart && method_exists( WC()->cart, 'get_cart_for_session' ) ) {
+			$safe['cart'] = WC()->cart->get_cart_for_session();
+		} elseif ( ! isset( $safe['cart'] ) || ! is_array( $safe['cart'] ) ) {
+			$safe['cart'] = [];
+		}
+
+		wchs_write_store_api_session( $store_id, $safe );
+		wchs_bridge_log( 'pushed classic cart to store session ' . $store_id );
+	} finally {
+		$pushing = false;
+	}
+}
+
+add_action( 'woocommerce_after_cart_item_quantity_update', 'wchs_push_classic_cart_to_bridged_store_api', 99 );
+add_action( 'woocommerce_cart_item_removed', 'wchs_push_classic_cart_to_bridged_store_api', 99 );
+add_action( 'woocommerce_add_to_cart', 'wchs_push_classic_cart_to_bridged_store_api', 99 );
+add_action( 'woocommerce_cart_emptied', 'wchs_push_classic_cart_to_bridged_store_api', 99 );
+// FunnelKit/Elementor checkout often refreshes via order-review AJAX after mini-cart edits.
+add_action( 'woocommerce_checkout_update_order_review', 'wchs_push_classic_cart_to_bridged_store_api', 99 );
 
 /**
  * Import allowlisted session data into the active classic session and
@@ -334,6 +462,200 @@ add_action(
 		wchs_bridge_log( 'imported cart from checkout token' );
 	},
 	5
+);
+
+/**
+ * Write allowlisted session keys into a Store API session row (by customer id).
+ * Used to push classic/Elementor cart edits back into the SPA Cart-Token session.
+ */
+function wchs_write_store_api_session( string $customer_id, array $safe_data ): bool {
+	global $wpdb;
+
+	if ( $customer_id === '' || ! preg_match( '/^(t_[a-f0-9]{20,40}|[0-9]{1,20})$/', $customer_id ) ) {
+		return false;
+	}
+
+	$table = $wpdb->prefix . 'woocommerce_sessions';
+	$row   = $wpdb->get_var(
+		$wpdb->prepare(
+			"SELECT session_value FROM {$table} WHERE session_key = %s LIMIT 1",
+			$customer_id
+		)
+	);
+
+	$data = [];
+	if ( is_string( $row ) && $row !== '' ) {
+		$parsed = maybe_unserialize( $row );
+		if ( is_array( $parsed ) ) {
+			$data = $parsed;
+		}
+	}
+
+	foreach ( WCHS_BRIDGE_KEYS as $key ) {
+		if ( array_key_exists( $key, $safe_data ) ) {
+			$data[ $key ] = maybe_serialize( $safe_data[ $key ] );
+		}
+	}
+
+	$serialized = maybe_serialize( $data );
+	$expiry     = time() + (int) apply_filters( 'wc_session_expiration', 2 * DAY_IN_SECONDS );
+
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$result = $wpdb->replace(
+		$table,
+		[
+			'session_key'   => $customer_id,
+			'session_value' => $serialized,
+			'session_expiry'=> $expiry,
+		],
+		[ '%s', '%s', '%d' ]
+	);
+
+	return false !== $result;
+}
+
+/**
+ * Customer id from the classic `wp_woocommerce_session_*` cookie (not Cart-Token).
+ */
+function wchs_classic_session_customer_id_from_cookie(): ?string {
+	foreach ( $_COOKIE as $name => $value ) {
+		if ( ! is_string( $name ) || 0 !== strpos( $name, 'wp_woocommerce_session_' ) ) {
+			continue;
+		}
+		if ( ! is_string( $value ) || $value === '' ) {
+			continue;
+		}
+		// Cookie value: customer_id||expiry||expirytimestamp||hash
+		$parts = explode( '||', $value );
+		$id    = isset( $parts[0] ) ? (string) $parts[0] : '';
+		if ( $id !== '' && preg_match( '/^(t_[a-f0-9]{20,40}|[0-9]{1,20})$/', $id ) ) {
+			return $id;
+		}
+	}
+	return null;
+}
+
+/**
+ * Read allowlisted keys from the classic cookie session row in the DB.
+ *
+ * @return array<string, mixed>|null
+ */
+function wchs_read_classic_session_from_cookie(): ?array {
+	$customer_id = wchs_classic_session_customer_id_from_cookie();
+	if ( ! $customer_id ) {
+		// Fall back to the active WC session when the cookie parser misses
+		// (logged-in users sometimes expose the id via WC()->session).
+		if ( function_exists( 'WC' ) && WC()->session && method_exists( WC()->session, 'get_customer_id' ) ) {
+			$customer_id = (string) WC()->session->get_customer_id();
+		}
+	}
+	if ( ! $customer_id ) {
+		return null;
+	}
+
+	$safe = wchs_read_store_api_session( $customer_id );
+	return $safe;
+}
+
+/**
+ * POST /wchs/v1/cart/sync-from-classic
+ *
+ * Push the classic WC session (FunnelKit/Elementor mini-cart) into the
+ * Store API session identified by ?cart= / body.cart / Cart-Token.
+ * Call WITHOUT sending Cart-Token as a request header when possible so the
+ * classic cookie session remains the one WC loads for this request — we
+ * still read the cookie session from the DB directly either way.
+ *
+ * @param \WP_REST_Request $request
+ * @return \WP_REST_Response|\WP_Error
+ */
+function wchs_rest_cart_sync_from_classic( \WP_REST_Request $request ) {
+	if ( function_exists( 'wchs_rest_rate_limit' ) && ! wchs_rest_rate_limit( 'cart_sync_from_classic' ) ) {
+		return new \WP_Error( 'wchs_rate_limited', 'Too many requests.', [ 'status' => 429 ] );
+	}
+
+	$token = '';
+	$header = $request->get_header( 'cart-token' );
+	if ( is_string( $header ) && $header !== '' ) {
+		$token = sanitize_text_field( $header );
+	}
+	if ( $token === '' ) {
+		$body = $request->get_json_params();
+		if ( is_array( $body ) && ! empty( $body['cart'] ) ) {
+			$token = sanitize_text_field( (string) $body['cart'] );
+		}
+	}
+	if ( $token === '' && ! empty( $_GET['cart'] ) ) {
+		$token = sanitize_text_field( wp_unslash( (string) $_GET['cart'] ) );
+	}
+	if ( $token === '' ) {
+		return new \WP_Error( 'wchs_missing_cart_token', 'Cart token is required.', [ 'status' => 400 ] );
+	}
+
+	$payload = wchs_decode_cart_token( $token );
+	if ( ! $payload ) {
+		return new \WP_Error( 'wchs_invalid_cart_token', 'Invalid or expired cart token.', [ 'status' => 400 ] );
+	}
+
+	$store_customer_id = (string) $payload['user_id'];
+
+	if ( is_user_logged_in() && ctype_digit( $store_customer_id ) ) {
+		if ( (int) $store_customer_id !== get_current_user_id() ) {
+			return new \WP_Error( 'wchs_cart_token_user_mismatch', 'Cart token does not match the logged-in customer.', [ 'status' => 403 ] );
+		}
+	}
+
+	$classic = wchs_read_classic_session_from_cookie();
+	if ( null === $classic ) {
+		// No classic session — treat as empty cart write so SPA does not keep stale lines.
+		$classic = [
+			'cart'         => [],
+			'cart_totals'  => [],
+			'applied_coupons' => [],
+		];
+	}
+
+	// Ensure cart key exists even when classic session only has totals.
+	if ( ! isset( $classic['cart'] ) || ! is_array( $classic['cart'] ) ) {
+		$classic['cart'] = [];
+	}
+
+	$written = wchs_write_store_api_session( $store_customer_id, $classic );
+	if ( ! $written ) {
+		wchs_bridge_log( 'sync-from-classic failed to write store session' );
+		return new \WP_Error( 'wchs_sync_write_failed', 'Could not update Store API session.', [ 'status' => 500 ] );
+	}
+
+	if ( function_exists( 'WC' ) && WC()->session ) {
+		WC()->session->set( 'wchs_bridged_store_customer_id', null );
+	}
+	wchs_clear_bridged_store_customer_cookie();
+
+	$count = is_array( $classic['cart'] ) ? count( $classic['cart'] ) : 0;
+	wchs_bridge_log( 'sync-from-classic wrote ' . $count . ' line(s) into store session' );
+
+	return new \WP_REST_Response(
+		[
+			'ok'          => true,
+			'items_count' => $count,
+		],
+		200
+	);
+}
+
+add_action(
+	'rest_api_init',
+	function () {
+		register_rest_route(
+			'wchs/v1',
+			'/cart/sync-from-classic',
+			[
+				'methods'             => [ 'POST', 'OPTIONS' ],
+				'callback'            => 'wchs_rest_cart_sync_from_classic',
+				'permission_callback' => '__return_true',
+			]
+		);
+	}
 );
 
 /**

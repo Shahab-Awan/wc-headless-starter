@@ -245,7 +245,6 @@
 			await cart.addItem(pid, 1, [], {
 				clicked_from: 'slide_cart_ship_protect_toggle'
 			});
-			await cart.fetch().catch(() => {});
 		} finally {
 			shipProtectBusy = false;
 		}
@@ -256,7 +255,6 @@
 		shipProtectBusy = true;
 		try {
 			await cart.removeItem(shipProtectLine.key);
-			await cart.fetch().catch(() => {});
 		} finally {
 			shipProtectBusy = false;
 		}

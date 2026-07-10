@@ -29,7 +29,8 @@
  *   + quantities + attribute selections). No tokens, no PII.
  */
 
-const KEY = 'wchs_shadow_cart_v1';
+export const SHADOW_CART_KEY = 'wchs_shadow_cart_v1';
+const KEY = SHADOW_CART_KEY;
 const VERSION = 1;
 const MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000; // 14 days — wider than JWT TTL
 
