@@ -566,6 +566,11 @@ function wchs_checkout_mini_cart_after_mutate(): void {
 	if ( function_exists( 'WC' ) && WC()->session && method_exists( WC()->session, 'save_data' ) ) {
 		WC()->session->save_data();
 	}
+	// Qty/BAC extras can leave sold-individually notices in the session that
+	// FunnelKit surfaces on update_checkout — clear them for this AJAX path.
+	if ( function_exists( 'wc_clear_notices' ) ) {
+		wc_clear_notices();
+	}
 }
 
 function wchs_checkout_mini_cart_ajax_html(): void {
