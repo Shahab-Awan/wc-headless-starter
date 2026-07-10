@@ -4,6 +4,9 @@
 (function () {
 	'use strict';
 
+	if (window.__wchsMiniCartBound) return;
+	window.__wchsMiniCartBound = true;
+
 	var cfg = window.wchsMiniCart || {};
 	if (!cfg.ajaxUrl || !cfg.nonce) return;
 
@@ -33,7 +36,8 @@
 	function replaceRoot(root, html) {
 		var wrap = document.createElement('div');
 		wrap.innerHTML = html.trim();
-		var next = wrap.firstElementChild;
+		// AJAX may return a <style> + cart; prefer the cart root node.
+		var next = wrap.querySelector('[data-wchs-mini-cart]') || wrap.firstElementChild;
 		if (!next || !root.parentNode) return root;
 		root.parentNode.replaceChild(next, root);
 		return next;
@@ -105,6 +109,19 @@
 		if (action === 'remove-coupon') {
 			e.preventDefault();
 			run(root, 'wchs_mini_cart_remove_coupon', { code: btn.getAttribute('data-code') || '' });
+			return;
+		}
+		if (action === 'qty-inc' || action === 'qty-dec') {
+			e.preventDefault();
+			var key = btn.getAttribute('data-key') || '';
+			var current = parseInt(btn.getAttribute('data-qty') || '1', 10);
+			if (!key || !Number.isFinite(current)) return;
+			var next = action === 'qty-inc' ? current + 1 : current - 1;
+			if (next < 1) {
+				run(root, 'wchs_mini_cart_remove', { key: key });
+			} else {
+				run(root, 'wchs_mini_cart_update_qty', { key: key, qty: String(next) });
+			}
 		}
 	});
 

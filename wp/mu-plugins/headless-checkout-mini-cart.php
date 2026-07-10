@@ -30,47 +30,151 @@ function wchs_checkout_mini_cart_shortcode( $atts = [] ): string {
 		'wchs_checkout_mini_cart'
 	);
 
-	wchs_checkout_mini_cart_enqueue();
+	// Elementor renders shortcodes after wp_head — enqueue alone often never prints.
+	// Inline CSS + JS in the shortcode output so styles always apply.
+	wchs_checkout_mini_cart_schedule_assets();
 
 	ob_start();
+	echo wchs_checkout_mini_cart_inline_css(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	wchs_checkout_mini_cart_render( (string) $atts['title'] );
+	echo wchs_checkout_mini_cart_inline_js(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	return (string) ob_get_clean();
 }
 add_shortcode( 'wchs_checkout_mini_cart', 'wchs_checkout_mini_cart_shortcode' );
 
-function wchs_checkout_mini_cart_enqueue(): void {
+/**
+ * Load asset file, or built-in fallback (so deploy of PHP alone still styles).
+ */
+function wchs_checkout_mini_cart_read_asset( string $relative ): string {
+	$path = WCHS_MINI_CART_DIR . '/assets/' . ltrim( $relative, '/' );
+	if ( is_readable( $path ) ) {
+		$raw = file_get_contents( $path );
+		if ( is_string( $raw ) && $raw !== '' ) {
+			return $raw;
+		}
+	}
+	if ( $relative === 'mini-cart.css' ) {
+		return wchs_checkout_mini_cart_fallback_css();
+	}
+	if ( $relative === 'mini-cart.js' ) {
+		return wchs_checkout_mini_cart_fallback_js();
+	}
+	return '';
+}
+
+/** @return string */
+function wchs_checkout_mini_cart_fallback_css(): string {
+	return <<<'CSS'
+.wchs-mini-cart{--wchs-mc-bg:#e8f4f7;--wchs-mc-border:#7eb8c4;--wchs-mc-fg:#3a3f45;--wchs-mc-muted:#6b7280;--wchs-mc-was:#e57373;--wchs-mc-teal:#2a9d8f;--wchs-mc-btn:#b0b6be;--wchs-mc-radius:10px;position:relative;width:100%;max-width:420px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--wchs-mc-fg);box-sizing:border-box}
+.wchs-mini-cart *,.wchs-mini-cart *::before,.wchs-mini-cart *::after{box-sizing:border-box}
+.wchs-mini-cart__inner{background:var(--wchs-mc-bg);border:1px solid var(--wchs-mc-border);border-radius:var(--wchs-mc-radius);padding:20px 18px 16px}
+.wchs-mini-cart__title{margin:0 0 16px;font-size:20px;font-weight:700;line-height:1.25;color:var(--wchs-mc-fg);letter-spacing:-.02em}
+.wchs-mini-cart__empty{margin:8px 0 4px;font-size:14px;color:var(--wchs-mc-muted)}
+.wchs-mini-cart__items{list-style:none!important;margin:0!important;padding:0!important;display:flex;flex-direction:column;gap:14px}
+.wchs-mini-cart__items>li{list-style:none!important;margin:0!important;padding:0!important}
+.wchs-mini-cart__item{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:flex-start}
+.wchs-mini-cart__media{position:relative;width:56px;height:56px;flex-shrink:0}
+.wchs-mini-cart__media img{display:block;width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid rgba(0,0,0,.06);background:#fff}
+.wchs-mini-cart__qty{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#6b7280;color:#fff;font-size:11px;font-weight:700;line-height:20px;text-align:center}
+.wchs-mini-cart__info{min-width:0;padding-top:2px}
+.wchs-mini-cart__name{margin:0;font-size:14px;font-weight:500;line-height:1.35;color:var(--wchs-mc-fg);word-break:break-word}
+.wchs-mini-cart__stepper{display:inline-flex;align-items:center;margin-top:8px;height:28px;border:1px solid #c5cad1;border-radius:6px;background:#fff;overflow:hidden}
+.wchs-mini-cart__step{width:28px;height:28px;padding:0;border:0;background:transparent;color:var(--wchs-mc-fg);font-size:16px;font-weight:600;line-height:1;cursor:pointer}
+.wchs-mini-cart__step:hover{background:rgba(0,0,0,.04)}
+.wchs-mini-cart__step-val{min-width:28px;padding:0 4px;text-align:center;font-size:13px;font-weight:600;line-height:1;color:var(--wchs-mc-fg);border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;user-select:none}
+.wchs-mini-cart__aside{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:72px}
+.wchs-mini-cart__prices{display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right}
+.wchs-mini-cart__was{font-size:12px;font-weight:500;color:var(--wchs-mc-was);text-decoration:line-through}
+.wchs-mini-cart__was .amount,.wchs-mini-cart__now .amount{color:inherit}
+.wchs-mini-cart__now{font-size:14px;font-weight:600;color:var(--wchs-mc-fg)}
+.wchs-mini-cart__remove{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:1px solid #c5cad1;border-radius:50%;background:transparent;color:#9aa1aa;font-size:16px;line-height:1;cursor:pointer}
+.wchs-mini-cart__remove:hover{border-color:#8b939e;color:#5b6470}
+.wchs-mini-cart__coupon{display:flex;gap:8px;margin:16px 0 0}
+.wchs-mini-cart__coupon-input{flex:1 1 auto;min-width:0;height:40px;padding:0 12px;border:1px solid #c9ced3;border-radius:4px;background:#fff;color:var(--wchs-mc-fg);font:inherit;font-size:14px}
+.wchs-mini-cart__coupon-input::placeholder{color:#9aa1aa}
+.wchs-mini-cart__coupon-input:focus{outline:none;border-color:var(--wchs-mc-border)}
+.wchs-mini-cart__coupon-btn{flex:0 0 auto;height:40px;padding:0 16px;border:0;border-radius:4px;background:var(--wchs-mc-btn);color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.wchs-mini-cart__coupon-btn:hover{filter:brightness(.96)}
+.wchs-mini-cart__coupon-msg{margin:8px 0 0;font-size:12px;color:#b45309}
+.wchs-mini-cart__coupon-msg.is-error{color:#b91c1c}
+.wchs-mini-cart__coupon-list{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.wchs-mini-cart__coupon-list li{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;background:rgba(42,157,143,.12);color:var(--wchs-mc-teal);font-size:12px;font-weight:600}
+.wchs-mini-cart__coupon-remove{padding:0;border:0;background:transparent;color:inherit;font-size:14px;line-height:1;cursor:pointer}
+.wchs-mini-cart__totals{margin-top:16px;padding-top:14px;border-top:1px solid rgba(0,0,0,.1);display:flex;flex-direction:column;gap:8px}
+.wchs-mini-cart__row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px;color:var(--wchs-mc-fg)}
+.wchs-mini-cart__row--total{margin-top:4px;padding-top:10px;border-top:1px solid rgba(0,0,0,.1);font-size:18px;font-weight:700}
+.wchs-mini-cart__savings{display:flex;align-items:center;gap:8px;margin:14px 0 0;font-size:13px;font-weight:600;line-height:1.35;color:var(--wchs-mc-teal)}
+.wchs-mini-cart__savings-icon{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--wchs-mc-teal);color:#fff;font-size:11px;font-weight:800}
+.wchs-mini-cart.is-busy .wchs-mini-cart__busy{display:block}
+.wchs-mini-cart__busy{display:none;position:absolute;inset:0;border-radius:var(--wchs-mc-radius);background:rgba(255,255,255,.45);cursor:wait}
+CSS;
+}
+
+/** @return string */
+function wchs_checkout_mini_cart_fallback_js(): string {
+	return <<<'JS'
+(function(){"use strict";if(window.__wchsMiniCartBound)return;window.__wchsMiniCartBound=true;var cfg=window.wchsMiniCart||{};if(!cfg.ajaxUrl||!cfg.nonce)return;function rootFrom(el){return el&&el.closest?el.closest("[data-wchs-mini-cart]"):null}function setBusy(root,on){if(!root)return;root.classList.toggle("is-busy",!!on);var overlay=root.querySelector(".wchs-mini-cart__busy");if(overlay)overlay.hidden=!on}function triggerCheckoutRefresh(){try{if(window.jQuery){window.jQuery(document.body).trigger("update_checkout");window.jQuery(document.body).trigger("wc_fragment_refresh")}document.body.dispatchEvent(new CustomEvent("wchs_mini_cart_updated",{bubbles:true}))}catch(e){}}function replaceRoot(root,html){var wrap=document.createElement("div");wrap.innerHTML=html.trim();var next=wrap.querySelector("[data-wchs-mini-cart]")||wrap.firstElementChild;if(!next||!root.parentNode)return root;root.parentNode.replaceChild(next,root);return next}function post(action,fields){var body=new URLSearchParams();body.set("action",action);body.set("nonce",cfg.nonce);Object.keys(fields||{}).forEach(function(k){body.set(k,fields[k])});return fetch(cfg.ajaxUrl,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/x-www-form-urlencoded; charset=UTF-8"},body:body.toString()}).then(function(res){return res.json().then(function(json){if(!res.ok||!json||!json.success){var msg=(json&&json.data&&json.data.message)||"Something went wrong. Please try again.";throw new Error(msg)}return json.data})})}function run(root,action,fields){if(!root||root.classList.contains("is-busy"))return;var title=root.getAttribute("data-title")||"Your Cart";fields=fields||{};fields.title=title;setBusy(root,true);post(action,fields).then(function(data){if(data&&data.html){replaceRoot(root,data.html)}triggerCheckoutRefresh()}).catch(function(err){setBusy(root,false);var msgEl=root.querySelector("[data-coupon-msg]");if(msgEl){msgEl.hidden=false;msgEl.classList.add("is-error");msgEl.textContent=err.message||"Request failed."}else{window.alert(err.message||"Request failed.")}})}document.addEventListener("click",function(e){var btn=e.target&&e.target.closest?e.target.closest("[data-action]"):null;if(!btn)return;var root=rootFrom(btn);if(!root)return;var action=btn.getAttribute("data-action");if(action==="remove"){e.preventDefault();run(root,"wchs_mini_cart_remove",{key:btn.getAttribute("data-key")||""});return}if(action==="remove-coupon"){e.preventDefault();run(root,"wchs_mini_cart_remove_coupon",{code:btn.getAttribute("data-code")||""});return}if(action==="qty-inc"||action==="qty-dec"){e.preventDefault();var key=btn.getAttribute("data-key")||"";var current=parseInt(btn.getAttribute("data-qty")||"1",10);if(!key||!Number.isFinite(current))return;var nextQty=action==="qty-inc"?current+1:current-1;if(nextQty<1){run(root,"wchs_mini_cart_remove",{key:key})}else{run(root,"wchs_mini_cart_update_qty",{key:key,qty:String(nextQty)})}}});document.addEventListener("submit",function(e){var form=e.target&&e.target.closest?e.target.closest("[data-coupon-form]"):null;if(!form)return;var root=rootFrom(form);if(!root)return;e.preventDefault();var input=form.querySelector('input[name="coupon_code"]');var code=input?String(input.value||"").trim():"";var msgEl=root.querySelector("[data-coupon-msg]");if(msgEl){msgEl.hidden=true;msgEl.textContent=""}if(!code){if(msgEl){msgEl.hidden=false;msgEl.classList.add("is-error");msgEl.textContent="Enter a coupon code."}return}run(root,"wchs_mini_cart_apply_coupon",{code:code})})})();
+JS;
+}
+
+/**
+ * Inline <style> once per request (safe inside Elementor HTML).
+ */
+function wchs_checkout_mini_cart_inline_css(): string {
+	static $printed = false;
+	if ( $printed ) {
+		return '';
+	}
+	$printed = true;
+
+	$css = wchs_checkout_mini_cart_read_asset( 'mini-cart.css' );
+	if ( $css === '' ) {
+		return '';
+	}
+
+	return '<style id="wchs-mini-cart-css">' . $css . '</style>';
+}
+
+/**
+ * Inline config + JS once (Elementor-safe; also scheduled in footer as backup).
+ */
+function wchs_checkout_mini_cart_inline_js(): string {
+	static $printed = false;
+	if ( $printed ) {
+		return '';
+	}
+	$printed = true;
+
+	$js = wchs_checkout_mini_cart_read_asset( 'mini-cart.js' );
+	if ( $js === '' ) {
+		return '';
+	}
+
+	$config = wp_json_encode(
+		[
+			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( 'wchs_mini_cart' ),
+		]
+	);
+
+	return '<script id="wchs-mini-cart-config">window.wchsMiniCart=' . $config . ';</script>'
+		. '<script id="wchs-mini-cart-js">' . $js . '</script>';
+}
+
+function wchs_checkout_mini_cart_schedule_assets(): void {
 	static $done = false;
 	if ( $done ) {
 		return;
 	}
 	$done = true;
 
-	$css = WCHS_MINI_CART_DIR . '/assets/mini-cart.css';
-	$js  = WCHS_MINI_CART_DIR . '/assets/mini-cart.js';
-	$css_ver = file_exists( $css ) ? (string) filemtime( $css ) : '1';
-	$js_ver  = file_exists( $js ) ? (string) filemtime( $js ) : '1';
+	add_action( 'wp_footer', 'wchs_checkout_mini_cart_print_footer_js', 50 );
+}
 
-	wp_enqueue_style(
-		'wchs-checkout-mini-cart',
-		WCHS_MINI_CART_URL . '/assets/mini-cart.css',
-		[],
-		$css_ver
-	);
-	wp_enqueue_script(
-		'wchs-checkout-mini-cart',
-		WCHS_MINI_CART_URL . '/assets/mini-cart.js',
-		[],
-		$js_ver,
-		true
-	);
-	wp_localize_script(
-		'wchs-checkout-mini-cart',
-		'wchsMiniCart',
-		[
-			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-			'nonce'   => wp_create_nonce( 'wchs_mini_cart' ),
-		]
-	);
+function wchs_checkout_mini_cart_print_footer_js(): void {
+	// Prefer shortcode-inline print; footer is a backup if Elementor strips body scripts.
+	echo wchs_checkout_mini_cart_inline_css(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	echo wchs_checkout_mini_cart_inline_js(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 }
 
 /**
@@ -166,6 +270,25 @@ function wchs_checkout_mini_cart_render( string $title = 'Your Cart' ): void {
 							</div>
 							<div class="wchs-mini-cart__info">
 								<p class="wchs-mini-cart__name"><?php echo esc_html( $item['name'] ); ?></p>
+								<div class="wchs-mini-cart__stepper" role="group" aria-label="<?php echo esc_attr( sprintf( 'Quantity for %s', $item['name'] ) ); ?>">
+									<button
+										type="button"
+										class="wchs-mini-cart__step"
+										data-action="qty-dec"
+										data-key="<?php echo esc_attr( $item['key'] ); ?>"
+										data-qty="<?php echo esc_attr( (string) $item['qty'] ); ?>"
+										aria-label="Decrease quantity"
+									>−</button>
+									<span class="wchs-mini-cart__step-val" aria-live="polite"><?php echo esc_html( (string) $item['qty'] ); ?></span>
+									<button
+										type="button"
+										class="wchs-mini-cart__step"
+										data-action="qty-inc"
+										data-key="<?php echo esc_attr( $item['key'] ); ?>"
+										data-qty="<?php echo esc_attr( (string) $item['qty'] ); ?>"
+										aria-label="Increase quantity"
+									>+</button>
+								</div>
 							</div>
 							<div class="wchs-mini-cart__aside">
 								<div class="wchs-mini-cart__prices">
@@ -327,9 +450,27 @@ function wchs_checkout_mini_cart_ajax_remove_coupon(): void {
 	wchs_checkout_mini_cart_ajax_html();
 }
 
+function wchs_checkout_mini_cart_ajax_update_qty(): void {
+	wchs_checkout_mini_cart_verify();
+	$key = isset( $_POST['key'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['key'] ) ) : '';
+	$qty = isset( $_POST['qty'] ) ? (int) $_POST['qty'] : 0;
+	if ( $key === '' ) {
+		wp_send_json_error( [ 'message' => 'Missing item.' ], 400 );
+	}
+	if ( $qty < 1 ) {
+		WC()->cart->remove_cart_item( $key );
+	} else {
+		WC()->cart->set_quantity( $key, $qty, true );
+	}
+	wchs_checkout_mini_cart_after_mutate();
+	wchs_checkout_mini_cart_ajax_html();
+}
+
 add_action( 'wp_ajax_wchs_mini_cart_remove', 'wchs_checkout_mini_cart_ajax_remove' );
 add_action( 'wp_ajax_nopriv_wchs_mini_cart_remove', 'wchs_checkout_mini_cart_ajax_remove' );
 add_action( 'wp_ajax_wchs_mini_cart_apply_coupon', 'wchs_checkout_mini_cart_ajax_apply_coupon' );
 add_action( 'wp_ajax_nopriv_wchs_mini_cart_apply_coupon', 'wchs_checkout_mini_cart_ajax_apply_coupon' );
 add_action( 'wp_ajax_wchs_mini_cart_remove_coupon', 'wchs_checkout_mini_cart_ajax_remove_coupon' );
 add_action( 'wp_ajax_nopriv_wchs_mini_cart_remove_coupon', 'wchs_checkout_mini_cart_ajax_remove_coupon' );
+add_action( 'wp_ajax_wchs_mini_cart_update_qty', 'wchs_checkout_mini_cart_ajax_update_qty' );
+add_action( 'wp_ajax_nopriv_wchs_mini_cart_update_qty', 'wchs_checkout_mini_cart_ajax_update_qty' );
