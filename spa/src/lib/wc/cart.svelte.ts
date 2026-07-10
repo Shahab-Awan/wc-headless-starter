@@ -2,10 +2,9 @@
  * Cart store — Svelte 5 runes.
  *
  * Single source of truth is whatever GET /wc/store/v1/cart returns. Qty
- * edits patch the local cart immediately, then debounce a Store API POST.
- * Cross-tab sync via shadow-cart storage events. After FunnelKit/classic
- * checkout, reverse-sync classic → Store API so Elementor mini-cart edits
- * land back in the SPA.
+ * edits patch the local cart immediately, then debounce a Store API POST
+ * so rapid clicks do not flicker when responses arrive. Cross-tab sync via
+ * shadow-cart storage events.
  *
  * Shadow-cart backing: every successful mutation mirrors the line items
  * to localStorage (see shadow-cart.ts). On fetch, if the server cart is
@@ -160,11 +159,8 @@ class CartStore {
 	private pendingQtyByKey = new Map<string, number>();
 	private qtyFlushChain: Promise<void> = Promise.resolve();
 	private qtyDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-	/** Short debounce — UI is optimistic; this only batches rapid +/- clicks. */
-	private static readonly QTY_SYNC_DEBOUNCE_MS = 280;
-	private static readonly CHECKOUT_RETURN_KEY = 'wchs_awaiting_checkout_return';
-	/** After classic→Store API sync, trust server and skip shadow replay once. */
-	private skipShadowReplayOnce = false;
+	/** Wait for clicks to settle before POSTing — avoids qty/price flicker. */
+	private static readonly QTY_SYNC_DEBOUNCE_MS = 550;
 
 	/**
 	 * Mutation mutex. Cart writes must serialize because the Store API's
@@ -286,14 +282,16 @@ class CartStore {
 		this.error = null;
 		this.restored = false;
 		try {
-			this.cart = await request<StoreApiCart>('/cart');
-			if (this.skipShadowReplayOnce) {
-				this.skipShadowReplayOnce = false;
+			const fresh = await request<StoreApiCart>('/cart');
+			// Don't clobber in-progress optimistic qty edits with a stale GET.
+			if (this.pendingQtyByKey.size > 0) {
+				this.applyServerCart(fresh);
 			} else {
+				this.cart = fresh;
 				await this.maybeReplayFromShadow();
+				await this.pruneOrphanShippingProtection();
+				this.syncShadow();
 			}
-			await this.pruneOrphanShippingProtection();
-			this.syncShadow();
 		} catch (e) {
 			this.error = e instanceof Error ? e.message : String(e);
 		} finally {
@@ -344,6 +342,23 @@ class CartStore {
 	}
 
 	/**
+	 * Apply a Store API cart response without wiping optimistic qty the user
+	 * already clicked (pending debounce). Re-patches pending keys on top.
+	 */
+	private applyServerCart(next: StoreApiCart): void {
+		if (this.pendingQtyByKey.size === 0) {
+			this.cart = next;
+			this.syncShadow();
+			return;
+		}
+		this.cart = next;
+		for (const [key, quantity] of this.pendingQtyByKey) {
+			this.patchItemQuantity(key, quantity);
+		}
+		this.syncShadow();
+	}
+
+	/**
 	 * Guarded mutation runner. Serializes mutations via a promise chain
 	 * so concurrent add/update/remove calls execute one at a time
 	 * (avoiding the Store API's per-session write race). After each
@@ -363,8 +378,7 @@ class CartStore {
 			this.error = null;
 			try {
 				const next = await op();
-				this.cart = next;
-				this.syncShadow();
+				this.applyServerCart(next);
 			} catch (e) {
 				this.error = e instanceof Error ? e.message : String(e);
 				await this.fetch().catch(() => {});
@@ -375,9 +389,11 @@ class CartStore {
 					try {
 						const fresh = await request<StoreApiCart>('/cart');
 						if (convergeAtStart === this.convergenceGen) {
-							this.cart = fresh;
-							await this.pruneOrphanShippingProtection();
-							this.syncShadow();
+							this.applyServerCart(fresh);
+							if (this.pendingQtyByKey.size === 0) {
+								await this.pruneOrphanShippingProtection();
+								this.syncShadow();
+							}
 						}
 					} catch {
 						// best-effort convergence; swallow
@@ -637,9 +653,6 @@ class CartStore {
 		if (wasOpen && !this.open) {
 			void this.flushPendingQtyUpdates();
 		}
-		if (!wasOpen && this.open) {
-			void this.refreshOnOpen();
-		}
 		dispatch(this.open ? 'fkcart_cart_open' : 'fkcart_cart_closed', {});
 	}
 
@@ -650,112 +663,8 @@ class CartStore {
 			dispatch('fkcart_cart_open', {});
 			return;
 		}
-		const wasOpen = this.open;
 		this.open = true;
-		if (!wasOpen) void this.refreshOnOpen();
 		dispatch('fkcart_cart_open', {});
-	}
-
-	/**
-	 * Copy classic WC session (Elementor/FunnelKit mini-cart) back into the
-	 * Store API session for this Cart-Token. Intentionally omits Cart-Token
-	 * on the request so WP loads the cookie session the checkout page mutated.
-	 */
-	async syncFromClassicSession(): Promise<boolean> {
-		const token = currentCartToken();
-		if (!token || typeof fetch === 'undefined') return false;
-		try {
-			const res = await fetch('/wp-json/wchs/v1/cart/sync-from-classic', {
-				method: 'POST',
-				credentials: 'include',
-				headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-				body: JSON.stringify({ cart: token })
-			});
-			return res.ok;
-		} catch {
-			return false;
-		}
-	}
-
-	private checkoutReturnFlagSet(): boolean {
-		try {
-			if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(CartStore.CHECKOUT_RETURN_KEY) === '1') {
-				return true;
-			}
-			if (typeof localStorage !== 'undefined' && localStorage.getItem(CartStore.CHECKOUT_RETURN_KEY) === '1') {
-				return true;
-			}
-		} catch {
-			// storage unavailable
-		}
-		return false;
-	}
-
-	private clearCheckoutReturnFlag(): void {
-		try {
-			sessionStorage?.removeItem(CartStore.CHECKOUT_RETURN_KEY);
-			localStorage?.removeItem(CartStore.CHECKOUT_RETURN_KEY);
-		} catch {
-			// storage unavailable
-		}
-	}
-
-	private markCheckoutReturnFlag(): void {
-		try {
-			sessionStorage?.setItem(CartStore.CHECKOUT_RETURN_KEY, '1');
-			localStorage?.setItem(CartStore.CHECKOUT_RETURN_KEY, '1');
-		} catch {
-			// storage unavailable
-		}
-	}
-
-	/** True when document.referrer looks like FunnelKit / WC checkout. */
-	private referrerLooksLikeCheckout(): boolean {
-		if (typeof document === 'undefined' || !document.referrer) return false;
-		try {
-			const ref = new URL(document.referrer);
-			if (typeof window !== 'undefined' && ref.origin !== window.location.origin) return false;
-			const path = ref.pathname.toLowerCase();
-			const handoff = (config.data.checkout_handoff_path || '/checkout').toLowerCase();
-			if (handoff && path.includes(handoff.replace(/\/+$/, ''))) return true;
-			if (path.includes('/checkout')) return true;
-			if (path.includes('/checkouts/')) return true;
-			return false;
-		} catch {
-			return false;
-		}
-	}
-
-	/**
-	 * Pull Elementor/FunnelKit mini-cart changes into the SPA Store API cart.
-	 * Returns true when a reverse-sync + fetch ran.
-	 *
-	 * `allowReferrer`: only on full SPA boot — document.referrer stays stuck on
-	 * checkout during client-side navigations and must not re-sync later.
-	 */
-	async refreshAfterExternalCartChange(opts?: { allowReferrer?: boolean }): Promise<boolean> {
-		const fromFlag = this.checkoutReturnFlagSet();
-		const fromReferrer = Boolean(opts?.allowReferrer) && this.referrerLooksLikeCheckout();
-		if (!fromFlag && !fromReferrer) return false;
-
-		this.clearCheckoutReturnFlag();
-
-		const synced = await this.syncFromClassicSession();
-		if (synced) {
-			clearShadow();
-			this.skipShadowReplayOnce = true;
-		}
-
-		await primeSession().catch(() => {});
-		await this.fetch().catch(() => {});
-		return true;
-	}
-
-	/** Soft refresh when the drawer opens — reverse-sync only if checkout-return flag is set. */
-	async refreshOnOpen(): Promise<void> {
-		if (this.pendingQtyByKey.size > 0) return;
-		const synced = await this.refreshAfterExternalCartChange();
-		if (!synced) await this.fetch().catch(() => {});
 	}
 
 	async beginCheckout(): Promise<string> {
@@ -782,8 +691,6 @@ class CartStore {
 
 		const token = await this.ensureCartHandoffToken();
 		const href = token ? config.checkoutUrl(token) : this.wpCheckoutBaseUrl();
-
-		this.markCheckoutReturnFlag();
 
 		if (token && this.cart?.items?.length && typeof window !== 'undefined') {
 			const { trackCustomerLabsCheckoutMade } = await import('$lib/analytics');
@@ -830,6 +737,13 @@ function dispatch(name: string, detail: unknown) {
 export const cart = new CartStore();
 
 if (browser) {
+	// Clear leftover flags from the reverted checkout reverse-sync experiment.
+	try {
+		sessionStorage.removeItem('wchs_awaiting_checkout_return');
+		localStorage.removeItem('wchs_awaiting_checkout_return');
+	} catch {
+		// storage unavailable
+	}
 	window.addEventListener('storage', (e) => {
 		if (e.key === SHADOW_CART_KEY && e.newValue !== e.oldValue) {
 			void cart.fetch();

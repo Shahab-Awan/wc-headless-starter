@@ -316,6 +316,10 @@ function wchs_bridged_store_customer_id(): string {
 /**
  * After Elementor/FunnelKit mini-cart changes the classic cart, mirror it
  * into the Store API session the SPA SlideCart reads.
+ *
+ * DISABLED: live push was wiping the Store API cart when classic session
+ * was empty/stale (empty SlideCart after returning from checkout). Keep the
+ * helper for a future guarded sync; do not hook cart mutations until then.
  */
 function wchs_push_classic_cart_to_bridged_store_api(): void {
 	static $pushing = false;
@@ -349,6 +353,17 @@ function wchs_push_classic_cart_to_bridged_store_api(): void {
 			$safe['cart'] = [];
 		}
 
+		// Never overwrite a non-empty Store API cart with an empty classic cart.
+		$classic_count = is_array( $safe['cart'] ) ? count( $safe['cart'] ) : 0;
+		if ( $classic_count < 1 ) {
+			$existing = wchs_read_store_api_session( $store_id );
+			$existing_cart = is_array( $existing['cart'] ?? null ) ? $existing['cart'] : [];
+			if ( count( $existing_cart ) > 0 ) {
+				wchs_bridge_log( 'skip push: classic empty, store session still has items' );
+				return;
+			}
+		}
+
 		wchs_write_store_api_session( $store_id, $safe );
 		wchs_bridge_log( 'pushed classic cart to store session ' . $store_id );
 	} finally {
@@ -356,12 +371,8 @@ function wchs_push_classic_cart_to_bridged_store_api(): void {
 	}
 }
 
-add_action( 'woocommerce_after_cart_item_quantity_update', 'wchs_push_classic_cart_to_bridged_store_api', 99 );
-add_action( 'woocommerce_cart_item_removed', 'wchs_push_classic_cart_to_bridged_store_api', 99 );
-add_action( 'woocommerce_add_to_cart', 'wchs_push_classic_cart_to_bridged_store_api', 99 );
-add_action( 'woocommerce_cart_emptied', 'wchs_push_classic_cart_to_bridged_store_api', 99 );
-// FunnelKit/Elementor checkout often refreshes via order-review AJAX after mini-cart edits.
-add_action( 'woocommerce_checkout_update_order_review', 'wchs_push_classic_cart_to_bridged_store_api', 99 );
+// Live classic→Store API push hooks intentionally not registered.
+// They emptied the SPA cart when classic session lagged behind the handoff.
 
 /**
  * Import allowlisted session data into the active classic session and
@@ -607,17 +618,29 @@ function wchs_rest_cart_sync_from_classic( \WP_REST_Request $request ) {
 
 	$classic = wchs_read_classic_session_from_cookie();
 	if ( null === $classic ) {
-		// No classic session — treat as empty cart write so SPA does not keep stale lines.
-		$classic = [
-			'cart'         => [],
-			'cart_totals'  => [],
-			'applied_coupons' => [],
-		];
+		return new \WP_Error(
+			'wchs_classic_session_missing',
+			'No classic cart session to sync.',
+			[ 'status' => 404 ]
+		);
 	}
 
 	// Ensure cart key exists even when classic session only has totals.
 	if ( ! isset( $classic['cart'] ) || ! is_array( $classic['cart'] ) ) {
 		$classic['cart'] = [];
+	}
+
+	$classic_count = count( $classic['cart'] );
+	$existing      = wchs_read_store_api_session( $store_customer_id );
+	$existing_cart = is_array( $existing['cart'] ?? null ) ? $existing['cart'] : [];
+	// Never wipe a populated Store API cart with an empty classic session.
+	if ( $classic_count < 1 && count( $existing_cart ) > 0 ) {
+		wchs_bridge_log( 'sync-from-classic refused: classic empty, store has items' );
+		return new \WP_Error(
+			'wchs_sync_refused_empty',
+			'Classic cart is empty; refusing to overwrite Store API cart.',
+			[ 'status' => 409 ]
+		);
 	}
 
 	$written = wchs_write_store_api_session( $store_customer_id, $classic );

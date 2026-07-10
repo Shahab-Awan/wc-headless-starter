@@ -293,9 +293,7 @@
 			return;
 		}
 		const tier = shippingProtectionTierIndex(shipProtectSubtotalMajor);
-		if (shipProtectTierTracked >= 0 && tier !== shipProtectTierTracked) {
-			void cart.fetch();
-		}
+		// Don't refetch while qty clicks are settling — that overwrites optimistic totals.
 		shipProtectTierTracked = tier;
 	});
 
