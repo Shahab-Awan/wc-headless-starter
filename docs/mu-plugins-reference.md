@@ -19,6 +19,7 @@ does NOT own, and gotchas worth knowing before you modify it.
 | [`headless-address-validation.php`](#headless-address-validation) | EasyPost address verification at checkout |
 | [`headless-back-in-stock.php`](#headless-back-in-stock) | Product checkbox → 20-day “Back in stock” card badge |
 | [`headless-cart-bridge.php`](#headless-cart-bridge) | JWT → classic WC session handoff for native checkout |
+| [`headless-checkout-mini-cart.php`](#headless-checkout-mini-cart) | `[wchs_checkout_mini_cart]` shortcode for FunnelKit/Elementor checkout |
 | [`headless-funnelkit-cart.php`](#headless-funnelkit-cart) | Optional FunnelKit Cart on SPA (sync + shell iframe) |
 | [`headless-funnelkit-compat.php`](#headless-funnelkit-compat) | FunnelKit Store Checkout handoff path + checkout chrome skip |
 | [`headless-cart-lock.php`](#headless-cart-lock) | MySQL GET_LOCK mutex on Store API cart mutations |
@@ -149,6 +150,22 @@ Does not own stock status itself — OOS products still show Out of stock.
 - Tokens are only honored on `/checkout` — any other URL silently ignores `?cart=`.
 - `maybe_unserialize()` on session values — key allowlist validates BEFORE deserializing (defense-in-depth).
 - No token in logs (log-injection prevention). WP_DEBUG=true is the only path to see tokens in error logs.
+
+---
+
+## headless-checkout-mini-cart
+
+**Owns:**
+- Shortcode `[wchs_checkout_mini_cart]` (optional `title="Order Summary"`)
+- Assets in `wchs-checkout-mini-cart/assets/` (CSS + JS)
+- AJAX: remove item, apply/remove coupon
+- After mutate: recalculate classic cart, optional push to bridged Store API session, trigger `update_checkout`
+
+**Depends on:** WooCommerce cart session (post cart-bridge handoff on FunnelKit checkout)
+
+**Doesn't own:** Elementor layout — drop a Shortcode widget where the mini-cart was
+
+**Usage (Elementor):** remove Elementor mini-cart → Shortcode widget → `[wchs_checkout_mini_cart]` or `[wchs_checkout_mini_cart title="Order Summary"]`
 
 ---
 
