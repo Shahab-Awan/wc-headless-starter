@@ -1,8 +1,10 @@
 /**
  * Cart store — Svelte 5 runes.
  *
- * Single source of truth is whatever GET /wc/store/v1/cart returns. Every
- * mutation refetches. Cross-tab sync via storage event.
+ * Single source of truth is whatever GET /wc/store/v1/cart returns. Qty
+ * edits patch the local cart immediately, then debounce a Store API POST
+ * so rapid clicks do not flicker when responses arrive. Cross-tab sync via
+ * shadow-cart storage events.
  *
  * Shadow-cart backing: every successful mutation mirrors the line items
  * to localStorage (see shadow-cart.ts). On fetch, if the server cart is
@@ -16,10 +18,12 @@ import {
 	writeShadow,
 	clearShadow,
 	itemsMissingFromActive,
+	SHADOW_CART_KEY,
 	type ShadowItem
 } from './shadow-cart';
 import { config } from '../config.svelte';
 import { estimateCartLineCro } from '../cart/bundle-pricing';
+import { browser } from '$app/environment';
 
 /**
  * Shape of the wchs_cro extension injected by the headless-cro-extension
@@ -155,7 +159,8 @@ class CartStore {
 	private pendingQtyByKey = new Map<string, number>();
 	private qtyFlushChain: Promise<void> = Promise.resolve();
 	private qtyDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-	private static readonly QTY_SYNC_DEBOUNCE_MS = 600;
+	/** Wait for clicks to settle before POSTing — avoids qty/price flicker. */
+	private static readonly QTY_SYNC_DEBOUNCE_MS = 550;
 
 	/**
 	 * Mutation mutex. Cart writes must serialize because the Store API's
@@ -277,10 +282,16 @@ class CartStore {
 		this.error = null;
 		this.restored = false;
 		try {
-			this.cart = await request<StoreApiCart>('/cart');
-			await this.maybeReplayFromShadow();
-			await this.pruneOrphanShippingProtection();
-			this.syncShadow();
+			const fresh = await request<StoreApiCart>('/cart');
+			// Don't clobber in-progress optimistic qty edits with a stale GET.
+			if (this.pendingQtyByKey.size > 0) {
+				this.applyServerCart(fresh);
+			} else {
+				this.cart = fresh;
+				await this.maybeReplayFromShadow();
+				await this.pruneOrphanShippingProtection();
+				this.syncShadow();
+			}
 		} catch (e) {
 			this.error = e instanceof Error ? e.message : String(e);
 		} finally {
@@ -331,6 +342,23 @@ class CartStore {
 	}
 
 	/**
+	 * Apply a Store API cart response without wiping optimistic qty the user
+	 * already clicked (pending debounce). Re-patches pending keys on top.
+	 */
+	private applyServerCart(next: StoreApiCart): void {
+		if (this.pendingQtyByKey.size === 0) {
+			this.cart = next;
+			this.syncShadow();
+			return;
+		}
+		this.cart = next;
+		for (const [key, quantity] of this.pendingQtyByKey) {
+			this.patchItemQuantity(key, quantity);
+		}
+		this.syncShadow();
+	}
+
+	/**
 	 * Guarded mutation runner. Serializes mutations via a promise chain
 	 * so concurrent add/update/remove calls execute one at a time
 	 * (avoiding the Store API's per-session write race). After each
@@ -350,8 +378,7 @@ class CartStore {
 			this.error = null;
 			try {
 				const next = await op();
-				this.cart = next;
-				this.syncShadow();
+				this.applyServerCart(next);
 			} catch (e) {
 				this.error = e instanceof Error ? e.message : String(e);
 				await this.fetch().catch(() => {});
@@ -362,9 +389,11 @@ class CartStore {
 					try {
 						const fresh = await request<StoreApiCart>('/cart');
 						if (convergeAtStart === this.convergenceGen) {
-							this.cart = fresh;
-							await this.pruneOrphanShippingProtection();
-							this.syncShadow();
+							this.applyServerCart(fresh);
+							if (this.pendingQtyByKey.size === 0) {
+								await this.pruneOrphanShippingProtection();
+								this.syncShadow();
+							}
 						}
 					} catch {
 						// best-effort convergence; swallow
@@ -483,54 +512,94 @@ class CartStore {
 		return this.qtyFlushChain;
 	}
 
-	private patchItemQuantity(key: string, quantity: number): void {
+	/** Qualifying rewards subtotal — excludes shipping protection + free BAC gift. */
+	private rewardsSubtotalMinor(items: StoreApiCartItem[]): number {
+		let minor = 0;
+		for (const item of items) {
+			if (this.isShippingProtectionItem(item)) continue;
+			if (item.extensions?.wchs_cro?.is_free_bac_gift) continue;
+			const line =
+				item.extensions?.wchs_cro?.line_total_minor ?? Number(item.totals.line_total);
+			minor += Number.isFinite(line) ? line : 0;
+		}
+		return Math.max(0, Math.round(minor));
+	}
+
+	private estimateRewards(subtotalMinor: number): WchsCroCartRewards {
+		const prev = this.cart?.extensions?.wchs_cro?.rewards;
+		const mu = this.cart?.totals.currency_minor_unit ?? 2;
+		const shipMinor =
+			prev?.shipping_threshold_minor ??
+			Math.round((config.data.shipping_free_threshold || 0) * 10 ** mu);
+		const bacMajor = config.data.pdp?.slide_cart?.rewards?.bac_water_threshold ?? 300;
+		const bacMinor = prev?.bac_water_threshold_minor ?? Math.round(bacMajor * 10 ** mu);
+		const trackMax = prev?.track_max_minor ?? Math.max(bacMinor, shipMinor, 1);
+		return {
+			subtotal_minor: subtotalMinor,
+			shipping_threshold_minor: shipMinor,
+			bac_water_threshold_minor: bacMinor,
+			track_max_minor: trackMax,
+			shipping_unlocked: shipMinor > 0 && subtotalMinor >= shipMinor,
+			bac_water_unlocked: subtotalMinor >= bacMinor,
+			bac_water_product_id:
+				prev?.bac_water_product_id ?? config.data.pdp?.slide_cart?.bac_water_product_id ?? 0
+		};
+	}
+
+	private applyOptimisticCart(items: StoreApiCartItem[]): void {
 		if (!this.cart) return;
-		const bogo = config.data.pdp?.bundle_bogo;
-		let itemsSubtotalMinor = 0;
-
-		const items = this.cart.items.map((item) => {
-			let patched = item;
-			if (item.key === key) {
-				const cro = item.extensions?.wchs_cro;
-				if (cro) {
-					const nextCro = estimateCartLineCro(quantity, cro, bogo);
-					const lineStr = String(nextCro.line_total_minor ?? Number(item.totals.line_total));
-					patched = {
-						...item,
-						quantity,
-						totals: {
-							...item.totals,
-							line_total: lineStr,
-							line_subtotal: lineStr
-						},
-						extensions: {
-							...item.extensions,
-							wchs_cro: nextCro
-						}
-					};
-				} else {
-					patched = { ...item, quantity };
-				}
-			}
-
-			if (!this.isShippingProtectionItem(patched)) {
-				const line =
-					patched.extensions?.wchs_cro?.line_total_minor ?? Number(patched.totals.line_total);
-				itemsSubtotalMinor += line;
-			}
-			return patched;
-		});
-
+		const rewardsSubtotal = this.rewardsSubtotalMinor(items);
+		const itemsCount = items.reduce((n, i) => n + i.quantity, 0);
+		const prevCro = this.cart.extensions?.wchs_cro;
 		this.cart = {
 			...this.cart,
 			items,
-			items_count: items.reduce((n, i) => n + i.quantity, 0),
+			items_count: itemsCount,
 			totals: {
 				...this.cart.totals,
-				total_items: String(itemsSubtotalMinor),
-				total_price: String(itemsSubtotalMinor)
+				total_items: String(rewardsSubtotal),
+				total_price: String(rewardsSubtotal)
+			},
+			extensions: {
+				...this.cart.extensions,
+				wchs_cro: {
+					...prevCro,
+					total_savings: prevCro?.total_savings ?? 0,
+					cross_sell_ids: prevCro?.cross_sell_ids ?? [],
+					rewards: this.estimateRewards(rewardsSubtotal)
+				}
 			}
 		};
+	}
+
+	private patchItemQuantity(key: string, quantity: number): void {
+		if (!this.cart) return;
+		const bogo = config.data.pdp?.bundle_bogo;
+
+		const items = this.cart.items.map((item) => {
+			if (item.key !== key) return item;
+			const cro = item.extensions?.wchs_cro;
+			if (cro) {
+				const nextCro = estimateCartLineCro(quantity, cro, bogo);
+				const lineStr = String(nextCro.line_total_minor ?? Number(item.totals.line_total));
+				return {
+					...item,
+					quantity,
+					totals: {
+						...item.totals,
+						line_total: lineStr,
+						line_subtotal: lineStr
+					},
+					extensions: {
+						...item.extensions,
+						wchs_cro: nextCro
+					}
+				};
+			}
+			return { ...item, quantity };
+		});
+
+		this.applyOptimisticCart(items);
 	}
 
 	async updateItem(key: string, quantity: number) {
@@ -546,12 +615,24 @@ class CartStore {
 		if (this.pendingQtyByKey.size === 0) {
 			this.clearQtyDebounce();
 		}
-		await this.mutate(
-			() => request<StoreApiCart>('/cart/remove-item', { method: 'POST', body: { key } }),
-			{ converge: false }
-		);
-		if (this.cart && this.cart.items_count === 0) clearShadow();
-		dispatch('removed_from_cart', { key });
+
+		if (this.cart) {
+			const items = this.cart.items.filter((item) => item.key !== key);
+			this.applyOptimisticCart(items);
+			if (items.length === 0) clearShadow();
+			else this.syncShadow();
+			dispatch('removed_from_cart', { key });
+		}
+
+		try {
+			await this.mutate(
+				() => request<StoreApiCart>('/cart/remove-item', { method: 'POST', body: { key } }),
+				{ converge: false }
+			);
+			if (this.cart && this.cart.items_count === 0) clearShadow();
+		} catch {
+			// mutate already refetches on error
+		}
 	}
 
 	async applyCoupon(code: string) {
@@ -654,3 +735,18 @@ function dispatch(name: string, detail: unknown) {
 }
 
 export const cart = new CartStore();
+
+if (browser) {
+	// Clear leftover flags from the reverted checkout reverse-sync experiment.
+	try {
+		sessionStorage.removeItem('wchs_awaiting_checkout_return');
+		localStorage.removeItem('wchs_awaiting_checkout_return');
+	} catch {
+		// storage unavailable
+	}
+	window.addEventListener('storage', (e) => {
+		if (e.key === SHADOW_CART_KEY && e.newValue !== e.oldValue) {
+			void cart.fetch();
+		}
+	});
+}

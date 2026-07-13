@@ -1200,6 +1200,33 @@ function wchs_bac_water_default_add_args(): array {
 }
 
 /**
+ * Add paid BAC water (no free-gift flag). Used when the shopper increases
+ * qty on the free gift line — extras stay charged at catalog price.
+ */
+function wchs_bac_water_add_paid( int $qty = 1 ): bool {
+	if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+		return false;
+	}
+	$qty  = max( 1, $qty );
+	$args = wchs_bac_water_default_add_args();
+	if ( (int) ( $args['product_id'] ?? 0 ) < 1 ) {
+		return false;
+	}
+	$key = WC()->cart->add_to_cart(
+		(int) $args['product_id'],
+		$qty,
+		(int) $args['variation_id'],
+		(array) $args['variation']
+	);
+	// FunnelKit/bumps may attempt a duplicate shipping-protection add during
+	// this request; drop those sold-individually notices so checkout stays clean.
+	if ( function_exists( 'wc_clear_notices' ) ) {
+		wc_clear_notices();
+	}
+	return is_string( $key ) && $key !== '';
+}
+
+/**
  * Auto-add/remove the free BAC water gift when the cart crosses the rewards threshold.
  */
 function wchs_sync_free_bac_water_gift(): void {
@@ -2253,6 +2280,32 @@ function wchs_prune_orphan_shipping_protection(): void {
 add_action( 'woocommerce_cart_item_removed', 'wchs_prune_orphan_shipping_protection', 20 );
 add_action( 'woocommerce_after_cart_item_quantity_update', 'wchs_prune_orphan_shipping_protection', 20 );
 add_action( 'woocommerce_checkout_update_order_review', 'wchs_prune_orphan_shipping_protection', 20 );
+
+/**
+ * Shipping protection is sold-individually. FunnelKit bumps / checkout refresh
+ * often re-POST an add while it is already in the cart — WC then flashes
+ * "You cannot add another … View cart". Fail that duplicate silently.
+ */
+add_filter(
+	'woocommerce_add_to_cart_validation',
+	static function ( $passed, $product_id ) {
+		if ( ! $passed || ! function_exists( 'WC' ) || ! WC()->cart ) {
+			return $passed;
+		}
+		$protect_id = wchs_shipping_protection_product_id();
+		if ( $protect_id < 1 || (int) $product_id !== $protect_id ) {
+			return $passed;
+		}
+		foreach ( WC()->cart->get_cart() as $item ) {
+			if ( (int) ( $item['product_id'] ?? 0 ) === $protect_id ) {
+				return false;
+			}
+		}
+		return $passed;
+	},
+	5,
+	2
+);
 
 add_action(
 	'woocommerce_add_to_cart',

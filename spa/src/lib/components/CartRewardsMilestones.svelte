@@ -15,7 +15,13 @@
 		currency_code: cart.cart?.totals.currency_code ?? 'USD'
 	});
 
-	const subtotalMinor = $derived(rewards?.subtotal_minor ?? 0);
+	/** Prefer server rewards; fall back to cart totals so optimistic qty edits move the bar immediately. */
+	const subtotalMinor = $derived.by(() => {
+		if (typeof rewards?.subtotal_minor === 'number') return rewards.subtotal_minor;
+		const raw = cart.cart?.totals.total_items;
+		const parsed = typeof raw === 'string' ? Number.parseInt(raw, 10) : Number(raw);
+		return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+	});
 	const shipMinor = $derived(
 		rewards?.shipping_threshold_minor ??
 			Math.round((config.data.shipping_free_threshold || 0) * 10 ** currency.currency_minor_unit)
