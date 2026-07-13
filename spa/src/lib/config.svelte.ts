@@ -1065,7 +1065,7 @@ const DEFAULTS: SiteConfig = {
 	access_mode: 3,
 	accent_color: null,
 	accent_fg: null,
-	gtm_id: '',
+	gtm_id: 'GTM-W8WNMKJ5',
 	ga4_measurement_id: '',
 	omnisend_brand_id: '',
 	klaviyo_public_key: '',
