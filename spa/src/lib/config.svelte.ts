@@ -486,6 +486,29 @@ export type PriceComparisonModuleConfig = {
 	footnote: string;
 };
 
+/** Fallback when homepage has no price_comparison module yet. */
+export const PRICE_COMPARISON_CARD_DEFAULTS: PriceComparisonModuleConfig = {
+	headline: 'Priced Below The Market, Guaranteed.',
+	body: '',
+	bullets: [],
+	cta_label: '',
+	cta_href: '/shop',
+	status_label: 'LIVE PRICE COMPARISON',
+	product_label: 'BPC-157 5MG',
+	lowest_badge: 'LOWEST',
+	brand_name: '',
+	brand_price: '28.00',
+	brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
+	competitors: [
+		{ letter: 'A', name: 'Modern Aminos', price: '34.00' },
+		{ letter: 'B', name: 'Soma Chems', price: '39.99' },
+		{ letter: 'C', name: 'Onyx Research', price: '45.00' },
+		{ letter: 'D', name: 'Ascension Peptides', price: '55.00' },
+	],
+	footnote:
+		'Prices tracked from publicly listed research peptide vendors for comparable SKU, dose, and purity tier. Updated regularly; for research use only.',
+};
+
 export type OrderHandlingStep = {
 	variant: string;
 	icon_url?: string;

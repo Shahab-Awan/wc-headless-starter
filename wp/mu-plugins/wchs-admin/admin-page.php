@@ -1160,6 +1160,7 @@ class AdminPage {
 			'cta_primary_link'    => '/shop',
 			'cta_secondary_text'  => 'View COA Reports',
 			'cta_secondary_link'  => '/coa-library',
+			'visual'              => 'image',
 			'image_desktop'       => '',
 			'image_mobile'        => '',
 		];
@@ -1997,6 +1998,10 @@ class AdminPage {
 		}
 
 		$precision_defaults = self::hero_precision_defaults();
+		$precision_visual   = sanitize_text_field( wp_unslash( $_POST['precision_visual'] ?? $precision_defaults['visual'] ) );
+		if ( ! in_array( $precision_visual, [ 'image', 'price_comparison' ], true ) ) {
+			$precision_visual = 'image';
+		}
 		$hero['precision']  = [
 			'badge'              => sanitize_text_field( wp_unslash( $_POST['precision_badge'] ?? $precision_defaults['badge'] ) ),
 			'headline_primary'   => sanitize_text_field( wp_unslash( $_POST['precision_headline_primary'] ?? $precision_defaults['headline_primary'] ) ),
@@ -2012,6 +2017,7 @@ class AdminPage {
 			'cta_primary_link'   => sanitize_text_field( wp_unslash( $_POST['precision_cta_primary_link'] ?? $precision_defaults['cta_primary_link'] ) ),
 			'cta_secondary_text' => sanitize_text_field( wp_unslash( $_POST['precision_cta_secondary_text'] ?? $precision_defaults['cta_secondary_text'] ) ),
 			'cta_secondary_link' => sanitize_text_field( wp_unslash( $_POST['precision_cta_secondary_link'] ?? $precision_defaults['cta_secondary_link'] ) ),
+			'visual'             => $precision_visual,
 			'image_desktop'      => esc_url_raw( wp_unslash( $_POST['precision_image_desktop'] ?? '' ) ),
 			'image_mobile'       => esc_url_raw( wp_unslash( $_POST['precision_image_mobile'] ?? '' ) ),
 		];
@@ -4221,7 +4227,14 @@ class AdminPage {
 				</div>
 			</div>
 			<div class="wchs-field">
-				<label>Visual (desktop) <?php echo self::hint_icon( 'Optional hero graphic for the right column. Leave empty to show the placeholder grid at full size.' ); ?></label>
+				<label>Right column visual <?php echo self::hint_icon( 'Image uses the media fields below. Price comparison uses the Live Price Comparison card from the homepage Price comparison module (edit competitors/prices there).' ); ?></label>
+				<div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
+					<label class="wchs-radio"><input type="radio" name="precision_visual" value="image" <?php checked( $precision['visual'] ?? 'image', 'image' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Hero image</span></label>
+					<label class="wchs-radio"><input type="radio" name="precision_visual" value="price_comparison" <?php checked( $precision['visual'] ?? 'image', 'price_comparison' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Live price comparison table</span></label>
+				</div>
+			</div>
+			<div class="wchs-field">
+				<label>Visual (desktop) <?php echo self::hint_icon( 'Optional hero graphic for the right column when “Hero image” is selected. Leave empty to show the placeholder grid.' ); ?></label>
 				<div class="wchs-media-field">
 					<input type="text" name="precision_image_desktop" value="<?php echo esc_attr( $precision['image_desktop'] ); ?>" class="wchs-media-url" placeholder="No image selected" />
 					<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>

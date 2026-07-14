@@ -1085,6 +1085,61 @@ function wchs_wc_shipping_free_threshold_major(): float {
 	return $min;
 }
 
+/**
+ * Keep free shipping available when a coupon pulls the total under the
+ * min amount. Eligibility uses cart subtotal BEFORE discounts (same as
+ * Woo’s “Apply minimum order rule before coupon discount”).
+ */
+add_filter(
+	'woocommerce_shipping_free_shipping_is_available',
+	static function ( $is_available, $package, $method ) {
+		unset( $package );
+		if ( ! class_exists( 'WC_Shipping_Free_Shipping' ) || ! ( $method instanceof WC_Shipping_Free_Shipping ) ) {
+			return $is_available;
+		}
+		if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+			return $is_available;
+		}
+
+		$requires = (string) ( $method->requires ?? '' );
+		if ( ! in_array( $requires, [ 'min_amount', 'either', 'both' ], true ) ) {
+			return $is_available;
+		}
+
+		$min = (float) ( $method->min_amount ?? 0 );
+		if ( $min <= 0 ) {
+			return $is_available;
+		}
+
+		// Pre-discount subtotal — coupon must not revoke free shipping.
+		$total = (float) WC()->cart->get_displayed_subtotal();
+		$met   = $total >= $min - 0.00001;
+
+		$has_fs_coupon = false;
+		if ( in_array( $requires, [ 'either', 'both' ], true ) ) {
+			foreach ( WC()->cart->get_coupons() as $coupon ) {
+				if ( $coupon instanceof WC_Coupon && $coupon->get_free_shipping() ) {
+					$has_fs_coupon = true;
+					break;
+				}
+			}
+		}
+
+		switch ( $requires ) {
+			case 'min_amount':
+				return $met;
+			case 'either':
+				return $met || $has_fs_coupon;
+			case 'both':
+				return $met && $has_fs_coupon;
+			default:
+				return $is_available;
+		}
+	},
+	20,
+	3
+);
+
 /** Cart-rewards BAC water gift threshold (major units). */
 function wchs_rewards_bac_water_threshold_major(): float {
 	return 300.0;

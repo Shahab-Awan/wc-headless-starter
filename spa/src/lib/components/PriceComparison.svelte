@@ -11,11 +11,14 @@
 		resolved,
 		spacing_v = 'normal',
 		spacing_h = 'normal',
+		cardOnly = false,
 	}: {
 		config: PriceComparisonModuleConfig;
 		resolved?: ModuleResolved;
 		spacing_v?: SpacingPreset;
 		spacing_h?: SpacingPreset;
+		/** When true, render only the Live Price Comparison card (hero visual). */
+		cardOnly?: boolean;
 	} = $props();
 
 	const BULLET_VARIANTS = ['globe', 'price_search', 'award'] as const;
@@ -77,7 +80,66 @@
 	);
 </script>
 
-{#if hasCopy}
+{#if hasCopy || (cardOnly && (brandPrice || competitors.length))}
+	{#if cardOnly}
+		<div class="pc pc--card-only" style={accentStyle}>
+			{#if brandPrice || competitors.length}
+				<div class="pc-card" aria-label="Live price comparison">
+					<div class="pc-card__header">
+						<div class="pc-card__status-row">
+							{#if config.status_label?.trim() || config.product_label?.trim()}
+								<p class="pc-card__status">
+									<span class="pc-card__live" aria-hidden="true"></span>
+									{#if config.status_label?.trim()}{config.status_label.trim()}{/if}
+									{#if config.status_label?.trim() && config.product_label?.trim()}
+										<span class="pc-card__status-sep" aria-hidden="true">·</span>
+									{/if}
+									{#if config.product_label?.trim()}{config.product_label.trim()}{/if}
+								</p>
+							{/if}
+							{#if config.lowest_badge?.trim()}
+								<span class="pc-card__lowest">{config.lowest_badge.trim()}</span>
+							{/if}
+						</div>
+
+						{#if brandPrice}
+							<div class="pc-card__brand">
+								<span class="pc-card__brand-mark" aria-hidden="true">
+									<svg viewBox="0 0 20 20" width="18" height="18">
+										<circle cx="10" cy="10" r="10" fill="currentColor" />
+										<path fill="var(--bg)" d="M6.2 10.2 8.8 12.8 14 7.6" stroke="var(--bg)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+									</svg>
+								</span>
+								<div class="pc-card__brand-copy">
+									<strong class="pc-card__brand-name">{brandName}</strong>
+									{#if config.brand_tags?.trim()}
+										<p class="pc-card__brand-tags">{config.brand_tags.trim()}</p>
+									{/if}
+								</div>
+								<strong class="pc-card__brand-price">{brandPrice}</strong>
+							</div>
+						{/if}
+					</div>
+
+					{#if competitors.length}
+						<ul class="pc-card__rows">
+							{#each competitors as row}
+								<li class="pc-card__row">
+									<span class="pc-card__letter" aria-hidden="true">{row.letter}</span>
+									<span class="pc-card__name">{row.name}</span>
+									<span class="pc-card__price">{row.price}</span>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+
+					{#if config.footnote?.trim()}
+						<p class="pc-card__footnote">{config.footnote.trim()}</p>
+					{/if}
+				</div>
+			{/if}
+		</div>
+	{:else if hasCopy}
 	<section
 		class="pc"
 		class:is-v-compact={spacing_v === 'compact'}
@@ -192,6 +254,7 @@
 			{/if}
 		</div>
 	</section>
+	{/if}
 {/if}
 
 <style>
@@ -207,6 +270,19 @@
 		margin: 0 auto;
 		padding: var(--mod-pt) var(--mod-px) var(--mod-pb);
 		color: var(--fg);
+	}
+	.pc--card-only {
+		--mod-pt: 0;
+		--mod-pb: 0;
+		--mod-px: 0;
+		--mod-max-w: 100%;
+		width: 100%;
+		max-width: 420px;
+		margin: 0;
+		padding: 0;
+	}
+	.pc--card-only .pc-card {
+		width: 100%;
 	}
 	.pc.is-v-compact {
 		--mod-pt: 44px;

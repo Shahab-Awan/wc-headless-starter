@@ -1,3 +1,5 @@
+export type HeroPrecisionVisual = 'image' | 'price_comparison';
+
 export type HeroPrecisionConfig = {
 	badge: string;
 	headline_primary: string;
@@ -13,6 +15,8 @@ export type HeroPrecisionConfig = {
 	cta_primary_link: string;
 	cta_secondary_text: string;
 	cta_secondary_link: string;
+	/** Right column: hero image or live price comparison card. */
+	visual: HeroPrecisionVisual;
 	image_desktop: string;
 	image_mobile: string;
 };
@@ -33,6 +37,7 @@ export const HERO_PRECISION_DEFAULTS: HeroPrecisionConfig = {
 	cta_primary_link: '/shop',
 	cta_secondary_text: 'View COA Reports',
 	cta_secondary_link: '/coa-library',
+	visual: 'image',
 	image_desktop: '',
 	image_mobile: '',
 };
@@ -40,5 +45,9 @@ export const HERO_PRECISION_DEFAULTS: HeroPrecisionConfig = {
 export function resolveHeroPrecision(
 	raw?: Partial<HeroPrecisionConfig> | null
 ): HeroPrecisionConfig {
-	return { ...HERO_PRECISION_DEFAULTS, ...(raw ?? {}) };
+	const merged = { ...HERO_PRECISION_DEFAULTS, ...(raw ?? {}) };
+	if (merged.visual !== 'price_comparison') {
+		merged.visual = 'image';
+	}
+	return merged;
 }

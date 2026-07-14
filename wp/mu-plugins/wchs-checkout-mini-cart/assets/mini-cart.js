@@ -97,10 +97,11 @@
 
 	function scheduleRefreshFromCheckout() {
 		if (refreshTimer) clearTimeout(refreshTimer);
+		// Wait for WC session + cart shipping totals to settle after method change.
 		refreshTimer = setTimeout(function () {
 			refreshTimer = null;
 			refreshFromServer();
-		}, 50);
+		}, 150);
 	}
 
 	function run(root, action, fields) {
@@ -185,8 +186,13 @@
 		run(root, 'wchs_mini_cart_apply_coupon', { code: code });
 	});
 
-	// When address / ShipStation rates change in FunnelKit, pull fresh shipping + total.
+	// When address / shipping method / ShipStation rates change, re-read WC cart shipping.
 	if (window.jQuery) {
 		window.jQuery(document.body).on('updated_checkout', scheduleRefreshFromCheckout);
+		window.jQuery(document.body).on(
+			'change',
+			'input[name^="shipping_method"], select[name^="shipping_method"]',
+			scheduleRefreshFromCheckout
+		);
 	}
 })();

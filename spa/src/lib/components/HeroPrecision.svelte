@@ -4,21 +4,25 @@
 		resolveHeroPrecision,
 		type HeroPrecisionConfig,
 	} from '$lib/hero-precision';
-	import type { ModuleResolved } from '$lib/config.svelte';
+	import type { ModuleResolved, PriceComparisonModuleConfig } from '$lib/config.svelte';
+	import PriceComparison from '$lib/components/PriceComparison.svelte';
 
 	let {
 		precision,
 		headline_font,
 		headline_weight,
 		resolved,
+		priceComparison,
 	}: {
 		precision?: Partial<HeroPrecisionConfig> | null;
 		headline_font?: string;
 		headline_weight?: string;
 		resolved?: ModuleResolved;
+		priceComparison?: PriceComparisonModuleConfig | null;
 	} = $props();
 
 	const p = $derived(resolveHeroPrecision(precision));
+	const usePriceCard = $derived(p.visual === 'price_comparison' && !!priceComparison);
 
 	const accentStyle = $derived(resolved?.accent_color ? `--accent: ${resolved.accent_color};` : '');
 
@@ -116,8 +120,14 @@
 			</div>
 		</div>
 
-		<div class="hero-precision__visual" aria-hidden={!p.image_desktop}>
-			{#if p.image_desktop}
+		<div
+			class="hero-precision__visual"
+			class:hero-precision__visual--card={usePriceCard}
+			aria-hidden={!usePriceCard && !p.image_desktop}
+		>
+			{#if usePriceCard && priceComparison}
+				<PriceComparison config={priceComparison} resolved={resolved} cardOnly />
+			{:else if p.image_desktop}
 				<picture>
 					{#if p.image_mobile}
 						<source media="(max-width: 639px)" srcset={p.image_mobile} />
@@ -376,6 +386,19 @@
 		overflow: hidden;
 	}
 
+	.hero-precision__visual--card {
+		aspect-ratio: auto;
+		min-height: 0;
+		max-width: min(100%, 420px);
+		border: 0;
+		background: transparent;
+		background-image: none;
+		overflow: visible;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
 	.hero-precision__visual picture,
 	.hero-precision__visual img {
 		display: block;
@@ -453,9 +476,13 @@
 			grid-area: visual;
 		}
 
-		.hero-precision__visual {
+		.hero-precision__visual:not(.hero-precision__visual--card) {
 			align-self: stretch;
 			min-height: clamp(280px, 72vw, 420px);
+		}
+
+		.hero-precision__visual--card {
+			min-height: 0;
 		}
 
 		.hero-precision__body {

@@ -19,7 +19,12 @@
 	import HeroResearchMotion from '$lib/components/HeroResearchMotion.svelte';
 	import HeroPrecision from '$lib/components/HeroPrecision.svelte';
 	import { browser } from '$app/environment';
-	import { config, type ModuleResolved } from '$lib/config.svelte';
+	import {
+		config,
+		PRICE_COMPARISON_CARD_DEFAULTS,
+		type ModuleResolved,
+		type PriceComparisonModuleConfig,
+	} from '$lib/config.svelte';
 	import { HERO_FONTS } from '$lib/hero-fonts';
 
 	let { hero, resolved, showEyebrow = true, showRating = true, showTrust = true, brandName } = $props<{
@@ -229,6 +234,16 @@
 	};
 
 	const displayBrandName = $derived(brandName ?? config.data.brand_name);
+
+	const precisionPriceComparison = $derived.by((): PriceComparisonModuleConfig => {
+		const mods = config.data.homepage?.modules ?? [];
+		for (const m of mods) {
+			if (m.type === 'price_comparison') {
+				return { ...PRICE_COMPARISON_CARD_DEFAULTS, ...m.config };
+			}
+		}
+		return PRICE_COMPARISON_CARD_DEFAULTS;
+	});
 </script>
 
 {#if hero.layout === 'precision'}
@@ -237,6 +252,7 @@
 		headline_font={hero.headline_font}
 		headline_weight={hero.headline_weight}
 		{resolved}
+		priceComparison={precisionPriceComparison}
 	/>
 {:else if hero.variant === 'research-motion'}
 	<HeroResearchMotion hero={hero} {resolved} brandName={displayBrandName} />
