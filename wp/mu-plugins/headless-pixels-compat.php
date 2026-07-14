@@ -189,6 +189,11 @@ add_action( 'wp_footer', function () {
       if (window._learnq) window._learnq.push(['identify', k]);
     }
     if (tt && window.ttq) window.ttq.identify({ email: email, phone_number: phone || undefined });
+    if (typeof window.TriplePixel === 'function') {
+      var tp = { email: email };
+      if (phone) tp.phone = phone;
+      window.TriplePixel('Contact', tp);
+    }
   }
   function wire(){
     var e = document.querySelector('#billing_email');

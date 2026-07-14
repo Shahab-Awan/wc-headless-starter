@@ -50,6 +50,8 @@ declare global {
 			track?: (...args: unknown[]) => void;
 		};
 		CLabsgbVar?: { generalProps?: { uid?: string } };
+		TriplePixel?: (event: string, payload?: Record<string, unknown>) => unknown;
+		TriplePixelData?: Record<string, unknown>;
 	}
 }
 
@@ -451,6 +453,8 @@ type PixelProduct = {
 };
 type PixelCartItem = {
 	id: number;
+	/** Variation/SKU id when distinct from the parent product id. */
+	variant_id?: number;
 	name: string;
 	price: string;
 	currency_minor_unit: number;
@@ -655,6 +659,48 @@ export function trackPinterestAddToCart(i: PixelCartItem): void {
 		currency: 'USD',
 		line_items: [{ product_name: i.name, product_id: String(i.id), product_price: priceAsNumber(i.price, i), product_quantity: i.quantity }],
 	});
+}
+
+// ── Triple Whale Pixel ─────────────────────────────────────────────────
+// Base snippet lives in app.html (window.TriplePixel). Headless stores must
+// fire events manually — Auto-Install only covers classic WC templates.
+export function trackTriplePixelAddToCart(i: PixelCartItem): void {
+	if (typeof window.TriplePixel !== 'function') return;
+	const itemId = String(i.id);
+	// Triple requires `v`; for simple products reuse the product id.
+	const variantId = String(i.variant_id ?? i.id);
+	window.TriplePixel('AddToCart', {
+		item: itemId,
+		q: i.quantity,
+		v: variantId,
+	});
+}
+
+/**
+ * Identify visitor for Triple attribution. Require email and/or phone.
+ * Retries until TriplePixel is ready (same pattern as Triple's docs).
+ */
+export function trackTriplePixelContact(contact: { email?: string; phone?: string }): void {
+	if (typeof window === 'undefined') return;
+	const email = contact.email?.trim() || '';
+	const phone = contact.phone?.trim() || '';
+	if (!email && !phone) return;
+
+	const payload: Record<string, string> = {};
+	if (email) payload.email = email;
+	if (phone) payload.phone = phone;
+
+	let attempts = 0;
+	const tryFire = () => {
+		if (typeof window.TriplePixel === 'function') {
+			window.TriplePixel('Contact', payload);
+			return;
+		}
+		if (attempts >= 75) return; // ~30s
+		attempts += 1;
+		setTimeout(tryFire, 400);
+	};
+	tryFire();
 }
 export function trackPinterestCheckout(o: PixelOrder): void {
 	const meta = o.totals;

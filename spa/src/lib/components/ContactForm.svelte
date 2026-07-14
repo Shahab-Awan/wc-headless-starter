@@ -133,6 +133,15 @@
 					lead_source: 'contact_form',
 				});
 			}
+			const emailField = formConfig.fields.find((f) => f.type === 'email' || /email/i.test(f.name));
+			const phoneField = formConfig.fields.find((f) => /phone/i.test(f.name));
+			const leadEmail = emailField ? (values[emailField.name] ?? '').trim() : '';
+			const leadPhone = phoneField ? (values[phoneField.name] ?? '').trim() : '';
+			if (leadEmail || leadPhone) {
+				import('$lib/analytics').then((a) => {
+					a.trackTriplePixelContact({ email: leadEmail || undefined, phone: leadPhone || undefined });
+				}).catch(() => {});
+			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Something went wrong. Please try again.';
 			resetTurnstile();

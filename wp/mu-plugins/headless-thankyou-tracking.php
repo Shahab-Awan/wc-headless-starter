@@ -253,6 +253,7 @@ function wchs_thankyou_purchase_scripts_html( \WC_Order $order ): string {
 	}
 
 	$email    = (string) $order->get_billing_email();
+	$phone    = (string) $order->get_billing_phone();
 	$subtotal = round( (float) $order->get_subtotal(), 4 );
 	$shipping = round( (float) $order->get_shipping_total(), 4 );
 	$tax      = round( (float) $order->get_total_tax(), 4 );
@@ -269,6 +270,7 @@ function wchs_thankyou_purchase_scripts_html( \WC_Order $order ): string {
 		'tax'        => $tax,
 		'pageUrl'    => $page_url,
 		'email'      => $email,
+		'phone'      => $phone,
 		'gaItems'    => $ga_items,
 		'clProducts' => $cl_products,
 	];
@@ -294,6 +296,19 @@ function wchs_thankyou_purchase_scripts_html( \WC_Order $order ): string {
       items: p.gaItems
     }
   });
+
+  // Triple Whale Contact — connect thank-you visitor to the journey.
+  (function fireTripleContact(attempts) {
+    if (!p.email && !p.phone) return;
+    if (typeof window.TriplePixel === 'function') {
+      var contact = {};
+      if (p.email) contact.email = p.email;
+      if (p.phone) contact.phone = p.phone;
+      window.TriplePixel('Contact', contact);
+      return;
+    }
+    if (attempts < 75) setTimeout(function () { fireTripleContact(attempts + 1); }, 400);
+  })(0);
 
   function clStr(v) { return { t: 'string', v: String(v).slice(0, 2000) }; }
   function clNum(v) { return { t: 'number', v: String(v) }; }

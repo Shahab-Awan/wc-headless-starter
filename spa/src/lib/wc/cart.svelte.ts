@@ -448,8 +448,10 @@ class CartStore {
 		if (added && typeof window !== 'undefined') {
 			import('$lib/analytics').then((a) => {
 				const item = {
+					// Store API line `id` is the variation id when a variation
+					// was added; pass that as variant_id so TriplePixel gets `v`.
 					id: added.id,
-					variant_id: added.id === id ? undefined : id,
+					variant_id: variation.length > 0 || added.id !== id ? id : undefined,
 					name: added.name,
 					price: added.prices.price,
 					currency_minor_unit: added.prices.currency_minor_unit,
@@ -465,6 +467,7 @@ class CartStore {
 				a.trackMetaAddToCart(item);
 				a.trackTikTokAddToCart(item);
 				a.trackPinterestAddToCart(item);
+				a.trackTriplePixelAddToCart(item);
 			});
 		}
 	}

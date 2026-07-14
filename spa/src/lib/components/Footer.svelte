@@ -42,8 +42,14 @@
 				body: JSON.stringify({ email: emailInput }),
 			});
 			if (r.ok) {
+				const subscribedEmail = emailInput.trim();
 				status = 'ok';
 				emailInput = '';
+				if (subscribedEmail) {
+					import('$lib/analytics').then((a) => {
+						a.trackTriplePixelContact({ email: subscribedEmail });
+					}).catch(() => {});
+				}
 			} else if (r.status === 429) {
 				status = 'rate_limited';
 			} else {

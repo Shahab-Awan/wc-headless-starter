@@ -15,6 +15,7 @@
 		trackPinterestCheckout,
 		trackGoogleAdsConversion,
 		identifyClarityContact,
+		trackTriplePixelContact,
 	} from '$lib/analytics';
 	import { config } from '$lib/config.svelte';
 	import { formatPrice } from '$lib/utils/format';
@@ -123,6 +124,14 @@
 					identifyClarityContact(billingEmail);
 				}
 			};
+
+			// Triple Contact stays outside purchase dedupe — attribution needs
+			// email/phone even when purchase pixels already fired on WP thank-you.
+			const billingEmail = orderData.billing_address?.email;
+			const billingPhone = orderData.billing_address?.phone;
+			if (billingEmail || billingPhone) {
+				trackTriplePixelContact({ email: billingEmail, phone: billingPhone });
+			}
 
 			try {
 				const firedKey = `wchs_purchase_fired_${orderData.id}`;
