@@ -37,7 +37,18 @@
 		return h;
 	});
 
-	const modules = $derived(landing.modules);
+	const modules = $derived(
+		landing.modules.filter((m) => {
+			if (
+				hero.layout === 'precision' &&
+				hero.precision?.visual === 'price_comparison' &&
+				m.type === 'price_comparison'
+			) {
+				return false;
+			}
+			return true;
+		})
+	);
 </script>
 
 <SEO

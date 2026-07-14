@@ -6138,22 +6138,48 @@ class AdminPage {
 				<div class="wchs-field"><label>CTA link</label><input type="text" data-field="pc_cta_href" placeholder="/shop" /></div>
 				<p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Comparison card</p>
 				<div class="wchs-field"><label>Status label</label><input type="text" data-field="pc_status_label" placeholder="LIVE PRICE COMPARISON" /></div>
-				<div class="wchs-field"><label>Product label</label><input type="text" data-field="pc_product_label" placeholder="BPC-157 5MG" /></div>
 				<div class="wchs-field"><label>Lowest badge</label><input type="text" data-field="pc_lowest_badge" placeholder="LOWEST" /></div>
 				<div class="wchs-field"><label>Your brand name</label><input type="text" data-field="pc_brand_name" placeholder="Leave blank to use site brand" /></div>
-				<div class="wchs-field"><label>Your price</label><input type="text" data-field="pc_brand_price" placeholder="28.00" /></div>
-				<div class="wchs-field wchs-field--full"><label>Your tags line</label><input type="text" data-field="pc_brand_tags" placeholder="IN STOCK · SHIPS FAST · COA ON FILE" /></div>
 				<div class="wchs-field wchs-field--full">
-					<label>Competitors</label>
-					<div class="wchs-pc-competitors wchs-accordion-items" style="display:flex;flex-direction:column;gap:10px">
-						<div class="wchs-accordion-item wchs-pc-competitor" style="display:grid;grid-template-columns:48px 1fr 88px auto;gap:8px;align-items:center;padding:8px;border:1px solid #ddd;background:#fafafa">
-							<input type="text" placeholder="A" />
-							<input type="text" placeholder="Vendor name" />
-							<input type="text" placeholder="34.00" />
-							<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+					<label>Product tabs</label>
+					<div class="wchs-pc-sheets wchs-accordion-items" style="display:flex;flex-direction:column;gap:12px">
+						<div class="wchs-accordion-item wchs-pc-sheet" style="display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid #ddd;background:#fafafa">
+							<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+								<div>
+									<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Tab label</label>
+									<input type="text" data-field="pc_sheet_tab_label" placeholder="GLP Reta" />
+								</div>
+								<div>
+									<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Product label</label>
+									<input type="text" data-field="pc_sheet_product_label" placeholder="GLP Reta 10 MG" />
+								</div>
+							</div>
+							<div style="display:grid;grid-template-columns:120px 1fr;gap:10px">
+								<div>
+									<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Your price</label>
+									<input type="text" data-field="pc_sheet_brand_price" placeholder="89.00" />
+								</div>
+								<div>
+									<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Your tags line</label>
+									<input type="text" data-field="pc_sheet_brand_tags" placeholder="IN STOCK · SHIPS FAST · COA ON FILE" />
+								</div>
+							</div>
+							<div>
+								<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0 0 6px;display:block">Competitors</label>
+								<div class="wchs-pc-competitors wchs-accordion-items" style="display:flex;flex-direction:column;gap:10px">
+									<div class="wchs-accordion-item wchs-pc-competitor" style="display:grid;grid-template-columns:48px 1fr 88px auto;gap:8px;align-items:center;padding:8px;border:1px solid #ddd;background:#fff">
+										<input type="text" placeholder="A" />
+										<input type="text" placeholder="Vendor name" />
+										<input type="text" placeholder="109.00" />
+										<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
+									</div>
+								</div>
+								<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-pc-competitor-modal" style="margin-top:10px">+ Add competitor</button>
+							</div>
+							<button type="button" class="wchs-accordion-item__remove" title="Remove tab">✕</button>
 						</div>
 					</div>
-					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-pc-competitor-modal" style="margin-top:10px">+ Add competitor</button>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-pc-sheet-modal" style="margin-top:10px">+ Add product tab</button>
 				</div>
 				<div class="wchs-field wchs-field--full"><label>Footnote</label><textarea data-field="pc_footnote" rows="2"></textarea></div>
 			</div>

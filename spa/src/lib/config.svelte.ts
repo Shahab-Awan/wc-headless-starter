@@ -470,6 +470,14 @@ export type PriceComparisonCompetitor = {
 	price: string;
 };
 
+export type PriceComparisonSheet = {
+	tab_label: string;
+	product_label: string;
+	brand_price: string;
+	brand_tags: string;
+	competitors: PriceComparisonCompetitor[];
+};
+
 export type PriceComparisonModuleConfig = {
 	headline: string;
 	body: string;
@@ -477,13 +485,18 @@ export type PriceComparisonModuleConfig = {
 	cta_label: string;
 	cta_href: string;
 	status_label: string;
-	product_label: string;
 	lowest_badge: string;
 	brand_name: string;
-	brand_price: string;
-	brand_tags: string;
-	competitors: PriceComparisonCompetitor[];
 	footnote: string;
+	sheets?: PriceComparisonSheet[];
+	/** @deprecated Use sheets[].product_label */
+	product_label?: string;
+	/** @deprecated Use sheets[].brand_price */
+	brand_price?: string;
+	/** @deprecated Use sheets[].brand_tags */
+	brand_tags?: string;
+	/** @deprecated Use sheets[].competitors */
+	competitors?: PriceComparisonCompetitor[];
 };
 
 /** Fallback when homepage has no price_comparison module yet. */
@@ -494,19 +507,36 @@ export const PRICE_COMPARISON_CARD_DEFAULTS: PriceComparisonModuleConfig = {
 	cta_label: '',
 	cta_href: '/shop',
 	status_label: 'LIVE PRICE COMPARISON',
-	product_label: 'BPC-157 5MG',
 	lowest_badge: 'LOWEST',
 	brand_name: '',
-	brand_price: '28.00',
-	brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
-	competitors: [
-		{ letter: 'A', name: 'Modern Aminos', price: '34.00' },
-		{ letter: 'B', name: 'Soma Chems', price: '39.99' },
-		{ letter: 'C', name: 'Onyx Research', price: '45.00' },
-		{ letter: 'D', name: 'Ascension Peptides', price: '55.00' },
-	],
 	footnote:
 		'Prices tracked from publicly listed research peptide vendors for comparable SKU, dose, and purity tier. Updated regularly; for research use only.',
+	sheets: [
+		{
+			tab_label: 'GLP Reta',
+			product_label: 'GLP Reta 10 MG',
+			brand_price: '89.00',
+			brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
+			competitors: [
+				{ letter: 'A', name: 'Modern Aminos', price: '109.00' },
+				{ letter: 'B', name: 'Soma Chems', price: '119.00' },
+				{ letter: 'C', name: 'Onyx Research', price: '125.00' },
+				{ letter: 'D', name: 'Ascension Peptides', price: '135.00' },
+			],
+		},
+		{
+			tab_label: 'BPC-157',
+			product_label: 'BPC-157 5MG',
+			brand_price: '28.00',
+			brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
+			competitors: [
+				{ letter: 'A', name: 'Modern Aminos', price: '34.00' },
+				{ letter: 'B', name: 'Soma Chems', price: '39.99' },
+				{ letter: 'C', name: 'Onyx Research', price: '45.00' },
+				{ letter: 'D', name: 'Ascension Peptides', price: '55.00' },
+			],
+		},
+	],
 };
 
 export type OrderHandlingStep = {

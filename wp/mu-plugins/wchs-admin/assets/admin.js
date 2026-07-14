@@ -484,16 +484,33 @@
 				cta_label: 'Browse Catalog',
 				cta_href: '/shop',
 				status_label: 'LIVE PRICE COMPARISON',
-				product_label: 'BPC-157 5MG',
 				lowest_badge: 'LOWEST',
 				brand_name: '',
-				brand_price: '28.00',
-				brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
-				competitors: [
-					{ letter: 'A', name: 'Modern Aminos', price: '34.00' },
-					{ letter: 'B', name: 'Soma Chems', price: '39.99' },
-					{ letter: 'C', name: 'Onyx Research', price: '45.00' },
-					{ letter: 'D', name: 'Ascension Peptides', price: '55.00' },
+				sheets: [
+					{
+						tab_label: 'GLP Reta',
+						product_label: 'GLP Reta 10 MG',
+						brand_price: '89.00',
+						brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
+						competitors: [
+							{ letter: 'A', name: 'Modern Aminos', price: '109.00' },
+							{ letter: 'B', name: 'Soma Chems', price: '119.00' },
+							{ letter: 'C', name: 'Onyx Research', price: '125.00' },
+							{ letter: 'D', name: 'Ascension Peptides', price: '135.00' },
+						],
+					},
+					{
+						tab_label: 'BPC-157',
+						product_label: 'BPC-157 5MG',
+						brand_price: '28.00',
+						brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
+						competitors: [
+							{ letter: 'A', name: 'Modern Aminos', price: '34.00' },
+							{ letter: 'B', name: 'Soma Chems', price: '39.99' },
+							{ letter: 'C', name: 'Onyx Research', price: '45.00' },
+							{ letter: 'D', name: 'Ascension Peptides', price: '55.00' },
+						],
+					},
 				],
 				footnote: 'Prices tracked from publicly listed research peptide vendors for comparable SKU, dose, and purity tier. Updated regularly; for research use only.',
 			};
@@ -1724,11 +1741,8 @@
 				setVal(container, '[data-field="pc_cta_label"]', cfg.cta_label || '');
 				setVal(container, '[data-field="pc_cta_href"]', cfg.cta_href || '');
 				setVal(container, '[data-field="pc_status_label"]', cfg.status_label || '');
-				setVal(container, '[data-field="pc_product_label"]', cfg.product_label || '');
 				setVal(container, '[data-field="pc_lowest_badge"]', cfg.lowest_badge || '');
 				setVal(container, '[data-field="pc_brand_name"]', cfg.brand_name || '');
-				setVal(container, '[data-field="pc_brand_price"]', cfg.brand_price || '');
-				setVal(container, '[data-field="pc_brand_tags"]', cfg.brand_tags || '');
 				setVal(container, '[data-field="pc_footnote"]', cfg.footnote || '');
 				populateRepeaterItems(container, '.wchs-pc-bullets', pcBulletsForAdmin(cfg), function (item, el) {
 					var sel = el.querySelector('[data-field="pc_bullet_variant"]');
@@ -1737,12 +1751,7 @@
 					if (inputs[0]) inputs[0].value = item.headline || '';
 					if (inputs[1]) inputs[1].value = item.description || '';
 				});
-				populateRepeaterItems(container, '.wchs-pc-competitors', pcCompetitorsForAdmin(cfg), function (item, el) {
-					var inputs = el.querySelectorAll('input[type="text"]');
-					if (inputs[0]) inputs[0].value = item.letter || '';
-					if (inputs[1]) inputs[1].value = item.name || '';
-					if (inputs[2]) inputs[2].value = item.price || '';
-				});
+				populatePcSheets(container, pcSheetsForAdmin(cfg));
 				break;
 			case 'order_handling':
 				setVal(container, '[data-field="oh_badge_text"]', cfg.badge_text || '');
@@ -2119,14 +2128,15 @@
 				cfg.cta_label = getVal(container, '[data-field="pc_cta_label"]') || '';
 				cfg.cta_href = getVal(container, '[data-field="pc_cta_href"]') || '';
 				cfg.status_label = getVal(container, '[data-field="pc_status_label"]') || '';
-				cfg.product_label = getVal(container, '[data-field="pc_product_label"]') || '';
 				cfg.lowest_badge = getVal(container, '[data-field="pc_lowest_badge"]') || '';
 				cfg.brand_name = getVal(container, '[data-field="pc_brand_name"]') || '';
-				cfg.brand_price = getVal(container, '[data-field="pc_brand_price"]') || '';
-				cfg.brand_tags = getVal(container, '[data-field="pc_brand_tags"]') || '';
 				cfg.footnote = getVal(container, '[data-field="pc_footnote"]') || '';
 				cfg.bullets = readPcBullets(container);
-				cfg.competitors = readPcCompetitors(container);
+				cfg.sheets = readPcSheets(container);
+				delete cfg.product_label;
+				delete cfg.brand_price;
+				delete cfg.brand_tags;
+				delete cfg.competitors;
 				delete cfg.title;
 				break;
 			case 'order_handling':
@@ -2258,12 +2268,26 @@
 
 	function readPcCompetitors(ctx) {
 		var items = [];
-		ctx.querySelectorAll('.wchs-pc-competitors .wchs-accordion-item').forEach(function (el) {
+		ctx.querySelectorAll('.wchs-pc-competitor').forEach(function (el) {
 			var inputs = el.querySelectorAll('input[type="text"]');
 			items.push({
 				letter: inputs[0] ? inputs[0].value : '',
 				name: inputs[1] ? inputs[1].value : '',
 				price: inputs[2] ? inputs[2].value : '',
+			});
+		});
+		return items;
+	}
+
+	function readPcSheets(ctx) {
+		var items = [];
+		ctx.querySelectorAll('.wchs-pc-sheets > .wchs-pc-sheet').forEach(function (el) {
+			items.push({
+				tab_label: getVal(el, '[data-field="pc_sheet_tab_label"]') || '',
+				product_label: getVal(el, '[data-field="pc_sheet_product_label"]') || '',
+				brand_price: getVal(el, '[data-field="pc_sheet_brand_price"]') || '',
+				brand_tags: getVal(el, '[data-field="pc_sheet_brand_tags"]') || '',
+				competitors: readPcCompetitors(el),
 			});
 		});
 		return items;
@@ -2479,21 +2503,105 @@
 		return out;
 	}
 
-	function pcCompetitorsForAdmin(cfg) {
-		var saved = cfg.competitors || [];
-		var defaults = defaultConfigFor('price_comparison').competitors || [];
-		if (!defaults.length) return saved;
-		if (!saved.length) return defaults.slice();
+	function pcCompetitorsForAdmin(competitors) {
+		var saved = competitors || [];
+		var defaults = defaultConfigFor('price_comparison').sheets;
+		var fallback = defaults && defaults[0] ? defaults[0].competitors || [] : [];
+		if (!fallback.length) return saved;
+		if (!saved.length) return fallback.slice();
 		var out = [];
-		for (var i = 0; i < defaults.length; i++) {
-			out.push(Object.assign({}, defaults[i], saved[i] || {}));
+		for (var i = 0; i < fallback.length; i++) {
+			out.push(Object.assign({}, fallback[i], saved[i] || {}));
 		}
-		if (saved.length > defaults.length) {
-			for (var j = defaults.length; j < saved.length; j++) {
+		if (saved.length > fallback.length) {
+			for (var j = fallback.length; j < saved.length; j++) {
 				out.push(saved[j]);
 			}
 		}
 		return out;
+	}
+
+	function pcSheetsForAdmin(cfg) {
+		var saved = cfg.sheets || [];
+		var defaults = defaultConfigFor('price_comparison').sheets || [];
+		if (!defaults.length) {
+			if (saved.length) return saved;
+			if (cfg.product_label || cfg.brand_price || (cfg.competitors && cfg.competitors.length)) {
+				return [{
+					tab_label: cfg.product_label || 'Product',
+					product_label: cfg.product_label || '',
+					brand_price: cfg.brand_price || '',
+					brand_tags: cfg.brand_tags || '',
+					competitors: cfg.competitors || [],
+				}];
+			}
+			return saved;
+		}
+		if (!saved.length) {
+			if (cfg.product_label || cfg.brand_price || (cfg.competitors && cfg.competitors.length)) {
+				return [{
+					tab_label: cfg.product_label || 'Product',
+					product_label: cfg.product_label || '',
+					brand_price: cfg.brand_price || '',
+					brand_tags: cfg.brand_tags || '',
+					competitors: pcCompetitorsForAdmin(cfg.competitors),
+				}];
+			}
+			return defaults.slice();
+		}
+		var out = [];
+		for (var i = 0; i < defaults.length; i++) {
+			var merged = Object.assign({}, defaults[i], saved[i] || {});
+			merged.competitors = pcCompetitorsForAdmin(
+				(saved[i] && saved[i].competitors) ? saved[i].competitors : merged.competitors
+			);
+			out.push(merged);
+		}
+		if (saved.length > defaults.length) {
+			for (var j = defaults.length; j < saved.length; j++) {
+				var extra = Object.assign({}, saved[j]);
+				extra.competitors = pcCompetitorsForAdmin(extra.competitors);
+				out.push(extra);
+			}
+		}
+		return out;
+	}
+
+	function populatePcSheets(ctx, sheets) {
+		var container = ctx.querySelector('.wchs-pc-sheets');
+		if (!container || !sheets.length) return;
+		var templateItem = container.querySelector('.wchs-pc-sheet');
+		if (!templateItem) return;
+		var tplHtml = templateItem.outerHTML;
+		container.innerHTML = '';
+		sheets.forEach(function (sheet) {
+			var div = document.createElement('div');
+			div.innerHTML = tplHtml;
+			var el = div.firstElementChild;
+			setVal(el, '[data-field="pc_sheet_tab_label"]', sheet.tab_label || '');
+			setVal(el, '[data-field="pc_sheet_product_label"]', sheet.product_label || '');
+			setVal(el, '[data-field="pc_sheet_brand_price"]', sheet.brand_price || '');
+			setVal(el, '[data-field="pc_sheet_brand_tags"]', sheet.brand_tags || '');
+			var compWrap = el.querySelector('.wchs-pc-competitors');
+			if (compWrap) {
+				var compTpl = compWrap.querySelector('.wchs-pc-competitor');
+				if (compTpl) {
+					var compTplHtml = compTpl.outerHTML;
+					compWrap.innerHTML = '';
+					pcCompetitorsForAdmin(sheet.competitors).forEach(function (item) {
+						var compDiv = document.createElement('div');
+						compDiv.innerHTML = compTplHtml;
+						var compEl = compDiv.firstElementChild;
+						var inputs = compEl.querySelectorAll('input[type="text"]');
+						if (inputs[0]) inputs[0].value = item.letter || '';
+						if (inputs[1]) inputs[1].value = item.name || '';
+						if (inputs[2]) inputs[2].value = item.price || '';
+						compWrap.appendChild(compEl);
+					});
+				}
+			}
+			container.appendChild(el);
+		});
 	}
 
 	function ohStepsForAdmin(cfg) {
@@ -3548,13 +3656,33 @@
 		if (addPcCompetitorModal) {
 			var pcCompWrap = addPcCompetitorModal.previousElementSibling;
 			if (!pcCompWrap || !pcCompWrap.classList.contains('wchs-pc-competitors')) return;
-			var pcCompTpl = pcCompWrap.querySelector('.wchs-accordion-item');
+			var pcCompTpl = pcCompWrap.querySelector('.wchs-pc-competitor');
 			if (!pcCompTpl) return;
 			var pcCompDiv = document.createElement('div');
 			pcCompDiv.innerHTML = pcCompTpl.outerHTML;
 			var pcCompEl = pcCompDiv.firstElementChild;
 			pcCompEl.querySelectorAll('input[type="text"]').forEach(function (inp) { inp.value = ''; });
 			pcCompWrap.appendChild(pcCompEl);
+		}
+		var addPcSheetModal = e.target.closest('.wchs-add-pc-sheet-modal');
+		if (addPcSheetModal) {
+			var pcSheetWrap = addPcSheetModal.previousElementSibling;
+			if (!pcSheetWrap || !pcSheetWrap.classList.contains('wchs-pc-sheets')) return;
+			var pcSheetTpl = pcSheetWrap.querySelector('.wchs-pc-sheet');
+			if (!pcSheetTpl) return;
+			var pcSheetDiv = document.createElement('div');
+			pcSheetDiv.innerHTML = pcSheetTpl.outerHTML;
+			var pcSheetEl = pcSheetDiv.firstElementChild;
+			pcSheetEl.querySelectorAll('[data-field^="pc_sheet_"]').forEach(function (inp) { inp.value = ''; });
+			var nestedCompWrap = pcSheetEl.querySelector('.wchs-pc-competitors');
+			if (nestedCompWrap) {
+				var nestedCompTpl = nestedCompWrap.querySelector('.wchs-pc-competitor');
+				if (nestedCompTpl) {
+					nestedCompWrap.innerHTML = nestedCompTpl.outerHTML;
+					nestedCompWrap.querySelectorAll('input[type="text"]').forEach(function (inp) { inp.value = ''; });
+				}
+			}
+			pcSheetWrap.appendChild(pcSheetEl);
 		}
 		var addOhStepModal = e.target.closest('.wchs-add-oh-step-modal');
 		if (addOhStepModal) {

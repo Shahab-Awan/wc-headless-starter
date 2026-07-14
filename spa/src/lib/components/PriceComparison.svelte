@@ -5,6 +5,7 @@
 		type PriceComparisonModuleConfig,
 		type SpacingPreset,
 	} from '$lib/config.svelte';
+	import { normalizePriceComparisonSheets } from '$lib/price-comparison';
 
 	let {
 		config,
@@ -36,6 +37,8 @@
 		return `$${n.toFixed(2)}`;
 	}
 
+	let activeTab = $state(0);
+
 	const accentStyle = $derived(resolved?.accent_color ? `--pc-accent: ${resolved.accent_color};` : '');
 	const bullets = $derived(
 		(config.bullets ?? [])
@@ -46,19 +49,26 @@
 			}))
 			.filter((row) => row.headline !== '')
 	);
-	const competitors = $derived(
-		(config.competitors ?? [])
-			.map((row, i) => ({
-				letter: (row.letter?.trim() || String.fromCharCode(65 + i)).toUpperCase(),
-				name: row.name?.trim() || '',
-				price: formatUsd(row.price ?? ''),
-			}))
-			.filter((row) => row.name !== '' && row.price !== '')
+	const sheets = $derived(
+		normalizePriceComparisonSheets(config).map((sheet) => ({
+			tabLabel: sheet.tab_label.trim(),
+			productLabel: sheet.product_label.trim(),
+			brandTags: sheet.brand_tags.trim(),
+			brandPrice: formatUsd(sheet.brand_price),
+			competitors: (sheet.competitors ?? [])
+				.map((row, i) => ({
+					letter: (row.letter?.trim() || String.fromCharCode(65 + i)).toUpperCase(),
+					name: row.name?.trim() || '',
+					price: formatUsd(row.price ?? ''),
+				}))
+				.filter((row) => row.name !== '' && row.price !== ''),
+		}))
 	);
+	const activeSheet = $derived(sheets[Math.min(activeTab, Math.max(0, sheets.length - 1))] ?? sheets[0]);
+	const showTabs = $derived(sheets.length > 1);
 	const brandName = $derived(
 		(config.brand_name ?? '').trim() || siteCfg.data.brand_name?.trim() || 'Our Store'
 	);
-	const brandPrice = $derived(formatUsd(config.brand_price ?? ''));
 	const ctaLabel = $derived((config.cta_label?.trim() || 'Browse Catalog').replace(/\s+/g, ' '));
 	const ctaHref = $derived(config.cta_href?.trim() || '/shop');
 	const href = $derived(
@@ -74,69 +84,105 @@
 				config.body?.trim() ||
 				bullets.length ||
 				ctaLabel ||
-				brandPrice ||
-				competitors.length
+				sheets.some((sheet) => sheet.brandPrice || sheet.competitors.length)
 		)
 	);
+	const hasActiveCard = $derived(
+		Boolean(activeSheet && (activeSheet.brandPrice || activeSheet.competitors.length))
+	);
+
+	$effect(() => {
+		if (activeTab >= sheets.length) activeTab = 0;
+	});
 </script>
 
-{#if hasCopy || (cardOnly && (brandPrice || competitors.length))}
-	{#if cardOnly}
-		<div class="pc pc--card-only" style={accentStyle}>
-			{#if brandPrice || competitors.length}
-				<div class="pc-card" aria-label="Live price comparison">
-					<div class="pc-card__header">
-						<div class="pc-card__status-row">
-							{#if config.status_label?.trim() || config.product_label?.trim()}
-								<p class="pc-card__status">
-									<span class="pc-card__live" aria-hidden="true"></span>
-									{#if config.status_label?.trim()}{config.status_label.trim()}{/if}
-									{#if config.status_label?.trim() && config.product_label?.trim()}
-										<span class="pc-card__status-sep" aria-hidden="true">·</span>
-									{/if}
-									{#if config.product_label?.trim()}{config.product_label.trim()}{/if}
-								</p>
-							{/if}
-							{#if config.lowest_badge?.trim()}
-								<span class="pc-card__lowest">{config.lowest_badge.trim()}</span>
-							{/if}
-						</div>
+{#snippet comparisonCard(sheet: (typeof sheets)[number])}
+	<div class="pc-card" aria-label="Live price comparison">
+		{#if showTabs}
+			<div class="pc-card__tabs" role="tablist" aria-label="Compare products">
+				{#each sheets as tab, i}
+					<button
+						type="button"
+						class="pc-card__tab"
+						class:is-active={activeTab === i}
+						role="tab"
+						aria-selected={activeTab === i}
+						id="pc-tab-{i}"
+						aria-controls="pc-panel-{i}"
+						onclick={() => (activeTab = i)}
+					>
+						{tab.tabLabel || tab.productLabel || `Product ${i + 1}`}
+					</button>
+				{/each}
+			</div>
+		{/if}
 
-						{#if brandPrice}
-							<div class="pc-card__brand">
-								<span class="pc-card__brand-mark" aria-hidden="true">
-									<svg viewBox="0 0 20 20" width="18" height="18">
-										<circle cx="10" cy="10" r="10" fill="currentColor" />
-										<path fill="var(--bg)" d="M6.2 10.2 8.8 12.8 14 7.6" stroke="var(--bg)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-									</svg>
-								</span>
-								<div class="pc-card__brand-copy">
-									<strong class="pc-card__brand-name">{brandName}</strong>
-									{#if config.brand_tags?.trim()}
-										<p class="pc-card__brand-tags">{config.brand_tags.trim()}</p>
-									{/if}
-								</div>
-								<strong class="pc-card__brand-price">{brandPrice}</strong>
-							</div>
-						{/if}
-					</div>
-
-					{#if competitors.length}
-						<ul class="pc-card__rows">
-							{#each competitors as row}
-								<li class="pc-card__row">
-									<span class="pc-card__letter" aria-hidden="true">{row.letter}</span>
-									<span class="pc-card__name">{row.name}</span>
-									<span class="pc-card__price">{row.price}</span>
-								</li>
-							{/each}
-						</ul>
+		<div
+			class="pc-card__panel"
+			role="tabpanel"
+			id="pc-panel-{activeTab}"
+			aria-labelledby={showTabs ? `pc-tab-${activeTab}` : undefined}
+		>
+			<div class="pc-card__header">
+				<div class="pc-card__status-row">
+					{#if config.status_label?.trim() || sheet.productLabel}
+						<p class="pc-card__status">
+							<span class="pc-card__live" aria-hidden="true"></span>
+							{#if config.status_label?.trim()}{config.status_label.trim()}{/if}
+							{#if config.status_label?.trim() && sheet.productLabel}
+								<span class="pc-card__status-sep" aria-hidden="true">·</span>
+							{/if}
+							{#if sheet.productLabel}{sheet.productLabel}{/if}
+						</p>
 					{/if}
-
-					{#if config.footnote?.trim()}
-						<p class="pc-card__footnote">{config.footnote.trim()}</p>
+					{#if config.lowest_badge?.trim()}
+						<span class="pc-card__lowest">{config.lowest_badge.trim()}</span>
 					{/if}
 				</div>
+
+				{#if sheet.brandPrice}
+					<div class="pc-card__brand">
+						<span class="pc-card__brand-mark" aria-hidden="true">
+							<svg viewBox="0 0 20 20" width="18" height="18">
+								<circle cx="10" cy="10" r="10" fill="currentColor" />
+								<path fill="var(--bg)" d="M6.2 10.2 8.8 12.8 14 7.6" stroke="var(--bg)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+							</svg>
+						</span>
+						<div class="pc-card__brand-copy">
+							<strong class="pc-card__brand-name">{brandName}</strong>
+							{#if sheet.brandTags}
+								<p class="pc-card__brand-tags">{sheet.brandTags}</p>
+							{/if}
+						</div>
+						<strong class="pc-card__brand-price">{sheet.brandPrice}</strong>
+					</div>
+				{/if}
+			</div>
+
+			{#if sheet.competitors.length}
+				<ul class="pc-card__rows">
+					{#each sheet.competitors as row}
+						<li class="pc-card__row">
+							<span class="pc-card__letter" aria-hidden="true">{row.letter}</span>
+							<span class="pc-card__name">{row.name}</span>
+							<span class="pc-card__price">{row.price}</span>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+
+			{#if config.footnote?.trim()}
+				<p class="pc-card__footnote">{config.footnote.trim()}</p>
+			{/if}
+		</div>
+	</div>
+{/snippet}
+
+{#if hasCopy || (cardOnly && hasActiveCard)}
+	{#if cardOnly}
+		<div class="pc pc--card-only" style={accentStyle}>
+			{#if activeSheet && hasActiveCard}
+				{@render comparisonCard(activeSheet)}
 			{/if}
 		</div>
 	{:else if hasCopy}
@@ -197,60 +243,8 @@
 				{/if}
 			</div>
 
-			{#if brandPrice || competitors.length}
-				<div class="pc-card" aria-label="Live price comparison">
-					<div class="pc-card__header">
-						<div class="pc-card__status-row">
-							{#if config.status_label?.trim() || config.product_label?.trim()}
-								<p class="pc-card__status">
-									<span class="pc-card__live" aria-hidden="true"></span>
-									{#if config.status_label?.trim()}{config.status_label.trim()}{/if}
-									{#if config.status_label?.trim() && config.product_label?.trim()}
-										<span class="pc-card__status-sep" aria-hidden="true">·</span>
-									{/if}
-									{#if config.product_label?.trim()}{config.product_label.trim()}{/if}
-								</p>
-							{/if}
-							{#if config.lowest_badge?.trim()}
-								<span class="pc-card__lowest">{config.lowest_badge.trim()}</span>
-							{/if}
-						</div>
-
-						{#if brandPrice}
-							<div class="pc-card__brand">
-								<span class="pc-card__brand-mark" aria-hidden="true">
-									<svg viewBox="0 0 20 20" width="18" height="18">
-										<circle cx="10" cy="10" r="10" fill="currentColor" />
-										<path fill="var(--bg)" d="M6.2 10.2 8.8 12.8 14 7.6" stroke="var(--bg)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-									</svg>
-								</span>
-								<div class="pc-card__brand-copy">
-									<strong class="pc-card__brand-name">{brandName}</strong>
-									{#if config.brand_tags?.trim()}
-										<p class="pc-card__brand-tags">{config.brand_tags.trim()}</p>
-									{/if}
-								</div>
-								<strong class="pc-card__brand-price">{brandPrice}</strong>
-							</div>
-						{/if}
-					</div>
-
-					{#if competitors.length}
-						<ul class="pc-card__rows">
-							{#each competitors as row}
-								<li class="pc-card__row">
-									<span class="pc-card__letter" aria-hidden="true">{row.letter}</span>
-									<span class="pc-card__name">{row.name}</span>
-									<span class="pc-card__price">{row.price}</span>
-								</li>
-							{/each}
-						</ul>
-					{/if}
-
-					{#if config.footnote?.trim()}
-						<p class="pc-card__footnote">{config.footnote.trim()}</p>
-					{/if}
-				</div>
+			{#if activeSheet && hasActiveCard}
+				{@render comparisonCard(activeSheet)}
 			{/if}
 		</div>
 	</section>
@@ -397,6 +391,43 @@
 		box-shadow: 0 12px 40px color-mix(in srgb, var(--fg) 6%, transparent);
 	}
 
+	.pc-card__tabs {
+		display: flex;
+		gap: 0;
+		padding: 0;
+		background: color-mix(in srgb, var(--fg) 4%, var(--bg));
+		border-bottom: 1px solid var(--border);
+	}
+
+	.pc-card__tab {
+		flex: 1 1 0;
+		min-width: 0;
+		padding: 12px 10px;
+		border: 0;
+		border-bottom: 2px solid transparent;
+		margin-bottom: -1px;
+		background: transparent;
+		color: color-mix(in srgb, var(--fg) 62%, transparent);
+		font-size: 0.78rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		cursor: pointer;
+		transition:
+			color 0.15s ease,
+			border-color 0.15s ease,
+			background 0.15s ease;
+	}
+	.pc-card__tab:hover {
+		color: var(--fg);
+		background: color-mix(in srgb, var(--pc-accent) 6%, var(--bg));
+	}
+	.pc-card__tab.is-active {
+		color: var(--pc-accent);
+		border-bottom-color: var(--pc-accent);
+		background: var(--bg);
+	}
+
 	.pc-card__header {
 		padding: 18px 20px 16px;
 		background: var(--pc-accent-soft);
@@ -458,13 +489,22 @@
 	.pc-card__brand-mark {
 		display: grid;
 		place-items: center;
-		color: var(--pc-accent);
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		background: var(--pc-accent);
+		color: var(--bg);
+	}
+
+	.pc-card__brand-copy {
+		min-width: 0;
 	}
 
 	.pc-card__brand-name {
 		display: block;
-		font-size: 1.05rem;
+		font-size: 1rem;
 		font-weight: 700;
+		line-height: 1.25;
 		color: var(--fg);
 	}
 
@@ -474,13 +514,14 @@
 		font-weight: 600;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		color: color-mix(in srgb, var(--fg) 52%, transparent);
+		color: color-mix(in srgb, var(--fg) 55%, transparent);
 	}
 
 	.pc-card__brand-price {
-		font-size: 1.2rem;
+		font-size: 1.35rem;
 		font-weight: 800;
-		color: var(--fg);
+		letter-spacing: -0.02em;
+		color: var(--pc-accent);
 		white-space: nowrap;
 	}
 
@@ -492,11 +533,14 @@
 
 	.pc-card__row {
 		display: grid;
-		grid-template-columns: auto 1fr auto;
+		grid-template-columns: 36px 1fr auto;
 		gap: 12px;
 		align-items: center;
 		padding: 14px 20px;
-		border-top: 1px solid var(--border);
+		border-bottom: 1px solid var(--border);
+	}
+	.pc-card__row:last-child {
+		border-bottom: 0;
 	}
 
 	.pc-card__letter {
@@ -507,54 +551,35 @@
 		border-radius: 8px;
 		background: color-mix(in srgb, var(--fg) 8%, var(--bg));
 		font-size: 0.72rem;
-		font-weight: 700;
-		color: color-mix(in srgb, var(--fg) 55%, transparent);
+		font-weight: 800;
+		color: color-mix(in srgb, var(--fg) 70%, transparent);
 	}
 
 	.pc-card__name {
-		font-size: 0.95rem;
-		font-weight: 700;
-		color: var(--fg);
+		font-size: 0.92rem;
+		font-weight: 500;
+		color: color-mix(in srgb, var(--fg) 82%, transparent);
 	}
 
 	.pc-card__price {
 		font-size: 0.95rem;
 		font-weight: 600;
-		color: color-mix(in srgb, var(--fg) 58%, transparent);
+		color: color-mix(in srgb, var(--fg) 65%, transparent);
 		white-space: nowrap;
 	}
 
 	.pc-card__footnote {
 		margin: 0;
 		padding: 14px 20px 18px;
-		border-top: 1px solid var(--border);
 		font-size: 0.72rem;
 		line-height: 1.5;
 		color: color-mix(in srgb, var(--fg) 52%, transparent);
+		border-top: 1px solid var(--border);
 	}
 
 	@media (max-width: 900px) {
 		.pc__grid {
 			grid-template-columns: 1fr;
-		}
-		.pc-card {
-			max-width: 520px;
-		}
-	}
-
-	@media (max-width: 520px) {
-		.pc-card__status-row {
-			flex-direction: column;
-			align-items: flex-start;
-		}
-		.pc-card__brand {
-			grid-template-columns: auto 1fr;
-			grid-template-rows: auto auto;
-		}
-		.pc-card__brand-price {
-			grid-column: 2;
-			justify-self: start;
-			margin-top: -2px;
 		}
 	}
 </style>

@@ -39,10 +39,17 @@
 		return h;
 	});
 
+	const heroUsesPriceComparison = $derived(
+		hero.layout === 'precision' && hero.precision?.visual === 'price_comparison'
+	);
+
 	const modules = $derived(
-		homepageModulesWithSplitValueAfterHero(config.data.homepage.modules).filter(
-			(m) => isHomepageModuleShown(m)
-		)
+		homepageModulesWithSplitValueAfterHero(config.data.homepage.modules).filter((m) => {
+			if (!isHomepageModuleShown(m)) return false;
+			// Hero already shows the live price card — skip the standalone module.
+			if (heroUsesPriceComparison && m.type === 'price_comparison') return false;
+			return true;
+		})
 	);
 
 </script>
