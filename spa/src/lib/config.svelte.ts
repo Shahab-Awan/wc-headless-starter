@@ -480,6 +480,7 @@ export type PriceComparisonSheet = {
 };
 
 export type PriceComparisonModuleConfig = {
+	table_source?: 'hero' | 'custom';
 	headline: string;
 	body: string;
 	bullets: PriceComparisonBullet[];
@@ -500,7 +501,7 @@ export type PriceComparisonModuleConfig = {
 	competitors?: PriceComparisonCompetitor[];
 };
 
-/** Fallback when homepage has no price_comparison module yet. */
+/** Default comparison-table content used by the Precision Hero. */
 export const PRICE_COMPARISON_CARD_DEFAULTS: PriceComparisonModuleConfig = {
 	headline: 'Priced Below The Market, Guaranteed.',
 	body: '',

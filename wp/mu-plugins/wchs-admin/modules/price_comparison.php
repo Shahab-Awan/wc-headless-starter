@@ -3,7 +3,7 @@ defined( 'ABSPATH' ) || exit;
 
 return [
 	'type'     => 'price_comparison',
-	'name'     => 'Comparison table',
+	'name'     => 'Price comparison section',
 	'icon'     => 'chart-bar',
 	'category' => 'commerce',
 	'supports' => [
@@ -13,6 +13,7 @@ return [
 		'color'      => [ 'accent' => true ],
 	],
 	'fields'   => [
+		[ 'id' => 'table_source', 'type' => 'select', 'default' => 'hero', 'options' => [ 'hero', 'custom' ] ],
 		[ 'id' => 'headline', 'type' => 'text', 'default' => 'Priced Below The Market, Guaranteed.' ],
 		[
 			'id'      => 'body',

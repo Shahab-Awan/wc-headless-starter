@@ -40,6 +40,14 @@
 	let activeTab = $state(0);
 
 	const accentStyle = $derived(resolved?.accent_color ? `--pc-accent: ${resolved.accent_color};` : '');
+	const tableConfig = $derived.by((): PriceComparisonModuleConfig => {
+		if (config.table_source !== 'hero') return config;
+		return {
+			...config,
+			...(siteCfg.data.homepage.hero.precision?.comparison_table ?? {}),
+			table_source: 'hero',
+		};
+	});
 	const bullets = $derived(
 		(config.bullets ?? [])
 			.map((row) => ({
@@ -50,7 +58,7 @@
 			.filter((row) => row.headline !== '')
 	);
 	const sheets = $derived(
-		normalizePriceComparisonSheets(config).map((sheet) => ({
+		normalizePriceComparisonSheets(tableConfig).map((sheet) => ({
 			tabLabel: sheet.tab_label.trim(),
 			productLabel: sheet.product_label.trim(),
 			variationLabel: sheet.variation_label?.trim() || '',
@@ -68,7 +76,7 @@
 	const activeSheet = $derived(sheets[Math.min(activeTab, Math.max(0, sheets.length - 1))] ?? sheets[0]);
 	const showTabs = $derived(sheets.length > 1);
 	const brandName = $derived(
-		(config.brand_name ?? '').trim() || siteCfg.data.brand_name?.trim() || 'Our Store'
+		(tableConfig.brand_name ?? '').trim() || siteCfg.data.brand_name?.trim() || 'Our Store'
 	);
 	const ctaLabel = $derived((config.cta_label?.trim() || 'Browse Catalog').replace(/\s+/g, ' '));
 	const ctaHref = $derived(config.cta_href?.trim() || '/shop');
@@ -126,19 +134,19 @@
 		>
 			<div class="pc-card__header">
 				<div class="pc-card__status-row">
-					{#if config.status_label?.trim() || sheet.productLabel || sheet.variationLabel}
+					{#if tableConfig.status_label?.trim() || sheet.productLabel || sheet.variationLabel}
 						<p class="pc-card__status">
 							<span class="pc-card__live" aria-hidden="true"></span>
-							{#if config.status_label?.trim()}{config.status_label.trim()}{/if}
-							{#if config.status_label?.trim() && (sheet.productLabel || sheet.variationLabel)}
+							{#if tableConfig.status_label?.trim()}{tableConfig.status_label.trim()}{/if}
+							{#if tableConfig.status_label?.trim() && (sheet.productLabel || sheet.variationLabel)}
 								<span class="pc-card__status-sep" aria-hidden="true">·</span>
 							{/if}
 							{#if sheet.productLabel}{sheet.productLabel}{/if}
 							{#if sheet.variationLabel}{sheet.variationLabel}{/if}
 						</p>
 					{/if}
-					{#if config.lowest_badge?.trim()}
-						<span class="pc-card__lowest">{config.lowest_badge.trim()}</span>
+					{#if tableConfig.lowest_badge?.trim()}
+						<span class="pc-card__lowest">{tableConfig.lowest_badge.trim()}</span>
 					{/if}
 				</div>
 
@@ -173,8 +181,8 @@
 				</ul>
 			{/if}
 
-			{#if config.footnote?.trim()}
-				<p class="pc-card__footnote">{config.footnote.trim()}</p>
+			{#if tableConfig.footnote?.trim()}
+				<p class="pc-card__footnote">{tableConfig.footnote.trim()}</p>
 			{/if}
 		</div>
 	</div>

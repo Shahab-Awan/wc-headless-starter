@@ -183,7 +183,7 @@
 		gallery: 'Gallery', contact_form: 'Contact Form', shop_grid: 'Shop Grid',
 		category_grid: 'Category Grid', 		split_features: 'Split Features',
 		split_value: 'Value split (BOGO)',
-		price_comparison: 'Comparison table',
+		price_comparison: 'Price comparison section',
 		feature_highlights: 'Feature highlights',
 		order_handling: 'Order handling',
 		cta: 'CTA button', spacer: 'Spacer', logo_strip: 'Logo strip',
@@ -474,6 +474,7 @@
 		}
 		if (type === 'price_comparison') {
 			return {
+				table_source: 'hero',
 				headline: 'Priced Below The Market, Guaranteed.',
 				body: 'We watch pricing across the research peptide market and adjust ours to stay below verified competitors — for the same purity, batch documentation, and fulfillment standards.',
 				bullets: [
@@ -1278,17 +1279,9 @@
 		if (!selection) return;
 		if (selection.kind === 'type') {
 			var type = selection.type;
-			if (context === 'homepage' && type === 'price_comparison' && modules.some(function (mod) { return mod.type === type; })) {
-				toast('Comparison table already added');
-				return;
-			}
 			var newMod = { type: type, visibility: 'all', spacing_v: 'normal', spacing_h: 'normal', center_header: false, config: defaultConfigFor(type) };
 			showModuleEditor(type, newMod, function (result) {
-				if (context === 'homepage' && type === 'price_comparison') {
-					modules.unshift(result);
-				} else {
-					modules.push(result);
-				}
+				modules.push(result);
 				sync();
 			}, { mode: 'add' });
 			return;
@@ -1299,15 +1292,7 @@
 			// icon if the user wants to tweak.
 			var clone = JSON.parse(JSON.stringify(selection.module));
 			clone.type = selection.type; // defensive
-			if (context === 'homepage' && clone.type === 'price_comparison') {
-				if (modules.some(function (mod) { return mod.type === clone.type; })) {
-					toast('Comparison table already added');
-					return;
-				}
-				modules.unshift(clone);
-			} else {
-				modules.push(clone);
-			}
+			modules.push(clone);
 			sync();
 			toast(selection.kind === 'paste' ? 'Module pasted' : 'Preset applied');
 		}
@@ -1337,6 +1322,17 @@
 
 		// Populate fields from data
 		populateModuleFields(body, type, data);
+		if (options && options.heroTable && type === 'price_comparison') {
+			var sectionFields = body.querySelector('.wchs-pc-section-fields');
+			var sourceField = body.querySelector('.wchs-pc-table-source-field');
+			var customFields = body.querySelector('.wchs-pc-custom-table-fields');
+			if (sectionFields) sectionFields.style.display = 'none';
+			if (sourceField) sourceField.style.display = 'none';
+			if (customFields) customFields.style.display = 'contents';
+			body.querySelectorAll('.wchs-modal__common-fields, .wchs-overrides-row').forEach(function (el) {
+				el.style.display = 'none';
+			});
+		}
 
 		// Init WYSIWYG on any [data-wysiwyg="1"] textareas
 		initModalWysiwyg(body);
@@ -1348,7 +1344,7 @@
 
 		// Show save button
 		m.querySelector('.wchs-modal__save').style.display = '';
-		openModal('Edit ' + TYPE_LABELS[type]);
+		openModal(options && options.heroTable ? 'Edit Hero comparison table' : 'Edit ' + TYPE_LABELS[type]);
 
 		modalDirty = false;
 
@@ -1754,6 +1750,7 @@
 				});
 				break;
 			case 'price_comparison':
+				setVal(container, '[data-field="pc_table_source"]', cfg.table_source || 'custom');
 				setVal(container, '[data-field="pc_headline"]', cfg.headline || '');
 				setVal(container, '[data-field="pc_body"]', cfg.body || '');
 				setVal(container, '[data-field="pc_cta_label"]', cfg.cta_label || '');
@@ -1770,6 +1767,7 @@
 					if (inputs[1]) inputs[1].value = item.description || '';
 				});
 				populatePcSheets(container, pcSheetsForAdmin(cfg));
+				updatePcTableSource(container);
 				break;
 			case 'order_handling':
 				setVal(container, '[data-field="oh_badge_text"]', cfg.badge_text || '');
@@ -2141,6 +2139,7 @@
 				delete cfg.title;
 				break;
 			case 'price_comparison':
+				cfg.table_source = getVal(container, '[data-field="pc_table_source"]') || 'hero';
 				cfg.headline = getVal(container, '[data-field="pc_headline"]') || '';
 				cfg.body = getVal(container, '[data-field="pc_body"]') || '';
 				cfg.cta_label = getVal(container, '[data-field="pc_cta_label"]') || '';
@@ -2520,6 +2519,13 @@
 			}
 		}
 		return out;
+	}
+
+	function updatePcTableSource(ctx) {
+		var source = ctx.querySelector('[data-field="pc_table_source"]');
+		var fields = ctx.querySelector('.wchs-pc-custom-table-fields');
+		if (!source || !fields) return;
+		fields.style.display = source.value === 'custom' ? 'contents' : 'none';
 	}
 
 	function pcCompetitorsForAdmin(competitors) {
@@ -3350,17 +3356,6 @@
 					+ '<button type="button" class="wchs-modlist__remove wchs-icon-btn wchs-icon-btn--danger" data-tooltip="Remove"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4.5h11M5.5 4.5V3a1 1 0 011-1h3a1 1 0 011 1v1.5M6.5 7v4.5M9.5 7v4.5M3.5 4.5l.5 9a1 1 0 001 1h6a1 1 0 001-1l.5-9"/></svg></button>';
 				listEl.appendChild(row);
 			});
-			if (containerEl.dataset.context === 'homepage') {
-				var hasComparison = modules.some(function (mod) { return mod.type === 'price_comparison'; });
-				var comparisonChoice = document.querySelector('[data-precision-comparison-choice]');
-				var comparisonHelp = document.querySelector('[data-precision-comparison-help]');
-				if (comparisonChoice) comparisonChoice.style.display = hasComparison ? '' : 'none';
-				if (comparisonHelp) comparisonHelp.style.display = hasComparison ? 'none' : '';
-				if (!hasComparison) {
-					var imageChoice = document.querySelector('input[name="precision_visual"][value="image"]');
-					if (imageChoice) imageChoice.checked = true;
-				}
-			}
 		}
 
 		// Focus tracking — which row is currently focused, used by keyboard
@@ -3395,10 +3390,6 @@
 				});
 			}
 			if (e.target.closest('.wchs-modlist__dup')) {
-				if (containerEl.dataset.context === 'homepage' && modules[idx].type === 'price_comparison') {
-					toast('Only one shared Comparison table can be added');
-					return;
-				}
 				// Deep clone via JSON — modules are pure data (verified against
 				// SPA's SiteConfig schema, no functions/Dates/refs).
 				var clone = JSON.parse(JSON.stringify(modules[idx]));
@@ -3513,6 +3504,36 @@
 	// Init all module lists on the page
 	document.querySelectorAll('.wchs-modlist').forEach(function (el) {
 		initModuleList(el);
+	});
+
+	document.addEventListener('change', function (e) {
+		if (!e.target.matches || !e.target.matches('[data-field="pc_table_source"]')) return;
+		var editor = e.target.closest('.wchs-module-editor__body, .wchs-module__fields');
+		if (editor) updatePcTableSource(editor);
+	});
+
+	document.addEventListener('click', function (e) {
+		var button = e.target.closest('.wchs-edit-precision-comparison');
+		if (!button) return;
+		var input = document.querySelector('[data-precision-comparison-json]');
+		if (!input) return;
+		var saved = {};
+		try { saved = JSON.parse(input.value || '{}'); } catch (err) { saved = {}; }
+		var tableConfig = Object.assign({}, defaultConfigFor('price_comparison'), saved, { table_source: 'custom' });
+		var moduleData = {
+			type: 'price_comparison',
+			visibility: 'all',
+			spacing_v: 'normal',
+			spacing_h: 'normal',
+			config: tableConfig,
+		};
+		showModuleEditor('price_comparison', moduleData, function (updated, noClose) {
+			var next = Object.assign({}, updated.config || {});
+			delete next.table_source;
+			input.value = JSON.stringify(next);
+			input.dispatchEvent(new Event('input', { bubbles: true }));
+			if (!noClose) toast('Hero comparison table updated');
+		}, { mode: 'edit', heroTable: true });
 	});
 
 	// ── Module copy/paste keyboard shortcuts ─────────────────

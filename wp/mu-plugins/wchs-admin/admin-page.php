@@ -463,6 +463,7 @@ class AdminPage {
 		if ( ! is_array( $saved ) || empty( $saved ) ) {
 			return $defaults;
 		}
+		$has_saved_precision_comparison = is_array( $saved['hero']['precision']['comparison_table'] ?? null );
 		$saved['hero'] = wp_parse_args(
 			$saved['hero'] ?? [],
 			$defaults['hero']
@@ -492,6 +493,18 @@ class AdminPage {
 		}
 		if ( function_exists( 'wchs_homepage_ensure_order_handling_module' ) ) {
 			$saved['modules'] = wchs_homepage_ensure_order_handling_module( $saved['modules'] );
+		}
+		if ( ! $has_saved_precision_comparison ) {
+			foreach ( $saved['modules'] as $module ) {
+				if (
+					is_array( $module )
+					&& ( $module['type'] ?? '' ) === 'price_comparison'
+					&& is_array( $module['config'] ?? null )
+				) {
+					$saved['hero']['precision']['comparison_table'] = $module['config'];
+					break;
+				}
+			}
 		}
 		unset( $saved['fathers_day_mode'] );
 		return $saved;
@@ -1144,6 +1157,48 @@ class AdminPage {
 		<?php
 	}
 
+	public static function comparison_table_defaults(): array {
+		return [
+			'headline'       => 'Priced Below The Market, Guaranteed.',
+			'body'           => '',
+			'bullets'        => [],
+			'cta_label'      => '',
+			'cta_href'       => '/shop',
+			'status_label'   => 'LIVE PRICE COMPARISON',
+			'lowest_badge'   => 'LOWEST',
+			'brand_name'     => '',
+			'sheets'         => [
+				[
+					'tab_label'      => 'BPC-157',
+					'product_label'  => 'BPC-157',
+					'variation_label' => '5MG',
+					'brand_price'    => '28.00',
+					'brand_tags'     => 'IN STOCK · SHIPS FAST · COA ON FILE',
+					'competitors'    => [
+						[ 'letter' => 'A', 'name' => 'Modern Aminos', 'price' => '34.00' ],
+						[ 'letter' => 'B', 'name' => 'Soma Chems', 'price' => '39.99' ],
+						[ 'letter' => 'C', 'name' => 'Onyx Research', 'price' => '45.00' ],
+						[ 'letter' => 'D', 'name' => 'Ascension Peptides', 'price' => '55.00' ],
+					],
+				],
+				[
+					'tab_label'      => 'GLP Reta',
+					'product_label'  => 'GLP Reta',
+					'variation_label' => '10 MG',
+					'brand_price'    => '89.00',
+					'brand_tags'     => 'IN STOCK · SHIPS FAST · COA ON FILE',
+					'competitors'    => [
+						[ 'letter' => 'A', 'name' => 'Modern Aminos', 'price' => '109.00' ],
+						[ 'letter' => 'B', 'name' => 'Soma Chems', 'price' => '119.00' ],
+						[ 'letter' => 'C', 'name' => 'Onyx Research', 'price' => '125.00' ],
+						[ 'letter' => 'D', 'name' => 'Ascension Peptides', 'price' => '135.00' ],
+					],
+				],
+			],
+			'footnote'       => 'Prices tracked from publicly listed research peptide vendors for comparable SKU, dose, and purity tier. Updated regularly; for research use only.',
+		];
+	}
+
 	public static function hero_precision_defaults(): array {
 		return [
 			'badge'               => 'RESEARCH-GRADE PEPTIDES — USA MANUFACTURED',
@@ -1163,6 +1218,7 @@ class AdminPage {
 			'visual'              => 'image',
 			'image_desktop'       => '',
 			'image_mobile'        => '',
+			'comparison_table'    => self::comparison_table_defaults(),
 		];
 	}
 
@@ -2002,6 +2058,23 @@ class AdminPage {
 		if ( ! in_array( $precision_visual, [ 'image', 'price_comparison' ], true ) ) {
 			$precision_visual = 'image';
 		}
+		$comparison_raw = json_decode( wp_unslash( $_POST['precision_comparison_json'] ?? '' ), true );
+		$comparison_table = self::comparison_table_defaults();
+		if ( is_array( $comparison_raw ) ) {
+			$parsed_comparison = self::parse_modules_from_post(
+				[
+					[
+						'type'       => 'price_comparison',
+						'visibility' => 'all',
+						'config'     => $comparison_raw,
+					],
+				],
+				'homepage'
+			);
+			if ( is_array( $parsed_comparison[0]['config'] ?? null ) ) {
+				$comparison_table = $parsed_comparison[0]['config'];
+			}
+		}
 		$hero['precision']  = [
 			'badge'              => sanitize_text_field( wp_unslash( $_POST['precision_badge'] ?? $precision_defaults['badge'] ) ),
 			'headline_primary'   => sanitize_text_field( wp_unslash( $_POST['precision_headline_primary'] ?? $precision_defaults['headline_primary'] ) ),
@@ -2020,20 +2093,11 @@ class AdminPage {
 			'visual'             => $precision_visual,
 			'image_desktop'      => esc_url_raw( wp_unslash( $_POST['precision_image_desktop'] ?? '' ) ),
 			'image_mobile'       => esc_url_raw( wp_unslash( $_POST['precision_image_mobile'] ?? '' ) ),
+			'comparison_table'   => $comparison_table,
 		];
 
 		$raw_json = json_decode( wp_unslash( $_POST['modules_json'] ?? '[]' ), true );
 		$modules  = self::parse_modules_from_post( is_array( $raw_json ) ? $raw_json : [], 'homepage' );
-		$has_comparison_table = false;
-		foreach ( $modules as $module ) {
-			if ( is_array( $module ) && ( $module['type'] ?? '' ) === 'price_comparison' ) {
-				$has_comparison_table = true;
-				break;
-			}
-		}
-		if ( ! $has_comparison_table && ( $hero['precision']['visual'] ?? '' ) === 'price_comparison' ) {
-			$hero['precision']['visual'] = 'image';
-		}
 
 		update_option( self::HOMEPAGE_OPTION, [
 			'hero'    => $hero,
@@ -4167,15 +4231,6 @@ class AdminPage {
 			</div>
 			</div></div>
 
-			<?php
-			$has_comparison_table = false;
-			foreach ( $modules as $module ) {
-				if ( is_array( $module ) && ( $module['type'] ?? '' ) === 'price_comparison' ) {
-					$has_comparison_table = true;
-					break;
-				}
-			}
-			?>
 			<div class="wchs-section wchs-section--collapsed">
 			<h2 class="wchs-section__toggle">Precision hero <?php echo self::hint_icon( 'Used when Layout is Precision. Clean two-column catalog hero with its own copy, trust row, and right visual slot. Headline font and weight come from Typography below.' ); ?></h2>
 			<div class="wchs-section__body">
@@ -4246,12 +4301,16 @@ class AdminPage {
 				</div>
 			</div>
 			<div class="wchs-field">
-				<label>Right column visual <?php echo self::hint_icon( 'The shared Comparison table appears here only while that module exists below the hero.' ); ?></label>
+				<label>Right column visual <?php echo self::hint_icon( 'The hero owns its comparison table. A separate Price comparison section can optionally reuse this table or define another one.' ); ?></label>
 				<div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
 					<label class="wchs-radio"><input type="radio" name="precision_visual" value="image" <?php checked( $precision['visual'] ?? 'image', 'image' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Hero image</span></label>
-					<label class="wchs-radio" data-precision-comparison-choice style="<?php echo $has_comparison_table ? '' : 'display:none'; ?>"><input type="radio" name="precision_visual" value="price_comparison" <?php checked( $precision['visual'] ?? 'image', 'price_comparison' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Shared comparison table — “Half the price. Triple the testing.”</span></label>
-					<span data-precision-comparison-help style="font-size:12px;color:#64748b;<?php echo $has_comparison_table ? 'display:none' : ''; ?>">Add “Comparison table” under Modules Below Hero to enable this visual.</span>
+					<label class="wchs-radio"><input type="radio" name="precision_visual" value="price_comparison" <?php checked( $precision['visual'] ?? 'image', 'price_comparison' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Hero comparison table — “Half the price. Triple the testing.”</span></label>
 				</div>
+			</div>
+			<div class="wchs-field">
+				<label>Hero comparison table <?php echo self::hint_icon( 'Edits the table used only in the Precision Hero. Standalone price-comparison sections may reuse it from their Table source dropdown.' ); ?></label>
+				<input type="hidden" name="precision_comparison_json" data-precision-comparison-json value="<?php echo esc_attr( wp_json_encode( $precision['comparison_table'] ?? self::comparison_table_defaults() ) ); ?>" />
+				<button type="button" class="wchs-btn wchs-btn--secondary wchs-edit-precision-comparison">Edit hero table</button>
 			</div>
 			<div class="wchs-field">
 				<label>Visual (desktop) <?php echo self::hint_icon( 'Optional hero graphic for the right column when “Hero image” is selected. Leave empty to show the placeholder grid.' ); ?></label>
@@ -6133,6 +6192,7 @@ class AdminPage {
 		<!-- Price comparison -->
 		<div id="wchs-mod-tpl-price_comparison" style="display:none">
 			<div class="wchs-module__fields" style="display:flex;flex-direction:column;gap:14px">
+				<div class="wchs-pc-section-fields" style="display:contents">
 				<div class="wchs-field wchs-field--full"><label>Headline</label><input type="text" data-field="pc_headline" placeholder="Priced Below The Market, Guaranteed." /></div>
 				<div class="wchs-field wchs-field--full"><label>Body</label><textarea data-field="pc_body" rows="3"></textarea></div>
 				<div class="wchs-field wchs-field--full">
@@ -6156,7 +6216,16 @@ class AdminPage {
 				</div>
 				<div class="wchs-field"><label>CTA label</label><input type="text" data-field="pc_cta_label" placeholder="Browse Catalog" /></div>
 				<div class="wchs-field"><label>CTA link</label><input type="text" data-field="pc_cta_href" placeholder="/shop" /></div>
-				<p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Comparison card</p>
+				</div>
+				<div class="wchs-field wchs-field--full wchs-pc-table-source-field">
+					<label>Table source</label>
+					<select data-field="pc_table_source">
+						<option value="hero">Use Precision Hero table</option>
+						<option value="custom">Create a separate table</option>
+					</select>
+				</div>
+				<div class="wchs-pc-custom-table-fields" style="display:contents">
+				<p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#666">Separate comparison table</p>
 				<div class="wchs-field"><label>Status label</label><input type="text" data-field="pc_status_label" placeholder="LIVE PRICE COMPARISON" /></div>
 				<div class="wchs-field"><label>Lowest badge</label><input type="text" data-field="pc_lowest_badge" placeholder="LOWEST" /></div>
 				<div class="wchs-field"><label>Your brand name</label><input type="text" data-field="pc_brand_name" placeholder="Leave blank to use site brand" /></div>
@@ -6214,6 +6283,7 @@ class AdminPage {
 					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-pc-sheet-modal" style="margin-top:10px">+ Add product tab</button>
 				</div>
 				<div class="wchs-field wchs-field--full"><label>Footnote</label><textarea data-field="pc_footnote" rows="2"></textarea></div>
+				</div>
 			</div>
 			<div class="wchs-field wchs-overrides-row" style="margin-top:12px;padding-top:12px;border-top:1px solid #e5e5e5">
 				<label style="display:inline-flex;align-items:center;gap:6px;font-weight:500">Accent color override</label>

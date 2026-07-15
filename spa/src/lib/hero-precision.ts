@@ -1,3 +1,5 @@
+import type { PriceComparisonModuleConfig } from './config.svelte';
+
 export type HeroPrecisionVisual = 'image' | 'price_comparison';
 
 export type HeroPrecisionConfig = {
@@ -19,6 +21,7 @@ export type HeroPrecisionConfig = {
 	visual: HeroPrecisionVisual;
 	image_desktop: string;
 	image_mobile: string;
+	comparison_table?: PriceComparisonModuleConfig;
 };
 
 export const HERO_PRECISION_DEFAULTS: HeroPrecisionConfig = {
