@@ -185,120 +185,6 @@ function wchs_homepage_ensure_feature_highlights_module( array $mods ): array {
 }
 
 /**
- * Default config for the price_comparison homepage module.
- *
- * @return array<string, mixed>
- */
-function wchs_price_comparison_defaults(): array {
-	return [
-		'headline'       => 'Priced Below The Market, Guaranteed.',
-		'body'           => 'We watch pricing across the research peptide market and adjust ours to stay below verified competitors — for the same purity, batch documentation, and fulfillment standards.',
-		'bullets'        => [
-			[
-				'variant'     => 'globe',
-				'headline'    => 'We watch the market',
-				'description' => 'Daily monitoring of comparable SKUs from verified research peptide vendors.',
-			],
-			[
-				'variant'     => 'price_search',
-				'headline'    => 'We price to beat it',
-				'description' => 'When a verified competitor undercuts us on an apples-to-apples match, we adjust.',
-			],
-			[
-				'variant'     => 'award',
-				'headline'    => 'Apples-to-apples, always',
-				'description' => 'Same dose, purity tier, and documentation standard — no bait-and-switch SKUs.',
-			],
-		],
-		'cta_label'      => 'Browse Catalog',
-		'cta_href'       => '/shop',
-		'status_label'   => 'LIVE PRICE COMPARISON',
-		'lowest_badge'   => 'LOWEST',
-		'brand_name'     => '',
-		'sheets'         => [
-			[
-				'tab_label'     => 'BPC-157',
-				'product_label' => 'BPC-157',
-				'variation_label' => '5MG',
-				'brand_price'   => '28.00',
-				'brand_tags'    => 'IN STOCK · SHIPS FAST · COA ON FILE',
-				'competitors'   => [
-					[ 'letter' => 'A', 'name' => 'Modern Aminos', 'price' => '34.00' ],
-					[ 'letter' => 'B', 'name' => 'Soma Chems', 'price' => '39.99' ],
-					[ 'letter' => 'C', 'name' => 'Onyx Research', 'price' => '45.00' ],
-					[ 'letter' => 'D', 'name' => 'Ascension Peptides', 'price' => '55.00' ],
-				],
-			],
-			[
-				'tab_label'     => 'GLP Reta',
-				'product_label' => 'GLP Reta',
-				'variation_label' => '10 MG',
-				'brand_price'   => '89.00',
-				'brand_tags'    => 'IN STOCK · SHIPS FAST · COA ON FILE',
-				'competitors'   => [
-					[ 'letter' => 'A', 'name' => 'Modern Aminos', 'price' => '109.00' ],
-					[ 'letter' => 'B', 'name' => 'Soma Chems', 'price' => '119.00' ],
-					[ 'letter' => 'C', 'name' => 'Onyx Research', 'price' => '125.00' ],
-					[ 'letter' => 'D', 'name' => 'Ascension Peptides', 'price' => '135.00' ],
-				],
-			],
-		],
-		'footnote'       => 'Prices tracked from publicly listed research peptide vendors for comparable SKU, dose, and purity tier. Updated regularly; for research use only.',
-	];
-}
-
-/**
- * Insert price_comparison immediately after featured_products when seeding legacy homepages.
- *
- * @param array<int, array<string, mixed>> $mods
- * @return int
- */
-function wchs_homepage_price_comparison_insert_index( array $mods ): int {
-	$n = count( $mods );
-	for ( $i = 0; $i < $n; $i++ ) {
-		if ( is_array( $mods[ $i ] ?? null ) && ( $mods[ $i ]['type'] ?? '' ) === 'featured_products' ) {
-			return $i + 1;
-		}
-	}
-	for ( $i = 0; $i < $n; $i++ ) {
-		if ( is_array( $mods[ $i ] ?? null ) && ( $mods[ $i ]['type'] ?? '' ) === 'trust_bar' ) {
-			return $i + 1;
-		}
-	}
-	for ( $i = 0; $i < $n; $i++ ) {
-		if ( is_array( $mods[ $i ] ?? null ) && ( $mods[ $i ]['type'] ?? '' ) === 'split_value' ) {
-			return $i + 1;
-		}
-	}
-	return $n > 0 ? 1 : 0;
-}
-
-/**
- * @param array<int, array<string, mixed>> $mods
- * @return array<int, array<string, mixed>>
- */
-function wchs_homepage_ensure_price_comparison_module( array $mods ): array {
-	foreach ( $mods as $m ) {
-		if ( is_array( $m ) && ( $m['type'] ?? '' ) === 'price_comparison' ) {
-			return $mods;
-		}
-	}
-	$j = wchs_homepage_price_comparison_insert_index( $mods );
-	$seed = [
-		'type'       => 'price_comparison',
-		'visibility' => 'all',
-		'spacing_v'  => 'normal',
-		'spacing_h'  => 'normal',
-		'config'     => wchs_price_comparison_defaults(),
-	];
-	if ( empty( $seed['id'] ) || ! preg_match( '/^[a-z0-9]{8}$/', (string) ( $seed['id'] ?? '' ) ) ) {
-		$seed['id'] = substr( str_replace( '-', '', wp_generate_uuid4() ), 0, 8 );
-	}
-	array_splice( $mods, $j, 0, [ $seed ] );
-	return $mods;
-}
-
-/**
  * Insert default order_handling immediately before the first accordion module.
  *
  * @param array<int, array<string, mixed>> $mods
@@ -2687,7 +2573,6 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 	$homepage['modules'] = wchs_homepage_ensure_feature_highlights_module( $homepage['modules'] );
 	$homepage['modules'] = wchs_homepage_ensure_order_handling_module( $homepage['modules'] );
 	$homepage['modules'] = wchs_homepage_ensure_featured_products_module( $homepage['modules'] );
-	$homepage['modules'] = wchs_homepage_ensure_price_comparison_module( $homepage['modules'] );
 
 	// Merge site defaults + per-module overrides into a `resolved` block on
 	// each module. SPA components read module.resolved instead of

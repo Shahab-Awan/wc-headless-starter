@@ -183,7 +183,7 @@
 		gallery: 'Gallery', contact_form: 'Contact Form', shop_grid: 'Shop Grid',
 		category_grid: 'Category Grid', 		split_features: 'Split Features',
 		split_value: 'Value split (BOGO)',
-		price_comparison: 'Price comparison',
+		price_comparison: 'Comparison table',
 		feature_highlights: 'Feature highlights',
 		order_handling: 'Order handling',
 		cta: 'CTA button', spacer: 'Spacer', logo_strip: 'Logo strip',
@@ -488,19 +488,6 @@
 				brand_name: '',
 				sheets: [
 					{
-						tab_label: 'GLP Reta',
-						product_label: 'GLP Reta',
-						variation_label: '10 MG',
-						brand_price: '89.00',
-						brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
-						competitors: [
-							{ letter: 'A', name: 'Modern Aminos', price: '109.00' },
-							{ letter: 'B', name: 'Soma Chems', price: '119.00' },
-							{ letter: 'C', name: 'Onyx Research', price: '125.00' },
-							{ letter: 'D', name: 'Ascension Peptides', price: '135.00' },
-						],
-					},
-					{
 						tab_label: 'BPC-157',
 						product_label: 'BPC-157',
 						variation_label: '5MG',
@@ -511,6 +498,19 @@
 							{ letter: 'B', name: 'Soma Chems', price: '39.99' },
 							{ letter: 'C', name: 'Onyx Research', price: '45.00' },
 							{ letter: 'D', name: 'Ascension Peptides', price: '55.00' },
+						],
+					},
+					{
+						tab_label: 'GLP Reta',
+						product_label: 'GLP Reta',
+						variation_label: '10 MG',
+						brand_price: '89.00',
+						brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
+						competitors: [
+							{ letter: 'A', name: 'Modern Aminos', price: '109.00' },
+							{ letter: 'B', name: 'Soma Chems', price: '119.00' },
+							{ letter: 'C', name: 'Onyx Research', price: '125.00' },
+							{ letter: 'D', name: 'Ascension Peptides', price: '135.00' },
 						],
 					},
 				],
@@ -1278,9 +1278,17 @@
 		if (!selection) return;
 		if (selection.kind === 'type') {
 			var type = selection.type;
+			if (context === 'homepage' && type === 'price_comparison' && modules.some(function (mod) { return mod.type === type; })) {
+				toast('Comparison table already added');
+				return;
+			}
 			var newMod = { type: type, visibility: 'all', spacing_v: 'normal', spacing_h: 'normal', center_header: false, config: defaultConfigFor(type) };
 			showModuleEditor(type, newMod, function (result) {
-				modules.push(result);
+				if (context === 'homepage' && type === 'price_comparison') {
+					modules.unshift(result);
+				} else {
+					modules.push(result);
+				}
 				sync();
 			}, { mode: 'add' });
 			return;
@@ -1291,7 +1299,15 @@
 			// icon if the user wants to tweak.
 			var clone = JSON.parse(JSON.stringify(selection.module));
 			clone.type = selection.type; // defensive
-			modules.push(clone);
+			if (context === 'homepage' && clone.type === 'price_comparison') {
+				if (modules.some(function (mod) { return mod.type === clone.type; })) {
+					toast('Comparison table already added');
+					return;
+				}
+				modules.unshift(clone);
+			} else {
+				modules.push(clone);
+			}
 			sync();
 			toast(selection.kind === 'paste' ? 'Module pasted' : 'Preset applied');
 		}
@@ -3334,6 +3350,17 @@
 					+ '<button type="button" class="wchs-modlist__remove wchs-icon-btn wchs-icon-btn--danger" data-tooltip="Remove"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4.5h11M5.5 4.5V3a1 1 0 011-1h3a1 1 0 011 1v1.5M6.5 7v4.5M9.5 7v4.5M3.5 4.5l.5 9a1 1 0 001 1h6a1 1 0 001-1l.5-9"/></svg></button>';
 				listEl.appendChild(row);
 			});
+			if (containerEl.dataset.context === 'homepage') {
+				var hasComparison = modules.some(function (mod) { return mod.type === 'price_comparison'; });
+				var comparisonChoice = document.querySelector('[data-precision-comparison-choice]');
+				var comparisonHelp = document.querySelector('[data-precision-comparison-help]');
+				if (comparisonChoice) comparisonChoice.style.display = hasComparison ? '' : 'none';
+				if (comparisonHelp) comparisonHelp.style.display = hasComparison ? 'none' : '';
+				if (!hasComparison) {
+					var imageChoice = document.querySelector('input[name="precision_visual"][value="image"]');
+					if (imageChoice) imageChoice.checked = true;
+				}
+			}
 		}
 
 		// Focus tracking — which row is currently focused, used by keyboard
@@ -3368,6 +3395,10 @@
 				});
 			}
 			if (e.target.closest('.wchs-modlist__dup')) {
+				if (containerEl.dataset.context === 'homepage' && modules[idx].type === 'price_comparison') {
+					toast('Only one shared Comparison table can be added');
+					return;
+				}
 				// Deep clone via JSON — modules are pure data (verified against
 				// SPA's SiteConfig schema, no functions/Dates/refs).
 				var clone = JSON.parse(JSON.stringify(modules[idx]));

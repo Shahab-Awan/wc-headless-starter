@@ -493,9 +493,6 @@ class AdminPage {
 		if ( function_exists( 'wchs_homepage_ensure_order_handling_module' ) ) {
 			$saved['modules'] = wchs_homepage_ensure_order_handling_module( $saved['modules'] );
 		}
-		if ( function_exists( 'wchs_homepage_ensure_price_comparison_module' ) ) {
-			$saved['modules'] = wchs_homepage_ensure_price_comparison_module( $saved['modules'] );
-		}
 		unset( $saved['fathers_day_mode'] );
 		return $saved;
 	}
@@ -2027,6 +2024,16 @@ class AdminPage {
 
 		$raw_json = json_decode( wp_unslash( $_POST['modules_json'] ?? '[]' ), true );
 		$modules  = self::parse_modules_from_post( is_array( $raw_json ) ? $raw_json : [], 'homepage' );
+		$has_comparison_table = false;
+		foreach ( $modules as $module ) {
+			if ( is_array( $module ) && ( $module['type'] ?? '' ) === 'price_comparison' ) {
+				$has_comparison_table = true;
+				break;
+			}
+		}
+		if ( ! $has_comparison_table && ( $hero['precision']['visual'] ?? '' ) === 'price_comparison' ) {
+			$hero['precision']['visual'] = 'image';
+		}
 
 		update_option( self::HOMEPAGE_OPTION, [
 			'hero'    => $hero,
@@ -4160,6 +4167,15 @@ class AdminPage {
 			</div>
 			</div></div>
 
+			<?php
+			$has_comparison_table = false;
+			foreach ( $modules as $module ) {
+				if ( is_array( $module ) && ( $module['type'] ?? '' ) === 'price_comparison' ) {
+					$has_comparison_table = true;
+					break;
+				}
+			}
+			?>
 			<div class="wchs-section wchs-section--collapsed">
 			<h2 class="wchs-section__toggle">Precision hero <?php echo self::hint_icon( 'Used when Layout is Precision. Clean two-column catalog hero with its own copy, trust row, and right visual slot. Headline font and weight come from Typography below.' ); ?></h2>
 			<div class="wchs-section__body">
@@ -4230,10 +4246,11 @@ class AdminPage {
 				</div>
 			</div>
 			<div class="wchs-field">
-				<label>Right column visual <?php echo self::hint_icon( 'Image uses the media fields below. Price comparison uses the Live Price Comparison card from the homepage Price comparison module (edit competitors/prices there).' ); ?></label>
+				<label>Right column visual <?php echo self::hint_icon( 'The shared Comparison table appears here only while that module exists below the hero.' ); ?></label>
 				<div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
 					<label class="wchs-radio"><input type="radio" name="precision_visual" value="image" <?php checked( $precision['visual'] ?? 'image', 'image' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Hero image</span></label>
-					<label class="wchs-radio"><input type="radio" name="precision_visual" value="price_comparison" <?php checked( $precision['visual'] ?? 'image', 'price_comparison' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Live price comparison table — “Half the price. Triple the testing.”</span></label>
+					<label class="wchs-radio" data-precision-comparison-choice style="<?php echo $has_comparison_table ? '' : 'display:none'; ?>"><input type="radio" name="precision_visual" value="price_comparison" <?php checked( $precision['visual'] ?? 'image', 'price_comparison' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Shared comparison table — “Half the price. Triple the testing.”</span></label>
+					<span data-precision-comparison-help style="font-size:12px;color:#64748b;<?php echo $has_comparison_table ? 'display:none' : ''; ?>">Add “Comparison table” under Modules Below Hero to enable this visual.</span>
 				</div>
 			</div>
 			<div class="wchs-field">

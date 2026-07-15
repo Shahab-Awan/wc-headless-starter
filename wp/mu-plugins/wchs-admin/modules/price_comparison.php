@@ -3,7 +3,7 @@ defined( 'ABSPATH' ) || exit;
 
 return [
 	'type'     => 'price_comparison',
-	'name'     => 'Price comparison',
+	'name'     => 'Comparison table',
 	'icon'     => 'chart-bar',
 	'category' => 'commerce',
 	'supports' => [

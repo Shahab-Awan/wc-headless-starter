@@ -21,7 +21,6 @@
 	import { browser } from '$app/environment';
 	import {
 		config,
-		PRICE_COMPARISON_CARD_DEFAULTS,
 		type ModuleResolved,
 		type PriceComparisonModuleConfig,
 	} from '$lib/config.svelte';
@@ -235,14 +234,14 @@
 
 	const displayBrandName = $derived(brandName ?? config.data.brand_name);
 
-	const precisionPriceComparison = $derived.by((): PriceComparisonModuleConfig => {
+	const precisionPriceComparison = $derived.by((): PriceComparisonModuleConfig | null => {
 		const mods = config.data.homepage?.modules ?? [];
 		for (const m of mods) {
 			if (m.type === 'price_comparison') {
-				return { ...PRICE_COMPARISON_CARD_DEFAULTS, ...m.config };
+				return m.config;
 			}
 		}
-		return PRICE_COMPARISON_CARD_DEFAULTS;
+		return null;
 	});
 </script>
 

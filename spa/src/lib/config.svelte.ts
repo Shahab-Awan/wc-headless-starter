@@ -1721,14 +1721,6 @@ export function homepageModulesWithSplitValueAfterHero(modules: HomepageModule[]
 		ordered.splice(insertAfter + 1, 0, faqs);
 	}
 
-	const priceIdx = ordered.findIndex((m) => m.type === 'price_comparison');
-	const featuredIdx = ordered.findIndex((m) => m.type === 'featured_products');
-	if (priceIdx !== -1 && featuredIdx !== -1 && priceIdx !== featuredIdx + 1) {
-		const [price] = ordered.splice(priceIdx, 1);
-		const insertAfter = ordered.findIndex((m) => m.type === 'featured_products');
-		ordered.splice(insertAfter + 1, 0, price);
-	}
-
 	return ordered;
 }
 
