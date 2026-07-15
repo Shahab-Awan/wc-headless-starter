@@ -493,6 +493,9 @@ class AdminPage {
 		if ( function_exists( 'wchs_homepage_ensure_order_handling_module' ) ) {
 			$saved['modules'] = wchs_homepage_ensure_order_handling_module( $saved['modules'] );
 		}
+		if ( function_exists( 'wchs_homepage_ensure_price_comparison_module' ) ) {
+			$saved['modules'] = wchs_homepage_ensure_price_comparison_module( $saved['modules'] );
+		}
 		unset( $saved['fathers_day_mode'] );
 		return $saved;
 	}
@@ -4230,7 +4233,7 @@ class AdminPage {
 				<label>Right column visual <?php echo self::hint_icon( 'Image uses the media fields below. Price comparison uses the Live Price Comparison card from the homepage Price comparison module (edit competitors/prices there).' ); ?></label>
 				<div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
 					<label class="wchs-radio"><input type="radio" name="precision_visual" value="image" <?php checked( $precision['visual'] ?? 'image', 'image' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Hero image</span></label>
-					<label class="wchs-radio"><input type="radio" name="precision_visual" value="price_comparison" <?php checked( $precision['visual'] ?? 'image', 'price_comparison' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Live price comparison table</span></label>
+					<label class="wchs-radio"><input type="radio" name="precision_visual" value="price_comparison" <?php checked( $precision['visual'] ?? 'image', 'price_comparison' ); ?> /><span class="wchs-radio__circle"><span class="wchs-radio__dot"></span></span><span>Live price comparison table — “Half the price. Triple the testing.”</span></label>
 				</div>
 			</div>
 			<div class="wchs-field">
@@ -6144,14 +6147,18 @@ class AdminPage {
 					<label>Product tabs</label>
 					<div class="wchs-pc-sheets wchs-accordion-items" style="display:flex;flex-direction:column;gap:12px">
 						<div class="wchs-accordion-item wchs-pc-sheet" style="display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid #ddd;background:#fafafa">
-							<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+							<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
 								<div>
 									<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Tab label</label>
 									<input type="text" data-field="pc_sheet_tab_label" placeholder="GLP Reta" />
 								</div>
 								<div>
 									<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Product label</label>
-									<input type="text" data-field="pc_sheet_product_label" placeholder="GLP Reta 10 MG" />
+									<input type="text" data-field="pc_sheet_product_label" placeholder="GLP Reta" />
+								</div>
+								<div>
+									<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Variation name</label>
+									<input type="text" data-field="pc_sheet_variation_label" placeholder="10 MG" />
 								</div>
 							</div>
 							<div style="display:grid;grid-template-columns:120px 1fr;gap:10px">

@@ -218,7 +218,8 @@ function wchs_price_comparison_defaults(): array {
 		'sheets'         => [
 			[
 				'tab_label'     => 'GLP Reta',
-				'product_label' => 'GLP Reta 10 MG',
+				'product_label' => 'GLP Reta',
+				'variation_label' => '10 MG',
 				'brand_price'   => '89.00',
 				'brand_tags'    => 'IN STOCK · SHIPS FAST · COA ON FILE',
 				'competitors'   => [
@@ -230,7 +231,8 @@ function wchs_price_comparison_defaults(): array {
 			],
 			[
 				'tab_label'     => 'BPC-157',
-				'product_label' => 'BPC-157 5MG',
+				'product_label' => 'BPC-157',
+				'variation_label' => '5MG',
 				'brand_price'   => '28.00',
 				'brand_tags'    => 'IN STOCK · SHIPS FAST · COA ON FILE',
 				'competitors'   => [
@@ -246,13 +248,18 @@ function wchs_price_comparison_defaults(): array {
 }
 
 /**
- * Insert price_comparison immediately after trust_bar when seeding legacy homepages.
+ * Insert price_comparison immediately after featured_products when seeding legacy homepages.
  *
  * @param array<int, array<string, mixed>> $mods
  * @return int
  */
 function wchs_homepage_price_comparison_insert_index( array $mods ): int {
 	$n = count( $mods );
+	for ( $i = 0; $i < $n; $i++ ) {
+		if ( is_array( $mods[ $i ] ?? null ) && ( $mods[ $i ]['type'] ?? '' ) === 'featured_products' ) {
+			return $i + 1;
+		}
+	}
 	for ( $i = 0; $i < $n; $i++ ) {
 		if ( is_array( $mods[ $i ] ?? null ) && ( $mods[ $i ]['type'] ?? '' ) === 'trust_bar' ) {
 			return $i + 1;
@@ -2678,9 +2685,9 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 	$homepage['modules'] = $_migrate_mods( $homepage['modules'] ?? [] );
 	$homepage['modules'] = wchs_enrich_homepage_modules( $homepage['modules'] );
 	$homepage['modules'] = wchs_homepage_ensure_feature_highlights_module( $homepage['modules'] );
-	$homepage['modules'] = wchs_homepage_ensure_price_comparison_module( $homepage['modules'] );
 	$homepage['modules'] = wchs_homepage_ensure_order_handling_module( $homepage['modules'] );
 	$homepage['modules'] = wchs_homepage_ensure_featured_products_module( $homepage['modules'] );
+	$homepage['modules'] = wchs_homepage_ensure_price_comparison_module( $homepage['modules'] );
 
 	// Merge site defaults + per-module overrides into a `resolved` block on
 	// each module. SPA components read module.resolved instead of

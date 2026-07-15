@@ -42,6 +42,7 @@ return [
 			'item'    => [
 				[ 'id' => 'tab_label', 'type' => 'text', 'default' => '' ],
 				[ 'id' => 'product_label', 'type' => 'text', 'default' => '' ],
+				[ 'id' => 'variation_label', 'type' => 'text', 'default' => '' ],
 				[ 'id' => 'brand_price', 'type' => 'text', 'default' => '' ],
 				[ 'id' => 'brand_tags', 'type' => 'text', 'default' => 'IN STOCK · SHIPS FAST · COA ON FILE' ],
 				[

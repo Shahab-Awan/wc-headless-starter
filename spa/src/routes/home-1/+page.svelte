@@ -8,6 +8,7 @@
 	import CategoryGrid from '$lib/components/CategoryGrid.svelte';
 	import SplitFeatures from '$lib/components/SplitFeatures.svelte';
 	import SplitValue from '$lib/components/SplitValue.svelte';
+	import PriceComparison from '$lib/components/PriceComparison.svelte';
 	import FeatureHighlights from '$lib/components/FeatureHighlights.svelte';
 	import OrderHandling from '$lib/components/OrderHandling.svelte';
 	import ShopCatalog from '$lib/components/ShopCatalog.svelte';
@@ -24,7 +25,7 @@
 	import ReviewsListicle from '$lib/components/ReviewsListicle.svelte';
 	import ListicleFaqs from '$lib/components/ListicleFaqs.svelte';
 	import SEO from '$lib/components/SEO.svelte';
-	import { config } from '$lib/config.svelte';
+	import { config, homepageModulesWithSplitValueAfterHero } from '$lib/config.svelte';
 	import { resolveHome1Landing } from '$lib/home-1-landing';
 
 	const landing = $derived(resolveHome1Landing(config.data.home_1, config.data.homepage));
@@ -37,18 +38,7 @@
 		return h;
 	});
 
-	const modules = $derived(
-		landing.modules.filter((m) => {
-			if (
-				hero.layout === 'precision' &&
-				hero.precision?.visual === 'price_comparison' &&
-				m.type === 'price_comparison'
-			) {
-				return false;
-			}
-			return true;
-		})
-	);
+	const modules = $derived(homepageModulesWithSplitValueAfterHero(landing.modules));
 </script>
 
 <SEO
@@ -117,6 +107,8 @@
 			<CategoryGrid config={mod.config} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
 		{:else if mod.type === 'split_features'}
 			<SplitFeatures config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} center_header={mod.center_header || false} />
+		{:else if mod.type === 'price_comparison'}
+			<PriceComparison config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 		{:else if mod.type === 'feature_highlights'}
 			<FeatureHighlights config={mod.config} resolved={mod.resolved} spacing_v={mod.spacing_v || 'normal'} spacing_h={mod.spacing_h || 'normal'} />
 		{:else if mod.type === 'shop_grid'}

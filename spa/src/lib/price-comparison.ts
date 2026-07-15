@@ -7,7 +7,8 @@ import type {
 export const DEFAULT_PRICE_COMPARISON_SHEETS: PriceComparisonSheet[] = [
 	{
 		tab_label: 'GLP Reta',
-		product_label: 'GLP Reta 10 MG',
+		product_label: 'GLP Reta',
+		variation_label: '10 MG',
 		brand_price: '89.00',
 		brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
 		competitors: [
@@ -19,7 +20,8 @@ export const DEFAULT_PRICE_COMPARISON_SHEETS: PriceComparisonSheet[] = [
 	},
 	{
 		tab_label: 'BPC-157',
-		product_label: 'BPC-157 5MG',
+		product_label: 'BPC-157',
+		variation_label: '5MG',
 		brand_price: '28.00',
 		brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
 		competitors: [
@@ -43,6 +45,7 @@ function normCompetitors(rows: PriceComparisonCompetitor[] | undefined) {
 
 function normSheet(raw: Partial<PriceComparisonSheet>, fallbackTab = 'Product'): PriceComparisonSheet | null {
 	const product_label = (raw.product_label ?? '').trim();
+	const variation_label = (raw.variation_label ?? '').trim();
 	const brand_price = (raw.brand_price ?? '').trim();
 	const competitors = normCompetitors(raw.competitors);
 	const tab_label = (raw.tab_label ?? '').trim() || product_label.split(/\s+/).slice(0, 2).join(' ') || fallbackTab;
@@ -53,6 +56,7 @@ function normSheet(raw: Partial<PriceComparisonSheet>, fallbackTab = 'Product'):
 	return {
 		tab_label,
 		product_label,
+		variation_label,
 		brand_price,
 		brand_tags,
 		competitors,
@@ -73,6 +77,7 @@ export function normalizePriceComparisonSheets(
 	const legacy = normSheet({
 		tab_label: config.product_label?.trim() || 'Product',
 		product_label: config.product_label ?? '',
+		variation_label: '',
 		brand_price: config.brand_price ?? '',
 		brand_tags: config.brand_tags ?? '',
 		competitors: config.competitors ?? [],

@@ -53,6 +53,7 @@
 		normalizePriceComparisonSheets(config).map((sheet) => ({
 			tabLabel: sheet.tab_label.trim(),
 			productLabel: sheet.product_label.trim(),
+			variationLabel: sheet.variation_label?.trim() || '',
 			brandTags: sheet.brand_tags.trim(),
 			brandPrice: formatUsd(sheet.brand_price),
 			competitors: (sheet.competitors ?? [])
@@ -125,14 +126,15 @@
 		>
 			<div class="pc-card__header">
 				<div class="pc-card__status-row">
-					{#if config.status_label?.trim() || sheet.productLabel}
+					{#if config.status_label?.trim() || sheet.productLabel || sheet.variationLabel}
 						<p class="pc-card__status">
 							<span class="pc-card__live" aria-hidden="true"></span>
 							{#if config.status_label?.trim()}{config.status_label.trim()}{/if}
-							{#if config.status_label?.trim() && sheet.productLabel}
+							{#if config.status_label?.trim() && (sheet.productLabel || sheet.variationLabel)}
 								<span class="pc-card__status-sep" aria-hidden="true">·</span>
 							{/if}
 							{#if sheet.productLabel}{sheet.productLabel}{/if}
+							{#if sheet.variationLabel}{sheet.variationLabel}{/if}
 						</p>
 					{/if}
 					{#if config.lowest_badge?.trim()}

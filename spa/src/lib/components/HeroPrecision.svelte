@@ -23,6 +23,8 @@
 
 	const p = $derived(resolveHeroPrecision(precision));
 	const usePriceCard = $derived(p.visual === 'price_comparison' && !!priceComparison);
+	const headlinePrimary = $derived(usePriceCard ? 'Half the price.' : p.headline_primary);
+	const headlineAccent = $derived(usePriceCard ? 'Triple the testing.' : p.headline_accent);
 
 	const accentStyle = $derived(resolved?.accent_color ? `--accent: ${resolved.accent_color};` : '');
 
@@ -58,9 +60,9 @@
 					class="hero-precision__title"
 					style="font-family: {headlineFontFamily}; font-weight: {headlineWt};"
 				>
-					<span>{p.headline_primary}</span>
-					{#if p.headline_accent.trim()}
-						<span class="hero-precision__title-accent">{p.headline_accent}</span>
+					<span>{headlinePrimary}</span>
+					{#if headlineAccent.trim()}
+						<span class="hero-precision__title-accent">{headlineAccent}</span>
 					{/if}
 				</h1>
 

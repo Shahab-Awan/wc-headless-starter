@@ -70,87 +70,119 @@
 	const showBar = $derived(
 		enabled && trackMaxMinor > 0 && (shipMinor > 0 || bacMinor > 0) && subtotalMinor >= 0
 	);
+
+	/** Collapsed by default so cart items stay visible when the drawer opens. */
+	let rewardsOpen = $state(false);
+
+	$effect(() => {
+		if (cart.open) rewardsOpen = false;
+	});
 </script>
 
 {#if showBar}
 	<div
 		class="fkcart-rewards"
 		class:is-complete={allUnlocked}
+		class:is-collapsed={!rewardsOpen}
 		aria-label="Cart rewards progress"
 	>
-		<p class="fkcart-rewards__headline">
-			{#if headline.amount}
-				{headline.lead}<strong class="fkcart-rewards__amount">{headline.amount}</strong>{headline.tail}
-			{:else}
-				<strong>{headline.lead}</strong>
-			{/if}
-		</p>
+		<button
+			type="button"
+			class="fkcart-rewards__toggle"
+			aria-expanded={rewardsOpen}
+			aria-controls="fkcart-rewards-panel"
+			onclick={() => (rewardsOpen = !rewardsOpen)}
+		>
+			<span class="fkcart-rewards__headline">
+				{#if headline.amount}
+					{headline.lead}<strong class="fkcart-rewards__amount">{headline.amount}</strong>{headline.tail}
+				{:else}
+					<strong>{headline.lead}</strong>
+				{/if}
+			</span>
+			<svg
+				class="fkcart-rewards__chevron"
+				class:is-open={rewardsOpen}
+				viewBox="0 0 24 24"
+				width="16"
+				height="16"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				aria-hidden="true"
+			>
+				<path d="M6 9l6 6 6-6" />
+			</svg>
+		</button>
 
-		<div class="fkcart-rewards__track-wrap">
-			<div class="fkcart-rewards__track-inner">
-				<div class="fkcart-rewards__track" aria-hidden="true">
-					<div class="fkcart-rewards__fill" style="width: {progressPct}%"></div>
+		{#if rewardsOpen}
+			<div id="fkcart-rewards-panel" class="fkcart-rewards__track-wrap">
+				<div class="fkcart-rewards__track-inner">
+					<div class="fkcart-rewards__track" aria-hidden="true">
+						<div class="fkcart-rewards__fill" style="width: {progressPct}%"></div>
+					</div>
+
+					{#if shipMinor > 0}
+						<div
+							class="fkcart-rewards__node"
+							class:is-unlocked={shippingUnlocked}
+							style="left: {shipPosPct}%"
+						>
+							<div class="fkcart-rewards__icon-wrap">
+								{#if shippingUnlocked}
+									<span class="fkcart-rewards__check" aria-hidden="true">
+										<svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2">
+											<path d="M3.5 8.2 6.4 11 12.5 5" stroke-linecap="round" stroke-linejoin="round" />
+										</svg>
+									</span>
+								{/if}
+								<span class="fkcart-rewards__icon">
+									<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8">
+										<path d="M3 7h13l3 5v5H3V7z" stroke-linejoin="round" />
+										<circle cx="7.5" cy="17.5" r="1.5" />
+										<circle cx="16.5" cy="17.5" r="1.5" />
+										<path d="M16 7V4H3" stroke-linecap="round" />
+									</svg>
+								</span>
+							</div>
+							<span class="fkcart-rewards__label">Free shipping</span>
+							{#if urgencyLabel && !shippingUnlocked}
+								<span class="fkcart-rewards__urgency">{urgencyLabel}</span>
+							{/if}
+						</div>
+					{/if}
+
+					{#if bacMinor > 0}
+						<div
+							class="fkcart-rewards__node fkcart-rewards__node--bac"
+							class:is-unlocked={bacUnlocked}
+						>
+							<div class="fkcart-rewards__icon-wrap">
+								{#if bacUnlocked}
+									<span class="fkcart-rewards__check" aria-hidden="true">
+										<svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2">
+											<path d="M3.5 8.2 6.4 11 12.5 5" stroke-linecap="round" stroke-linejoin="round" />
+										</svg>
+									</span>
+								{/if}
+								<span class="fkcart-rewards__icon">
+									<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8">
+										<path d="M9 3h6v3H9z" stroke-linejoin="round" />
+										<rect x="8" y="6" width="8" height="14" rx="2" />
+										<path d="M10 10h4M10 14h4" stroke-linecap="round" />
+									</svg>
+								</span>
+							</div>
+							<span class="fkcart-rewards__label">Free 10ml BAC</span>
+							{#if urgencyLabel && !bacUnlocked}
+								<span class="fkcart-rewards__urgency">{urgencyLabel}</span>
+							{/if}
+						</div>
+					{/if}
 				</div>
-
-				{#if shipMinor > 0}
-					<div
-						class="fkcart-rewards__node"
-						class:is-unlocked={shippingUnlocked}
-						style="left: {shipPosPct}%"
-					>
-						<div class="fkcart-rewards__icon-wrap">
-							{#if shippingUnlocked}
-								<span class="fkcart-rewards__check" aria-hidden="true">
-									<svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2">
-										<path d="M3.5 8.2 6.4 11 12.5 5" stroke-linecap="round" stroke-linejoin="round" />
-									</svg>
-								</span>
-							{/if}
-							<span class="fkcart-rewards__icon">
-								<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8">
-									<path d="M3 7h13l3 5v5H3V7z" stroke-linejoin="round" />
-									<circle cx="7.5" cy="17.5" r="1.5" />
-									<circle cx="16.5" cy="17.5" r="1.5" />
-									<path d="M16 7V4H3" stroke-linecap="round" />
-								</svg>
-							</span>
-						</div>
-						<span class="fkcart-rewards__label">Free shipping</span>
-						{#if urgencyLabel && !shippingUnlocked}
-							<span class="fkcart-rewards__urgency">{urgencyLabel}</span>
-						{/if}
-					</div>
-				{/if}
-
-				{#if bacMinor > 0}
-					<div
-						class="fkcart-rewards__node fkcart-rewards__node--bac"
-						class:is-unlocked={bacUnlocked}
-					>
-						<div class="fkcart-rewards__icon-wrap">
-							{#if bacUnlocked}
-								<span class="fkcart-rewards__check" aria-hidden="true">
-									<svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2">
-										<path d="M3.5 8.2 6.4 11 12.5 5" stroke-linecap="round" stroke-linejoin="round" />
-									</svg>
-								</span>
-							{/if}
-							<span class="fkcart-rewards__icon">
-								<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8">
-									<path d="M9 3h6v3H9z" stroke-linejoin="round" />
-									<rect x="8" y="6" width="8" height="14" rx="2" />
-									<path d="M10 10h4M10 14h4" stroke-linecap="round" />
-								</svg>
-							</span>
-						</div>
-						<span class="fkcart-rewards__label">Free 10ml BAC</span>
-						{#if urgencyLabel && !bacUnlocked}
-							<span class="fkcart-rewards__urgency">{urgencyLabel}</span>
-						{/if}
-					</div>
-				{/if}
 			</div>
-		</div>
+		{/if}
 	</div>
 {/if}
 
@@ -161,7 +193,7 @@
 		min-width: 0;
 		box-sizing: border-box;
 		margin-top: 10px;
-		padding: 12px 14px 8px;
+		padding: 10px 12px 8px;
 		border-radius: 12px;
 		border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
 		background: linear-gradient(
@@ -172,6 +204,10 @@
 		box-shadow:
 			0 1px 0 color-mix(in srgb, white 35%, transparent) inset,
 			0 6px 20px color-mix(in srgb, var(--accent) 12%, transparent);
+	}
+
+	.fkcart-rewards.is-collapsed {
+		padding-bottom: 10px;
 	}
 
 	.fkcart-rewards.is-complete {
@@ -186,13 +222,31 @@
 			0 6px 20px color-mix(in srgb, #22c55e 10%, transparent);
 	}
 
+	.fkcart-rewards__toggle {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		width: 100%;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+
 	.fkcart-rewards__headline {
-		margin: 0 0 12px;
+		flex: 1 1 auto;
+		min-width: 0;
+		margin: 0;
 		padding: 0;
 		font-size: 13px;
 		font-weight: 600;
 		line-height: 1.45;
-		text-align: center;
+		text-align: left;
 		color: var(--fg);
 		text-wrap: balance;
 		overflow: visible;
@@ -211,9 +265,20 @@
 		font-weight: 800;
 	}
 
+	.fkcart-rewards__chevron {
+		flex-shrink: 0;
+		color: var(--fg-muted);
+		transition: transform var(--dur-fast, 150ms) var(--ease, ease);
+	}
+
+	.fkcart-rewards__chevron.is-open {
+		transform: rotate(180deg);
+	}
+
 	.fkcart-rewards__track-wrap {
 		width: 100%;
 		min-width: 0;
+		margin-top: 12px;
 	}
 
 	.fkcart-rewards__track-inner {
@@ -238,7 +303,7 @@
 			var(--accent)
 		);
 		box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent);
-		transition: width 420ms var(--ease-out);
+		transition: width 420ms var(--ease-out, ease-out);
 	}
 
 	.fkcart-rewards__node {
@@ -277,10 +342,10 @@
 		background: var(--bg);
 		color: var(--fg-muted);
 		transition:
-			border-color 240ms var(--ease-out),
-			background 240ms var(--ease-out),
-			color 240ms var(--ease-out),
-			box-shadow 240ms var(--ease-out);
+			border-color 240ms var(--ease-out, ease-out),
+			background 240ms var(--ease-out, ease-out),
+			color 240ms var(--ease-out, ease-out),
+			box-shadow 240ms var(--ease-out, ease-out);
 	}
 
 	.fkcart-rewards__node.is-unlocked .fkcart-rewards__icon {

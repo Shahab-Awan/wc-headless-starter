@@ -489,7 +489,8 @@
 				sheets: [
 					{
 						tab_label: 'GLP Reta',
-						product_label: 'GLP Reta 10 MG',
+						product_label: 'GLP Reta',
+						variation_label: '10 MG',
 						brand_price: '89.00',
 						brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
 						competitors: [
@@ -501,7 +502,8 @@
 					},
 					{
 						tab_label: 'BPC-157',
-						product_label: 'BPC-157 5MG',
+						product_label: 'BPC-157',
+						variation_label: '5MG',
 						brand_price: '28.00',
 						brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
 						competitors: [
@@ -2285,6 +2287,7 @@
 			items.push({
 				tab_label: getVal(el, '[data-field="pc_sheet_tab_label"]') || '',
 				product_label: getVal(el, '[data-field="pc_sheet_product_label"]') || '',
+				variation_label: getVal(el, '[data-field="pc_sheet_variation_label"]') || '',
 				brand_price: getVal(el, '[data-field="pc_sheet_brand_price"]') || '',
 				brand_tags: getVal(el, '[data-field="pc_sheet_brand_tags"]') || '',
 				competitors: readPcCompetitors(el),
@@ -2530,6 +2533,7 @@
 				return [{
 					tab_label: cfg.product_label || 'Product',
 					product_label: cfg.product_label || '',
+					variation_label: '',
 					brand_price: cfg.brand_price || '',
 					brand_tags: cfg.brand_tags || '',
 					competitors: cfg.competitors || [],
@@ -2542,6 +2546,7 @@
 				return [{
 					tab_label: cfg.product_label || 'Product',
 					product_label: cfg.product_label || '',
+					variation_label: '',
 					brand_price: cfg.brand_price || '',
 					brand_tags: cfg.brand_tags || '',
 					competitors: pcCompetitorsForAdmin(cfg.competitors),
@@ -2580,6 +2585,7 @@
 			var el = div.firstElementChild;
 			setVal(el, '[data-field="pc_sheet_tab_label"]', sheet.tab_label || '');
 			setVal(el, '[data-field="pc_sheet_product_label"]', sheet.product_label || '');
+			setVal(el, '[data-field="pc_sheet_variation_label"]', sheet.variation_label || '');
 			setVal(el, '[data-field="pc_sheet_brand_price"]', sheet.brand_price || '');
 			setVal(el, '[data-field="pc_sheet_brand_tags"]', sheet.brand_tags || '');
 			var compWrap = el.querySelector('.wchs-pc-competitors');

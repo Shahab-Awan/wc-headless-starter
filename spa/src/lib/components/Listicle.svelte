@@ -376,17 +376,19 @@
 						{/if}
 
 						<div class="listicle__hero-band-inner">
-							{#if heroBadge}
-								<p class="listicle__hero-badge">{heroBadge}</p>
-							{/if}
+							<div class="listicle__hero-title-panel">
+								{#if heroBadge}
+									<p class="listicle__hero-badge">{heroBadge}</p>
+								{/if}
 
-							<h1 class="listicle__editorial-headline">{heroHeadline}</h1>
+								<h1 class="listicle__editorial-headline">{heroHeadline}</h1>
 
-							{#if showHeroCta}
-								<a class="listicle__hero-cta" href={bridgeAwareHref(heroCtaHref)}>
-									{heroCtaLabel}
-								</a>
-							{/if}
+								{#if showHeroCta}
+									<a class="listicle__hero-cta" href={bridgeAwareHref(heroCtaHref)}>
+										{heroCtaLabel}
+									</a>
+								{/if}
+							</div>
 
 							{#if heroTrustLead}
 								<p class="listicle__hero-trust-lead">{heroTrustLead}</p>
@@ -784,6 +786,21 @@
 		align-items: center;
 		gap: clamp(16px, 2.5vw, 24px);
 		text-align: center;
+	}
+
+	.listicle__hero-title-panel {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: clamp(16px, 2.5vw, 24px);
+		width: 100%;
+		max-width: min(36ch, 100%);
+	}
+
+	@media (min-width: 640px) {
+		.listicle__hero-title-panel {
+			max-width: 100%;
+		}
 	}
 
 	.listicle__hero-badge {
@@ -1506,6 +1523,27 @@
 
 		.listicle__hero-vial--left-bottom {
 			display: none;
+		}
+
+		/* Transparent glass only around badge → CTA (not trust strip). */
+		.listicle__hero-band.has-vials .listicle__hero-title-panel {
+			padding: clamp(18px, 4.5vw, 22px) clamp(14px, 4vw, 18px);
+			border-radius: 18px;
+			border: 1px solid color-mix(in srgb, #fff 30%, transparent);
+			background: color-mix(in srgb, #fff 14%, transparent);
+			-webkit-backdrop-filter: blur(18px) saturate(1.1);
+			backdrop-filter: blur(18px) saturate(1.1);
+			box-shadow:
+				0 12px 28px color-mix(in srgb, var(--fg) 10%, transparent),
+				inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
+		}
+
+		:global([data-theme='dark']) .listicle__hero-band.has-vials .listicle__hero-title-panel {
+			border-color: color-mix(in srgb, #fff 14%, transparent);
+			background: color-mix(in srgb, #fff 8%, transparent);
+			box-shadow:
+				0 12px 28px color-mix(in srgb, #000 35%, transparent),
+				inset 0 1px 0 color-mix(in srgb, #fff 16%, transparent);
 		}
 
 		.listicle__hero-band-inner {

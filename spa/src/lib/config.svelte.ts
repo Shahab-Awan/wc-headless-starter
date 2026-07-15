@@ -473,6 +473,7 @@ export type PriceComparisonCompetitor = {
 export type PriceComparisonSheet = {
 	tab_label: string;
 	product_label: string;
+	variation_label?: string;
 	brand_price: string;
 	brand_tags: string;
 	competitors: PriceComparisonCompetitor[];
@@ -514,7 +515,8 @@ export const PRICE_COMPARISON_CARD_DEFAULTS: PriceComparisonModuleConfig = {
 	sheets: [
 		{
 			tab_label: 'GLP Reta',
-			product_label: 'GLP Reta 10 MG',
+			product_label: 'GLP Reta',
+			variation_label: '10 MG',
 			brand_price: '89.00',
 			brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
 			competitors: [
@@ -526,7 +528,8 @@ export const PRICE_COMPARISON_CARD_DEFAULTS: PriceComparisonModuleConfig = {
 		},
 		{
 			tab_label: 'BPC-157',
-			product_label: 'BPC-157 5MG',
+			product_label: 'BPC-157',
+			variation_label: '5MG',
 			brand_price: '28.00',
 			brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
 			competitors: [
@@ -1716,6 +1719,14 @@ export function homepageModulesWithSplitValueAfterHero(modules: HomepageModule[]
 		const [faqs] = ordered.splice(faqsIdx, 1);
 		const insertAfter = ordered.findIndex((m) => m.type === 'reviews_listicle');
 		ordered.splice(insertAfter + 1, 0, faqs);
+	}
+
+	const priceIdx = ordered.findIndex((m) => m.type === 'price_comparison');
+	const featuredIdx = ordered.findIndex((m) => m.type === 'featured_products');
+	if (priceIdx !== -1 && featuredIdx !== -1 && priceIdx !== featuredIdx + 1) {
+		const [price] = ordered.splice(priceIdx, 1);
+		const insertAfter = ordered.findIndex((m) => m.type === 'featured_products');
+		ordered.splice(insertAfter + 1, 0, price);
 	}
 
 	return ordered;
