@@ -6144,27 +6144,36 @@ class AdminPage {
 				<div class="wchs-field"><label>Lowest badge</label><input type="text" data-field="pc_lowest_badge" placeholder="LOWEST" /></div>
 				<div class="wchs-field"><label>Your brand name</label><input type="text" data-field="pc_brand_name" placeholder="Leave blank to use site brand" /></div>
 				<div class="wchs-field wchs-field--full">
-					<label>Product tabs</label>
+					<label>Product tabs <span style="font-weight:400;color:#94a3b8;text-transform:none;letter-spacing:0">(drag or use arrows to set storefront order)</span></label>
 					<div class="wchs-pc-sheets wchs-accordion-items" style="display:flex;flex-direction:column;gap:12px">
 						<div class="wchs-accordion-item wchs-pc-sheet" style="display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid #ddd;background:#fafafa">
+							<div class="wchs-pc-sheet__toolbar">
+								<span class="wchs-pc-sheet__drag" draggable="true" title="Drag to reorder" aria-hidden="true">⠿</span>
+								<span class="wchs-pc-sheet__ordlabel">Product tab</span>
+								<div class="wchs-pc-sheet__move">
+									<button type="button" class="wchs-pc-sheet__move-btn" data-pc-sheet-move="up" title="Move up" aria-label="Move tab up">↑</button>
+									<button type="button" class="wchs-pc-sheet__move-btn" data-pc-sheet-move="down" title="Move down" aria-label="Move tab down">↓</button>
+								</div>
+								<button type="button" class="wchs-accordion-item__remove" title="Remove tab">✕</button>
+							</div>
 							<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
 								<div>
 									<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Tab label</label>
-									<input type="text" data-field="pc_sheet_tab_label" placeholder="GLP Reta" />
+									<input type="text" data-field="pc_sheet_tab_label" placeholder="BPC-157" />
 								</div>
 								<div>
 									<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Product label</label>
-									<input type="text" data-field="pc_sheet_product_label" placeholder="GLP Reta" />
+									<input type="text" data-field="pc_sheet_product_label" placeholder="BPC-157" />
 								</div>
 								<div>
 									<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Variation name</label>
-									<input type="text" data-field="pc_sheet_variation_label" placeholder="10 MG" />
+									<input type="text" data-field="pc_sheet_variation_label" placeholder="5MG" />
 								</div>
 							</div>
 							<div style="display:grid;grid-template-columns:120px 1fr;gap:10px">
 								<div>
 									<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Your price</label>
-									<input type="text" data-field="pc_sheet_brand_price" placeholder="89.00" />
+									<input type="text" data-field="pc_sheet_brand_price" placeholder="28.00" />
 								</div>
 								<div>
 									<label style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#999;margin:0">Your tags line</label>
@@ -6177,13 +6186,12 @@ class AdminPage {
 									<div class="wchs-accordion-item wchs-pc-competitor" style="display:grid;grid-template-columns:48px 1fr 88px auto;gap:8px;align-items:center;padding:8px;border:1px solid #ddd;background:#fff">
 										<input type="text" placeholder="A" />
 										<input type="text" placeholder="Vendor name" />
-										<input type="text" placeholder="109.00" />
+										<input type="text" placeholder="34.00" />
 										<button type="button" class="wchs-accordion-item__remove" title="Remove">✕</button>
 									</div>
 								</div>
 								<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-pc-competitor-modal" style="margin-top:10px">+ Add competitor</button>
 							</div>
-							<button type="button" class="wchs-accordion-item__remove" title="Remove tab">✕</button>
 						</div>
 					</div>
 					<button type="button" class="wchs-btn wchs-btn--secondary wchs-add-pc-sheet-modal" style="margin-top:10px">+ Add product tab</button>

@@ -145,7 +145,7 @@
 	.hero-precision {
 		--hp-surface: color-mix(in srgb, var(--accent) 7%, var(--bg));
 		--hp-surface-border: color-mix(in srgb, var(--accent) 14%, var(--border));
-		padding: 15px clamp(20px, 4vw, 40px) clamp(40px, 7vh, 72px);
+		padding: 12px clamp(20px, 4vw, 40px) clamp(28px, 4vh, 48px);
 		background: var(--bg);
 		color: var(--fg);
 	}
@@ -154,7 +154,7 @@
 		max-width: 1280px;
 		margin: 0 auto;
 		display: grid;
-		grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 		grid-template-areas: 'copy visual';
 		column-gap: clamp(24px, 4vw, 48px);
 		align-items: stretch;
@@ -391,7 +391,7 @@
 	.hero-precision__visual--card {
 		aspect-ratio: auto;
 		min-height: 0;
-		max-width: min(100%, 420px);
+		max-width: min(100%, 500px);
 		border: 0;
 		background: transparent;
 		background-image: none;
@@ -412,7 +412,7 @@
 
 	@media (min-width: 961px) {
 		.hero-precision {
-			padding-top: 32px;
+			padding-top: 24px;
 		}
 
 		.hero-precision__inner {

@@ -976,6 +976,73 @@ label.wchs-toggle {
 	cursor: grab;
 	flex-shrink: 0;
 }
+
+/* Price comparison product tabs — reorder */
+.wchs-pc-sheet {
+	position: relative;
+}
+.wchs-pc-sheet.is-dragging {
+	opacity: 0.45;
+}
+.wchs-pc-sheet.is-drag-over {
+	border-top: 2px solid #0f172a;
+}
+.wchs-pc-sheet__toolbar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: -2px 0 4px;
+}
+.wchs-pc-sheet__drag {
+	color: #cbd5e1;
+	font-size: 16px;
+	cursor: grab;
+	flex-shrink: 0;
+	user-select: none;
+	line-height: 1;
+	padding: 2px 4px;
+}
+.wchs-pc-sheet__drag:active {
+	cursor: grabbing;
+}
+.wchs-pc-sheet__ordlabel {
+	flex: 1;
+	min-width: 0;
+	font-size: 12px;
+	font-weight: 600;
+	color: #0f172a;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.wchs-pc-sheet__move {
+	display: inline-flex;
+	gap: 4px;
+	flex-shrink: 0;
+}
+.wchs-pc-sheet__move-btn {
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: 1px solid #d1d5db;
+	background: #fff;
+	color: #334155;
+	font-size: 13px;
+	line-height: 1;
+	cursor: pointer;
+}
+.wchs-pc-sheet__move-btn:hover:not(:disabled) {
+	border-color: #0f172a;
+	color: #0f172a;
+}
+.wchs-pc-sheet__move-btn:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+.wchs-pc-sheet__toolbar > .wchs-accordion-item__remove {
+	position: static;
+	margin-left: 0;
+}
 .wchs-modlist__type {
 	font-size: 12px;
 	font-weight: 600;

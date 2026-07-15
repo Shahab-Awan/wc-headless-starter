@@ -514,19 +514,6 @@ export const PRICE_COMPARISON_CARD_DEFAULTS: PriceComparisonModuleConfig = {
 		'Prices tracked from publicly listed research peptide vendors for comparable SKU, dose, and purity tier. Updated regularly; for research use only.',
 	sheets: [
 		{
-			tab_label: 'GLP Reta',
-			product_label: 'GLP Reta',
-			variation_label: '10 MG',
-			brand_price: '89.00',
-			brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
-			competitors: [
-				{ letter: 'A', name: 'Modern Aminos', price: '109.00' },
-				{ letter: 'B', name: 'Soma Chems', price: '119.00' },
-				{ letter: 'C', name: 'Onyx Research', price: '125.00' },
-				{ letter: 'D', name: 'Ascension Peptides', price: '135.00' },
-			],
-		},
-		{
 			tab_label: 'BPC-157',
 			product_label: 'BPC-157',
 			variation_label: '5MG',
@@ -537,6 +524,19 @@ export const PRICE_COMPARISON_CARD_DEFAULTS: PriceComparisonModuleConfig = {
 				{ letter: 'B', name: 'Soma Chems', price: '39.99' },
 				{ letter: 'C', name: 'Onyx Research', price: '45.00' },
 				{ letter: 'D', name: 'Ascension Peptides', price: '55.00' },
+			],
+		},
+		{
+			tab_label: 'GLP Reta',
+			product_label: 'GLP Reta',
+			variation_label: '10 MG',
+			brand_price: '89.00',
+			brand_tags: 'IN STOCK · SHIPS FAST · COA ON FILE',
+			competitors: [
+				{ letter: 'A', name: 'Modern Aminos', price: '109.00' },
+				{ letter: 'B', name: 'Soma Chems', price: '119.00' },
+				{ letter: 'C', name: 'Onyx Research', price: '125.00' },
+				{ letter: 'D', name: 'Ascension Peptides', price: '135.00' },
 			],
 		},
 	],

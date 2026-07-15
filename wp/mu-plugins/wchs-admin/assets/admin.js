@@ -2527,8 +2527,14 @@
 	function pcSheetsForAdmin(cfg) {
 		var saved = cfg.sheets || [];
 		var defaults = defaultConfigFor('price_comparison').sheets || [];
+		if (saved.length) {
+			return saved.map(function (sheet) {
+				var next = Object.assign({}, sheet);
+				next.competitors = pcCompetitorsForAdmin(next.competitors);
+				return next;
+			});
+		}
 		if (!defaults.length) {
-			if (saved.length) return saved;
 			if (cfg.product_label || cfg.brand_price || (cfg.competitors && cfg.competitors.length)) {
 				return [{
 					tab_label: cfg.product_label || 'Product',
@@ -2541,35 +2547,39 @@
 			}
 			return saved;
 		}
-		if (!saved.length) {
-			if (cfg.product_label || cfg.brand_price || (cfg.competitors && cfg.competitors.length)) {
-				return [{
-					tab_label: cfg.product_label || 'Product',
-					product_label: cfg.product_label || '',
-					variation_label: '',
-					brand_price: cfg.brand_price || '',
-					brand_tags: cfg.brand_tags || '',
-					competitors: pcCompetitorsForAdmin(cfg.competitors),
-				}];
+		if (cfg.product_label || cfg.brand_price || (cfg.competitors && cfg.competitors.length)) {
+			return [{
+				tab_label: cfg.product_label || 'Product',
+				product_label: cfg.product_label || '',
+				variation_label: '',
+				brand_price: cfg.brand_price || '',
+				brand_tags: cfg.brand_tags || '',
+				competitors: pcCompetitorsForAdmin(cfg.competitors),
+			}];
+		}
+		return defaults.map(function (sheet) {
+			var next = Object.assign({}, sheet);
+			next.competitors = pcCompetitorsForAdmin(next.competitors);
+			return next;
+		});
+	}
+
+	function syncPcSheetToolbar(container) {
+		if (!container) return;
+		var sheets = container.querySelectorAll(':scope > .wchs-pc-sheet');
+		sheets.forEach(function (el, i) {
+			var handle = el.querySelector('.wchs-pc-sheet__drag');
+			if (handle) handle.draggable = true;
+			var label = el.querySelector('.wchs-pc-sheet__ordlabel');
+			if (label) {
+				var tab = (el.querySelector('[data-field="pc_sheet_tab_label"]') || {}).value || '';
+				label.textContent = tab.trim() || ('Product tab ' + (i + 1));
 			}
-			return defaults.slice();
-		}
-		var out = [];
-		for (var i = 0; i < defaults.length; i++) {
-			var merged = Object.assign({}, defaults[i], saved[i] || {});
-			merged.competitors = pcCompetitorsForAdmin(
-				(saved[i] && saved[i].competitors) ? saved[i].competitors : merged.competitors
-			);
-			out.push(merged);
-		}
-		if (saved.length > defaults.length) {
-			for (var j = defaults.length; j < saved.length; j++) {
-				var extra = Object.assign({}, saved[j]);
-				extra.competitors = pcCompetitorsForAdmin(extra.competitors);
-				out.push(extra);
-			}
-		}
-		return out;
+			var up = el.querySelector('[data-pc-sheet-move="up"]');
+			var down = el.querySelector('[data-pc-sheet-move="down"]');
+			if (up) up.disabled = i === 0;
+			if (down) down.disabled = i === sheets.length - 1;
+		});
 	}
 
 	function populatePcSheets(ctx, sheets) {
@@ -2608,7 +2618,75 @@
 			}
 			container.appendChild(el);
 		});
+		syncPcSheetToolbar(container);
 	}
+
+	// Product-tab drag reorder (price comparison sheets).
+	var pcSheetDragEl = null;
+	document.addEventListener('dragstart', function (e) {
+		var handle = e.target.closest && e.target.closest('.wchs-pc-sheet__drag');
+		if (!handle) return;
+		var sheet = handle.closest('.wchs-pc-sheet');
+		if (!sheet || !sheet.closest('.wchs-pc-sheets')) return;
+		pcSheetDragEl = sheet;
+		sheet.classList.add('is-dragging');
+		try {
+			e.dataTransfer.effectAllowed = 'move';
+			e.dataTransfer.setData('text/plain', 'pc-sheet');
+		} catch (err) { /* ignore */ }
+	});
+	document.addEventListener('dragover', function (e) {
+		if (!pcSheetDragEl) return;
+		var over = e.target.closest && e.target.closest('.wchs-pc-sheet');
+		if (!over || !over.closest('.wchs-pc-sheets')) return;
+		e.preventDefault();
+		document.querySelectorAll('.wchs-pc-sheet.is-drag-over').forEach(function (el) {
+			el.classList.remove('is-drag-over');
+		});
+		if (over !== pcSheetDragEl) over.classList.add('is-drag-over');
+	});
+	document.addEventListener('drop', function (e) {
+		if (!pcSheetDragEl) return;
+		var drop = e.target.closest && e.target.closest('.wchs-pc-sheet');
+		var wrap = pcSheetDragEl.closest('.wchs-pc-sheets');
+		if (!drop || !wrap || drop === pcSheetDragEl || !wrap.contains(drop)) {
+			pcSheetDragEl.classList.remove('is-dragging');
+			pcSheetDragEl = null;
+			return;
+		}
+		e.preventDefault();
+		var sheets = Array.prototype.slice.call(wrap.querySelectorAll(':scope > .wchs-pc-sheet'));
+		var from = sheets.indexOf(pcSheetDragEl);
+		var to = sheets.indexOf(drop);
+		if (from < 0 || to < 0 || from === to) {
+			pcSheetDragEl.classList.remove('is-dragging');
+			pcSheetDragEl = null;
+			return;
+		}
+		if (from < to) {
+			wrap.insertBefore(pcSheetDragEl, drop.nextSibling);
+		} else {
+			wrap.insertBefore(pcSheetDragEl, drop);
+		}
+		pcSheetDragEl.classList.remove('is-dragging');
+		pcSheetDragEl = null;
+		document.querySelectorAll('.wchs-pc-sheet.is-drag-over').forEach(function (el) {
+			el.classList.remove('is-drag-over');
+		});
+		syncPcSheetToolbar(wrap);
+	});
+	document.addEventListener('dragend', function () {
+		if (pcSheetDragEl) pcSheetDragEl.classList.remove('is-dragging');
+		pcSheetDragEl = null;
+		document.querySelectorAll('.wchs-pc-sheet.is-dragging, .wchs-pc-sheet.is-drag-over').forEach(function (el) {
+			el.classList.remove('is-dragging', 'is-drag-over');
+		});
+	});
+	document.addEventListener('input', function (e) {
+		if (!e.target.matches || !e.target.matches('[data-field="pc_sheet_tab_label"]')) return;
+		var wrap = e.target.closest('.wchs-pc-sheets');
+		if (wrap) syncPcSheetToolbar(wrap);
+	});
 
 	function ohStepsForAdmin(cfg) {
 		var saved = cfg.steps || [];
@@ -3689,6 +3767,7 @@
 				}
 			}
 			pcSheetWrap.appendChild(pcSheetEl);
+			syncPcSheetToolbar(pcSheetWrap);
 		}
 		var addOhStepModal = e.target.closest('.wchs-add-oh-step-modal');
 		if (addOhStepModal) {
@@ -3854,12 +3933,32 @@
 			tCont.appendChild(tClone);
 		}
 
+		var pcSheetMoveBtn = e.target.closest('[data-pc-sheet-move]');
+		if (pcSheetMoveBtn) {
+			e.preventDefault();
+			var moveDir = pcSheetMoveBtn.getAttribute('data-pc-sheet-move');
+			var moveSheet = pcSheetMoveBtn.closest('.wchs-pc-sheet');
+			var moveWrap = moveSheet && moveSheet.closest('.wchs-pc-sheets');
+			if (!moveSheet || !moveWrap) return;
+			if (moveDir === 'up' && moveSheet.previousElementSibling) {
+				moveWrap.insertBefore(moveSheet, moveSheet.previousElementSibling);
+			} else if (moveDir === 'down' && moveSheet.nextElementSibling) {
+				moveWrap.insertBefore(moveSheet.nextElementSibling, moveSheet);
+			}
+			syncPcSheetToolbar(moveWrap);
+			return;
+		}
+
 		var removeItemBtn = e.target.closest('.wchs-accordion-item__remove');
 		if (removeItemBtn) {
 			var item = removeItemBtn.closest('.wchs-accordion-item, .wchs-gallery-item, .wchs-logo-strip-item');
 			if (!item) return;
+			var pcSheetsParent = item.classList.contains('wchs-pc-sheet')
+				? item.closest('.wchs-pc-sheets')
+				: null;
 			destroyWysiwygInElement(item);
 			item.remove();
+			if (pcSheetsParent) syncPcSheetToolbar(pcSheetsParent);
 		}
 	});
 

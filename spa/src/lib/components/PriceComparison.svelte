@@ -273,7 +273,7 @@
 		--mod-px: 0;
 		--mod-max-w: 100%;
 		width: 100%;
-		max-width: 420px;
+		max-width: 500px;
 		margin: 0;
 		padding: 0;
 	}
