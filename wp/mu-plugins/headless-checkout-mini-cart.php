@@ -276,8 +276,14 @@ function wchs_checkout_mini_cart_payload(): array {
 		$is_ship_protect = wchs_checkout_mini_cart_is_shipping_protection( $line );
 		$is_free_bac     = ! empty( $line['wchs_free_bac_gift'] );
 
-		$line_total = (float) ( $line['line_total'] ?? 0 );
-		$regular    = (float) $product->get_regular_price();
+		// Match Woo's Subtotal row: show pre-coupon line amounts.
+		// `line_total` is post-discount, so using it next to get_subtotal()
+		// makes a 50% coupon look like every price was doubled.
+		$line_display = (float) ( $line['line_subtotal'] ?? $line['line_total'] ?? 0 );
+		if ( $cart->display_prices_including_tax() ) {
+			$line_display += (float) ( $line['line_subtotal_tax'] ?? 0 );
+		}
+		$regular = (float) $product->get_regular_price();
 		if ( $regular <= 0 && $product->is_type( 'variation' ) ) {
 			$parent = wc_get_product( $product->get_parent_id() );
 			if ( $parent ) {
@@ -291,18 +297,19 @@ function wchs_checkout_mini_cart_payload(): array {
 				$regular = (float) $bac->get_regular_price();
 			}
 		}
-		$compare_line = $regular > 0 ? $regular * $qty : $line_total;
-		$has_compare  = $compare_line > $line_total + 0.009;
+		$compare_line = $regular > 0 ? $regular * $qty : $line_display;
+		$has_compare  = $compare_line > $line_display + 0.009;
 
-		$savings_minor += max( 0, $compare_line - $line_total );
-		$compare_minor += max( $compare_line, $line_total );
+		// Product/retail savings only — coupon savings stay on the Coupon row.
+		$savings_minor += max( 0, $compare_line - $line_display );
+		$compare_minor += max( $compare_line, $line_display );
 
 		$items[] = [
 			'key'                   => (string) $key,
 			'name'                  => $name,
 			'qty'                   => $qty,
 			'thumb'                 => $thumb,
-			'price'                 => $is_free_bac ? '' : wc_price( $line_total ),
+			'price'                 => $is_free_bac ? '' : wc_price( $line_display ),
 			'price_label'           => $is_free_bac ? 'FREE' : '',
 			'compare_price'         => $has_compare ? wc_price( $compare_line ) : '',
 			'has_compare'           => $has_compare,
@@ -337,10 +344,15 @@ function wchs_checkout_mini_cart_payload(): array {
 		? (int) round( ( $savings_minor / $compare_minor ) * 100 )
 		: 0;
 
+	$subtotal_amount = (float) $cart->get_subtotal();
+	if ( $cart->display_prices_including_tax() ) {
+		$subtotal_amount += (float) $cart->get_subtotal_tax();
+	}
+
 	return [
 		'items'              => $items,
 		'coupons'            => $coupons,
-		'subtotal'           => wc_price( (float) $cart->get_subtotal() ),
+		'subtotal'           => wc_price( $subtotal_amount ),
 		'shipping'           => $ship['html'],
 		'shipping_is_free'   => $ship['is_free'],
 		'shipping_is_plain'  => $ship['is_plain'],
