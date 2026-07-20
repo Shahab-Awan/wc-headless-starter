@@ -17,6 +17,7 @@
  *   POST   /wp-json/wchs/v1/contact                   — contact form submit
  *   GET    /wp-json/wchs/v1/order-payment/{id}?key=   — thank-you/payment details
  *   GET    /wp-json/wchs/v1/coa-library               — products with COA PDFs attached
+ *   POST   /wp-json/wchs/v1/affiliate-coupon          — affiliate coupon usage stats (no PII)
  *
  * Security posture
  *   - Reviews: public, read-only, capped at 20 per request, only "approved"
@@ -359,6 +360,7 @@ function wchs_rest_rate_limit( string $bucket ): bool {
 		'session'        => 120,
 		'session_delete' => 10,
 		'coa_library'    => 60,
+		'affiliate_coupon' => 10,
 		'cart_sync_classic' => 30,
 		'cart_sync_from_classic' => 30,
 	];
@@ -604,6 +606,23 @@ add_action(
 				'permission_callback' => '__return_true',
 			]
 		);
+
+		register_rest_route(
+			'wchs/v1',
+			'/affiliate-coupon',
+			[
+				'methods'             => 'POST',
+				'callback'            => 'wchs_rest_affiliate_coupon',
+				'permission_callback' => '__return_true',
+				'args'                => [
+					'code' => [
+						'required'          => true,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					],
+				],
+			]
+		);
 	}
 );
 
@@ -713,6 +732,204 @@ function wchs_rest_coa_library( \WP_REST_Request $request ) {
 	);
 
 	return rest_ensure_response( [ 'products' => $list ] );
+}
+
+/**
+ * Paid order statuses that count toward affiliate stats.
+ *
+ * @return string[]
+ */
+function wchs_affiliate_coupon_paid_statuses(): array {
+	$statuses = function_exists( 'wc_get_is_paid_statuses' )
+		? wc_get_is_paid_statuses()
+		: [ 'processing', 'completed' ];
+	$out = [];
+	foreach ( (array) $statuses as $status ) {
+		$status = (string) $status;
+		if ( 0 !== strpos( $status, 'wc-' ) ) {
+			$status = 'wc-' . $status;
+		}
+		$out[] = $status;
+	}
+	return array_values( array_unique( $out ) );
+}
+
+/**
+ * Order IDs that contain a coupon line matching $code (case-normalized).
+ *
+ * Uses the order-items table — accurate for classic CPT orders and HPOS.
+ *
+ * @return int[]
+ */
+function wchs_affiliate_coupon_order_ids( string $code ): array {
+	global $wpdb;
+
+	$code = wc_format_coupon_code( $code );
+	if ( '' === $code ) {
+		return [];
+	}
+
+	$ids = $wpdb->get_col(
+		$wpdb->prepare(
+			"SELECT DISTINCT order_id
+			FROM {$wpdb->prefix}woocommerce_order_items
+			WHERE order_item_type = 'coupon'
+			AND order_item_name = %s",
+			$code
+		)
+	);
+
+	return array_values(
+		array_filter(
+			array_map( 'absint', is_array( $ids ) ? $ids : [] )
+		)
+	);
+}
+
+/**
+ * Aggregate paid-order stats for one coupon. No customer PII.
+ *
+ * @return array{orders_count:int,orders_revenue:float,orders_discount:float}
+ */
+function wchs_affiliate_coupon_order_stats( string $code ): array {
+	$paid_statuses = wchs_affiliate_coupon_paid_statuses();
+	$order_ids     = wchs_affiliate_coupon_order_ids( $code );
+	$code          = wc_format_coupon_code( $code );
+
+	$orders_count    = 0;
+	$orders_revenue  = 0.0;
+	$orders_discount = 0.0;
+
+	foreach ( $order_ids as $order_id ) {
+		$order = wc_get_order( $order_id );
+		if ( ! $order instanceof \WC_Order ) {
+			continue;
+		}
+
+		$status = 'wc-' . $order->get_status();
+		if ( ! in_array( $status, $paid_statuses, true ) ) {
+			continue;
+		}
+
+		$matched = false;
+		$discount_for_code = 0.0;
+		foreach ( $order->get_items( 'coupon' ) as $item ) {
+			if ( ! $item instanceof \WC_Order_Item_Coupon ) {
+				continue;
+			}
+			$item_code = wc_format_coupon_code( (string) $item->get_code() );
+			if ( $item_code !== $code ) {
+				continue;
+			}
+			$matched = true;
+			$discount_for_code += (float) $item->get_discount();
+			$discount_for_code += (float) $item->get_discount_tax();
+		}
+		if ( ! $matched ) {
+			continue;
+		}
+
+		++$orders_count;
+		$orders_revenue  += (float) $order->get_total();
+		$orders_discount += $discount_for_code;
+	}
+
+	return [
+		'orders_count'    => $orders_count,
+		'orders_revenue'  => $orders_revenue,
+		'orders_discount' => $orders_discount,
+	];
+}
+
+/**
+ * Human label for coupon discount.
+ */
+function wchs_affiliate_coupon_amount_label( \WC_Coupon $coupon ): string {
+	$type   = (string) $coupon->get_discount_type();
+	$amount = (float) $coupon->get_amount();
+	if ( 'percent' === $type ) {
+		return rtrim( rtrim( number_format( $amount, 2, '.', '' ), '0' ), '.' ) . '% off';
+	}
+	return wp_strip_all_tags( wc_price( $amount ) ) . ' off';
+}
+
+/**
+ * active | expired | exhausted
+ */
+function wchs_affiliate_coupon_status( \WC_Coupon $coupon ): string {
+	$expires = $coupon->get_date_expires();
+	if ( $expires && time() > $expires->getTimestamp() ) {
+		return 'expired';
+	}
+	$limit = (int) $coupon->get_usage_limit();
+	if ( $limit > 0 && (int) $coupon->get_usage_count() >= $limit ) {
+		return 'exhausted';
+	}
+	return 'active';
+}
+
+/**
+ * POST /wchs/v1/affiliate-coupon — public coupon stats for affiliates.
+ *
+ * Accuracy: order counts/revenue/discount come from paid Woo orders that
+ * actually contain this coupon line item. Coupon usage_count is also
+ * returned for cross-check. No customer PII is exposed.
+ *
+ * @return \WP_REST_Response|\WP_Error
+ */
+function wchs_rest_affiliate_coupon( \WP_REST_Request $request ) {
+	if ( ! wchs_rest_rate_limit( 'affiliate_coupon' ) ) {
+		return new \WP_Error( 'rate_limited', 'Too many requests. Please wait a minute and try again.', [ 'status' => 429 ] );
+	}
+
+	if ( ! class_exists( '\WC_Coupon' ) || ! function_exists( 'wc_get_order' ) ) {
+		return new \WP_Error( 'unavailable', 'Coupons are unavailable.', [ 'status' => 503 ] );
+	}
+
+	$raw  = (string) $request->get_param( 'code' );
+	$code = function_exists( 'wc_format_coupon_code' )
+		? wc_format_coupon_code( $raw )
+		: strtolower( trim( preg_replace( '/[^A-Za-z0-9 _-]/', '', $raw ) ?? '' ) );
+
+	if ( '' === $code || strlen( $code ) > 50 ) {
+		return new \WP_Error( 'invalid_code', 'Enter a valid coupon code.', [ 'status' => 400 ] );
+	}
+
+	$coupon = new \WC_Coupon( $code );
+	if ( ! $coupon->get_id() ) {
+		return new \WP_Error( 'not_found', 'No coupon found for that code.', [ 'status' => 404 ] );
+	}
+
+	$stats        = wchs_affiliate_coupon_order_stats( $code );
+	$usage_limit  = (int) $coupon->get_usage_limit();
+	$usage_count  = (int) $coupon->get_usage_count();
+	$usage_left   = $usage_limit > 0 ? max( 0, $usage_limit - $usage_count ) : null;
+	$expires      = $coupon->get_date_expires();
+	$min_amount   = $coupon->get_minimum_amount();
+	$currency     = function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : 'USD';
+	$symbol       = function_exists( 'get_woocommerce_currency_symbol' ) ? get_woocommerce_currency_symbol( $currency ) : '$';
+
+	return rest_ensure_response(
+		[
+			'found'                 => true,
+			'code'                  => $coupon->get_code(),
+			'status'                => wchs_affiliate_coupon_status( $coupon ),
+			'discount_type'         => $coupon->get_discount_type(),
+			'amount'                => (string) $coupon->get_amount(),
+			'amount_label'          => wchs_affiliate_coupon_amount_label( $coupon ),
+			'usage_limit'           => $usage_limit > 0 ? $usage_limit : null,
+			'usage_limit_per_user'  => (int) $coupon->get_usage_limit_per_user() ?: null,
+			'coupon_recorded_uses'  => $usage_count,
+			'usage_remaining'       => $usage_left,
+			'expires_at'            => $expires ? $expires->date( 'c' ) : null,
+			'minimum_amount'        => $min_amount !== '' && (float) $min_amount > 0 ? (string) $min_amount : null,
+			'orders_count'          => $stats['orders_count'],
+			'orders_revenue'        => number_format( $stats['orders_revenue'], 2, '.', '' ),
+			'orders_discount_total' => number_format( $stats['orders_discount'], 2, '.', '' ),
+			'currency'              => $currency,
+			'currency_symbol'       => $symbol,
+		]
+	);
 }
 
 /**
