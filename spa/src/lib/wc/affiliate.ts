@@ -85,5 +85,16 @@ export async function affiliateForgotPassword(login: string): Promise<{ message:
 	return postJson('/wp-json/wchs/v1/affiliate/forgot-password', { login });
 }
 
+export async function affiliateResetPassword(): Promise<{ message: string }> {
+	const res = await fetch('/wp-json/wchs/v1/affiliate/reset-password', {
+		method: 'POST',
+		headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+		credentials: 'include',
+		body: '{}',
+	});
+	if (!res.ok) throw new AffiliateCouponError(await readError(res), res.status);
+	return (await res.json()) as { message: string };
+}
+
 export { AffiliateCouponError, formatExpiresAt, formatMoney, type AffiliateCouponStats } from './affiliate-coupon';
 export { fetchAffiliateCouponStats } from './affiliate-coupon';

@@ -7,6 +7,7 @@
 		affiliateForgotPassword,
 		affiliateLogin,
 		affiliateRegister,
+		affiliateResetPassword,
 		fetchAffiliateCouponStats,
 		fetchAffiliateMe,
 		formatExpiresAt,
@@ -49,6 +50,10 @@
 	let resetLoading = $state(false);
 	let resetError = $state('');
 	let resetOk = $state('');
+
+	let additionalMsg = $state('');
+	let additionalError = $state('');
+	let additionalLoading = $state(false);
 
 	onMount(() => {
 		let cancelled = false;
@@ -187,9 +192,32 @@
 			const res = await affiliateForgotPassword(resetLogin.trim() || loginId.trim());
 			resetOk = res.message;
 		} catch (err) {
-			resetError = err instanceof AffiliateCouponError ? err.message : 'Could not send reset email.';
+			resetError = err instanceof AffiliateCouponError ? err.message : 'Could not email a new password.';
 		} finally {
 			resetLoading = false;
+		}
+	}
+
+	async function onResetPasswordFromDash() {
+		additionalLoading = true;
+		additionalError = '';
+		additionalMsg = '';
+		try {
+			const res = await affiliateResetPassword();
+			await auth.logout();
+			dashboard = null;
+			trackStats = null;
+			trackCode = '';
+			gate = 'login';
+			tab = 'track';
+			resetOpen = true;
+			resetLogin = '';
+			resetOk = res.message;
+			formError = '';
+		} catch (err) {
+			additionalError = err instanceof AffiliateCouponError ? err.message : 'Could not email a new password.';
+		} finally {
+			additionalLoading = false;
 		}
 	}
 
@@ -256,7 +284,7 @@
 								<input id="aff-reset" class="aff__input aff__input--normal" type="text" bind:value={resetLogin} disabled={resetLoading} required />
 							</label>
 							<button class="aff__submit aff__submit--secondary" type="submit" disabled={resetLoading}>
-								{resetLoading ? 'Sending…' : 'Send reset email'}
+								{resetLoading ? 'Sending…' : 'Email me a new password'}
 							</button>
 						</form>
 						{#if resetError}<p class="aff__status aff__status--error" role="alert">{resetError}</p>{/if}
@@ -264,6 +292,7 @@
 					</div>
 				{/if}
 				{#if formError}<p class="aff__status aff__status--error" role="alert">{formError}</p>{/if}
+				{#if resetOk && !resetOpen}<p class="aff__status aff__status--ok" role="status">{resetOk}</p>{/if}
 			</div>
 		{:else}
 			<form class="aff__form" onsubmit={onRegister}>
@@ -422,8 +451,23 @@
 				{/if}
 			</div>
 		{:else}
-			<div class="aff__placeholder">
-				<p>Additional tools will appear here later.</p>
+			<div class="aff__additional">
+				<p class="aff__hint">Account actions for your affiliate login.</p>
+				<div class="aff__actions">
+					<button
+						type="button"
+						class="aff__submit aff__submit--secondary"
+						disabled={additionalLoading}
+						onclick={onResetPasswordFromDash}
+					>
+						{additionalLoading ? 'Sending…' : 'Email me a new password'}
+					</button>
+					<button type="button" class="aff__submit aff__submit--danger" onclick={onLogout}>
+						Log out
+					</button>
+				</div>
+				{#if additionalError}<p class="aff__status aff__status--error" role="alert">{additionalError}</p>{/if}
+				{#if additionalMsg}<p class="aff__status aff__status--ok" role="status">{additionalMsg}</p>{/if}
 			</div>
 		{/if}
 	{/if}
@@ -549,6 +593,11 @@
 		cursor: pointer;
 	}
 	.aff__submit--secondary {
+		background: color-mix(in srgb, var(--fg) 8%, var(--bg));
+		color: var(--fg);
+		border: 1px solid var(--border);
+	}
+	.aff__submit--danger {
 		background: color-mix(in srgb, var(--fg) 8%, var(--bg));
 		color: var(--fg);
 		border: 1px solid var(--border);
@@ -751,6 +800,18 @@
 		text-align: center;
 		color: color-mix(in srgb, var(--fg) 55%, transparent);
 		font-size: 14px;
+	}
+	.aff__additional {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+		border-top: 1px solid var(--border);
+		padding-top: 16px;
+	}
+	.aff__actions {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
 	}
 	@media (max-width: 560px) {
 		.aff {

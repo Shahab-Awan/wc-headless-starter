@@ -87,6 +87,21 @@ add_action(
 				],
 			]
 		);
+
+		register_rest_route(
+			'wchs/v1',
+			'/affiliate/reset-password',
+			[
+				'methods'             => 'POST',
+				'callback'            => 'wchs_rest_affiliate_reset_password',
+				'permission_callback' => static function () {
+					if ( ! function_exists( 'wchs_current_user_from_cookie' ) ) {
+						return false;
+					}
+					return wchs_current_user_from_cookie() instanceof \WP_User;
+				},
+			]
+		);
 	}
 );
 
@@ -529,6 +544,39 @@ function wchs_rest_affiliate_forgot_coupon( \WP_REST_Request $request ) {
 	);
 }
 
+/**
+ * Generate a new password, set it on the user, and email it in plain text.
+ *
+ * (Existing passwords cannot be recovered — WP only stores hashes.)
+ *
+ * @return true|\WP_Error
+ */
+function wchs_affiliate_email_new_password( \WP_User $user ) {
+	$password = wp_generate_password( 12, false, false );
+	wp_set_password( $password, $user->ID );
+
+	$portal = function_exists( 'wchs_spa_origin' )
+		? untrailingslashit( wchs_spa_origin() ) . '/affiliate-tracker'
+		: home_url( '/affiliate-tracker' );
+
+	$site = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+	$subject = sprintf( '[%s] Your affiliate password', $site );
+	$body    = "Hi {$user->display_name},\n\n"
+		. "Here is your affiliate portal password:\n\n"
+		. "{$password}\n\n"
+		. "Username / email: {$user->user_email}\n"
+		. "Login: {$portal}\n\n"
+		. "If you did not request this, contact the store right away.\n";
+
+	$headers = [ 'Content-Type: text/plain; charset=UTF-8' ];
+	$sent    = wp_mail( $user->user_email, $subject, $body, $headers );
+	if ( ! $sent ) {
+		return new \WP_Error( 'mail_failed', 'Could not send the password email. Try again or contact support.', [ 'status' => 500 ] );
+	}
+
+	return true;
+}
+
 function wchs_rest_affiliate_forgot_password( \WP_REST_Request $request ) {
 	if ( ! function_exists( 'wchs_rest_rate_limit' ) || ! wchs_rest_rate_limit( 'affiliate_forgot' ) ) {
 		return new \WP_Error( 'rate_limited', 'Too many requests. Please wait a minute and try again.', [ 'status' => 429 ] );
@@ -539,33 +587,65 @@ function wchs_rest_affiliate_forgot_password( \WP_REST_Request $request ) {
 		return new \WP_Error( 'invalid_login', 'Enter your email or username.', [ 'status' => 400 ] );
 	}
 
+	$user = null;
 	if ( is_email( $login ) ) {
 		$user = get_user_by( 'email', $login );
-		if ( $user ) {
-			$login = $user->user_login;
-		}
+	}
+	if ( ! $user ) {
+		$user = get_user_by( 'login', $login );
 	}
 
-	// Always return a generic success message to avoid account enumeration.
-	$result = retrieve_password( $login );
+	// Avoid account enumeration: same message whether or not the user exists.
+	$ok_message = 'If an account exists for that login, a new password has been emailed.';
+
+	if ( ! $user ) {
+		return rest_ensure_response(
+			[
+				'ok'      => true,
+				'message' => $ok_message,
+			]
+		);
+	}
+
+	$result = wchs_affiliate_email_new_password( $user );
 	if ( is_wp_error( $result ) ) {
-		// Still return ok for unknown users; only surface hard failures for known users.
-		$codes = $result->get_error_codes();
-		if ( in_array( 'invalidcombo', $codes, true ) || in_array( 'invalid_email', $codes, true ) ) {
-			return rest_ensure_response(
-				[
-					'ok'      => true,
-					'message' => 'If an account exists for that login, a password reset email has been sent.',
-				]
-			);
-		}
-		return new \WP_Error( 'reset_failed', $result->get_error_message(), [ 'status' => 400 ] );
+		return $result;
 	}
 
 	return rest_ensure_response(
 		[
 			'ok'      => true,
-			'message' => 'If an account exists for that login, a password reset email has been sent.',
+			'message' => $ok_message,
+		]
+	);
+}
+
+/**
+ * Logged-in affiliate: email a fresh password to their account email.
+ */
+function wchs_rest_affiliate_reset_password( \WP_REST_Request $request ) {
+	if ( ! function_exists( 'wchs_rest_rate_limit' ) || ! wchs_rest_rate_limit( 'affiliate_forgot' ) ) {
+		return new \WP_Error( 'rate_limited', 'Too many requests. Please wait a minute and try again.', [ 'status' => 429 ] );
+	}
+
+	$user = function_exists( 'wchs_current_user_from_cookie' ) ? wchs_current_user_from_cookie() : null;
+	if ( ! $user ) {
+		return new \WP_Error( 'unauthorized', 'Please log in.', [ 'status' => 401 ] );
+	}
+
+	$result = wchs_affiliate_email_new_password( $user );
+	if ( is_wp_error( $result ) ) {
+		return $result;
+	}
+
+	// Password change invalidates cookies; clear any remaining auth state.
+	wp_logout();
+	wp_clear_auth_cookie();
+
+	return rest_ensure_response(
+		[
+			'ok'      => true,
+			'message' => 'A new password has been sent to ' . $user->user_email . '. Use it to log in again.',
 		]
 	);
 }
