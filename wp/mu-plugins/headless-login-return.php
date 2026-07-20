@@ -49,6 +49,8 @@ function wchs_allowed_return_paths(): array {
 		'/account/orders/',
 		'/shop',
 		'/shop/',
+		'/affiliate-tracker',
+		'/affiliate-tracker/',
 	];
 }
 

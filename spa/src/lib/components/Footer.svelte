@@ -2,7 +2,23 @@
 	import { config } from '$lib/config.svelte';
 	import { bridgeAwareHref } from '$lib/bridge-domain';
 
-	const columns = $derived(config.data.footer?.columns ?? []);
+	const columns = $derived.by(() => {
+		const raw = config.data.footer?.columns ?? [];
+		const cols = raw.map((col) => ({
+			title: col.title,
+			links: [...(col.links ?? [])],
+		}));
+		const shop = cols.find((c) => /^shop$/i.test((c.title ?? '').trim()));
+		if (shop) {
+			const exists = shop.links.some(
+				(l) => /affiliate/i.test(l.label) || l.url === '/affiliate-tracker'
+			);
+			if (!exists) {
+				shop.links.push({ label: 'Become Affiliate', url: '/affiliate-tracker' });
+			}
+		}
+		return cols;
+	});
 	const tagline = $derived((config.data.footer as any)?.tagline ?? '');
 	const socialLinks = $derived(((config.data as any).social_links ?? []) as Array<{platform: string; url: string}>);
 	const brandName = $derived(config.data.brand_name);

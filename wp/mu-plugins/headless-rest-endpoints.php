@@ -18,6 +18,11 @@
  *   GET    /wp-json/wchs/v1/order-payment/{id}?key=   — thank-you/payment details
  *   GET    /wp-json/wchs/v1/coa-library               — products with COA PDFs attached
  *   POST   /wp-json/wchs/v1/affiliate-coupon          — affiliate coupon usage stats (no PII)
+ *   POST   /wp-json/wchs/v1/affiliate/register        — create affiliate user + 15% coupon
+ *   POST   /wp-json/wchs/v1/affiliate/login           — affiliate login (sets WP cookies)
+ *   GET    /wp-json/wchs/v1/affiliate/me              — logged-in affiliate profile + stats
+ *   POST   /wp-json/wchs/v1/affiliate/forgot-coupon   — recover code via email in coupon description
+ *   POST   /wp-json/wchs/v1/affiliate/forgot-password — WP password-reset email
  *
  * Security posture
  *   - Reviews: public, read-only, capped at 20 per request, only "approved"
@@ -361,6 +366,10 @@ function wchs_rest_rate_limit( string $bucket ): bool {
 		'session_delete' => 10,
 		'coa_library'    => 60,
 		'affiliate_coupon' => 10,
+		'affiliate_register' => 5,
+		'affiliate_login' => 10,
+		'affiliate_forgot' => 5,
+		'affiliate_me' => 60,
 		'cart_sync_classic' => 30,
 		'cart_sync_from_classic' => 30,
 	];
@@ -869,6 +878,43 @@ function wchs_affiliate_coupon_status( \WC_Coupon $coupon ): string {
 }
 
 /**
+ * Build the public affiliate coupon stats payload (no customer PII).
+ *
+ * @return array<string, mixed>
+ */
+function wchs_affiliate_coupon_payload( \WC_Coupon $coupon ): array {
+	$code         = $coupon->get_code();
+	$stats        = wchs_affiliate_coupon_order_stats( $code );
+	$usage_limit  = (int) $coupon->get_usage_limit();
+	$usage_count  = (int) $coupon->get_usage_count();
+	$usage_left   = $usage_limit > 0 ? max( 0, $usage_limit - $usage_count ) : null;
+	$expires      = $coupon->get_date_expires();
+	$min_amount   = $coupon->get_minimum_amount();
+	$currency     = function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : 'USD';
+	$symbol       = function_exists( 'get_woocommerce_currency_symbol' ) ? get_woocommerce_currency_symbol( $currency ) : '$';
+
+	return [
+		'found'                 => true,
+		'code'                  => $code,
+		'status'                => wchs_affiliate_coupon_status( $coupon ),
+		'discount_type'         => $coupon->get_discount_type(),
+		'amount'                => (string) $coupon->get_amount(),
+		'amount_label'          => wchs_affiliate_coupon_amount_label( $coupon ),
+		'usage_limit'           => $usage_limit > 0 ? $usage_limit : null,
+		'usage_limit_per_user'  => (int) $coupon->get_usage_limit_per_user() ?: null,
+		'coupon_recorded_uses'  => $usage_count,
+		'usage_remaining'       => $usage_left,
+		'expires_at'            => $expires ? $expires->date( 'c' ) : null,
+		'minimum_amount'        => $min_amount !== '' && (float) $min_amount > 0 ? (string) $min_amount : null,
+		'orders_count'          => $stats['orders_count'],
+		'orders_revenue'        => number_format( $stats['orders_revenue'], 2, '.', '' ),
+		'orders_discount_total' => number_format( $stats['orders_discount'], 2, '.', '' ),
+		'currency'              => $currency,
+		'currency_symbol'       => $symbol,
+	];
+}
+
+/**
  * POST /wchs/v1/affiliate-coupon — public coupon stats for affiliates.
  *
  * Accuracy: order counts/revenue/discount come from paid Woo orders that
@@ -900,36 +946,7 @@ function wchs_rest_affiliate_coupon( \WP_REST_Request $request ) {
 		return new \WP_Error( 'not_found', 'No coupon found for that code.', [ 'status' => 404 ] );
 	}
 
-	$stats        = wchs_affiliate_coupon_order_stats( $code );
-	$usage_limit  = (int) $coupon->get_usage_limit();
-	$usage_count  = (int) $coupon->get_usage_count();
-	$usage_left   = $usage_limit > 0 ? max( 0, $usage_limit - $usage_count ) : null;
-	$expires      = $coupon->get_date_expires();
-	$min_amount   = $coupon->get_minimum_amount();
-	$currency     = function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : 'USD';
-	$symbol       = function_exists( 'get_woocommerce_currency_symbol' ) ? get_woocommerce_currency_symbol( $currency ) : '$';
-
-	return rest_ensure_response(
-		[
-			'found'                 => true,
-			'code'                  => $coupon->get_code(),
-			'status'                => wchs_affiliate_coupon_status( $coupon ),
-			'discount_type'         => $coupon->get_discount_type(),
-			'amount'                => (string) $coupon->get_amount(),
-			'amount_label'          => wchs_affiliate_coupon_amount_label( $coupon ),
-			'usage_limit'           => $usage_limit > 0 ? $usage_limit : null,
-			'usage_limit_per_user'  => (int) $coupon->get_usage_limit_per_user() ?: null,
-			'coupon_recorded_uses'  => $usage_count,
-			'usage_remaining'       => $usage_left,
-			'expires_at'            => $expires ? $expires->date( 'c' ) : null,
-			'minimum_amount'        => $min_amount !== '' && (float) $min_amount > 0 ? (string) $min_amount : null,
-			'orders_count'          => $stats['orders_count'],
-			'orders_revenue'        => number_format( $stats['orders_revenue'], 2, '.', '' ),
-			'orders_discount_total' => number_format( $stats['orders_discount'], 2, '.', '' ),
-			'currency'              => $currency,
-			'currency_symbol'       => $symbol,
-		]
-	);
+	return rest_ensure_response( wchs_affiliate_coupon_payload( $coupon ) );
 }
 
 /**

@@ -402,6 +402,7 @@ $settings['footer']                   = [
 			[ 'label' => 'All products', 'url' => '/shop' ],
 			[ 'label' => 'Packs', 'url' => '/shop/packs' ],
 			[ 'label' => 'Workspace', 'url' => '/shop/workspace' ],
+			[ 'label' => 'Become Affiliate', 'url' => '/affiliate-tracker' ],
 		] ],
 		[ 'title' => 'Store', 'links' => [
 			[ 'label' => 'About', 'url' => '/about' ],

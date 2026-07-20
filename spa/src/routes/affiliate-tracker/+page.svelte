@@ -3,8 +3,8 @@
 	import AffiliateTracker from '$lib/components/AffiliateTracker.svelte';
 	import SEO from '$lib/components/SEO.svelte';
 
-	const title = 'Affiliate Tracker';
-	const description = 'Look up your affiliate coupon code to see paid-order usage and totals.';
+	const title = 'Affiliate Portal';
+	const description = 'Become an affiliate or log in to track coupon sales and view your details.';
 
 	const pageUrl = $derived.by(() => {
 		const origin =
