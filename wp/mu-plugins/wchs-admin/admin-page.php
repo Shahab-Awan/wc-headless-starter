@@ -1493,6 +1493,8 @@ class AdminPage {
 			$redirect = $this->save_cutover_settings() ?: $redirect;
 		} elseif ( 'security' === $tab ) {
 			$this->save_access_settings();
+		} elseif ( 'affiliates' === $tab ) {
+			$redirect = $this->save_affiliate() ?: $redirect;
 		} elseif ( 'pdp' === $tab ) {
 			$this->save_pdp_config();
 		} elseif ( 'pages' === $tab ) {
@@ -1956,6 +1958,46 @@ class AdminPage {
 		update_option( self::SITE_OPTION, $s );
 	}
 
+	/**
+	 * Create an affiliate WP user + coupon from the Affiliates tab.
+	 *
+	 * @return string Redirect URL
+	 */
+	private function save_affiliate(): string {
+		$base = add_query_arg(
+			[
+				'page' => 'wchs-settings',
+				'tab'  => 'affiliates',
+			],
+			admin_url( 'admin.php' )
+		);
+
+		if ( ! function_exists( 'wchs_affiliate_create_account' ) ) {
+			return add_query_arg( 'affiliate_error', rawurlencode( 'Affiliate module is not loaded.' ), $base );
+		}
+
+		$result = wchs_affiliate_create_account(
+			[
+				'name'        => sanitize_text_field( wp_unslash( $_POST['affiliate_name'] ?? '' ) ),
+				'email'       => sanitize_email( wp_unslash( $_POST['affiliate_email'] ?? '' ) ),
+				'password'    => (string) wp_unslash( $_POST['affiliate_password'] ?? '' ),
+				'coupon_code' => sanitize_text_field( wp_unslash( $_POST['affiliate_coupon_code'] ?? '' ) ),
+			]
+		);
+
+		if ( is_wp_error( $result ) ) {
+			return add_query_arg( 'affiliate_error', rawurlencode( $result->get_error_message() ), $base );
+		}
+
+		return add_query_arg(
+			[
+				'affiliate_created' => '1',
+				'code'              => $result['code'],
+			],
+			$base
+		);
+	}
+
 	private function save_homepage_config(): void {
 		$hero = [
 			'headline'          => sanitize_text_field( wp_unslash( $_POST['hero_headline'] ?? '' ) ),
@@ -2361,6 +2403,9 @@ class AdminPage {
 		}
 		$tab      = sanitize_text_field( wp_unslash( $_GET['tab'] ?? 'homepage' ) );
 		$updated  = isset( $_GET['updated'] );
+		$aff_ok   = isset( $_GET['affiliate_created'] );
+		$aff_code = sanitize_text_field( wp_unslash( $_GET['code'] ?? '' ) );
+		$aff_err  = sanitize_text_field( wp_unslash( $_GET['affiliate_error'] ?? '' ) );
 		$settings = self::get_site_settings();
 		$homepage = self::get_homepage_config();
 		$hero     = $homepage['hero'];
@@ -2476,12 +2521,16 @@ class AdminPage {
 			<h1>WCHS Settings</h1>
 			<?php endif; ?>
 
-			<?php if ( $updated ) : ?>
+			<?php if ( $aff_ok ) : ?>
+				<div class="notice notice-success is-dismissible"><p>Affiliate created<?php echo $aff_code ? ': coupon <code>' . esc_html( $aff_code ) . '</code>' : ''; ?>. They can log in at <code>/affiliate-tracker</code> and use Forgot password if needed.</p></div>
+			<?php elseif ( $aff_err ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php echo esc_html( $aff_err ); ?></p></div>
+			<?php elseif ( $updated ) : ?>
 				<div class="notice notice-success is-dismissible"><p>Settings saved.</p></div>
 			<?php endif; ?>
 
 			<?php
-				$all_tabs = [ 'homepage', 'shop', 'pdp', 'pages', 'design', 'checkout', 'integrations', 'cutover', 'security' ];
+				$all_tabs = [ 'homepage', 'shop', 'pdp', 'pages', 'design', 'checkout', 'integrations', 'affiliates', 'cutover', 'security' ];
 				$visible_tabs = apply_filters( 'wchs_admin_visible_tabs', $all_tabs );
 				$tab_labels = [
 					'homepage'     => 'Homepage',
@@ -2491,6 +2540,7 @@ class AdminPage {
 					'design'       => 'Design',
 					'checkout'     => 'Checkout',
 					'integrations' => 'Integrations',
+					'affiliates'   => 'Affiliates',
 					'cutover'      => 'Cutover',
 					'security'     => 'Access & Privacy',
 				];
@@ -2502,6 +2552,7 @@ class AdminPage {
 					'design'       => '<circle cx="13.5" cy="6.5" r="2.5"/><circle cx="19" cy="13" r="2"/><circle cx="16" cy="20" r="2"/><circle cx="7" cy="18" r="2.5"/><circle cx="5" cy="10.5" r="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/>',
 					'checkout'     => '<rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/>',
 					'integrations' => '<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/>',
+					'affiliates'   => '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
 					'cutover'      => '<path d="M3 12h6"/><path d="M15 12h6"/><path d="M12 3v6"/><path d="M12 15v6"/><circle cx="12" cy="12" r="3.5"/>',
 					'security'     => '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
 				];
@@ -2571,6 +2622,8 @@ class AdminPage {
 				<?php $this->render_cutover_tab( $settings ); ?>
 			<?php elseif ( 'security' === $tab ) : ?>
 				<?php $this->render_access_tab( $settings ); ?>
+			<?php elseif ( 'affiliates' === $tab ) : ?>
+				<?php $this->render_affiliates_tab(); ?>
 			<?php elseif ( 'pdp' === $tab ) : ?>
 				<?php $this->render_pdp_tab( $pdp ); ?>
 			<?php elseif ( 'shop' === $tab ) : ?>
@@ -4031,6 +4084,89 @@ class AdminPage {
 				<button type="submit" class="wchs-btn wchs-btn--primary">Save</button>
 			</div>
 		</form>
+		<?php
+	}
+
+	// ─── Affiliates Tab ─────────────────────────────────────────
+	private function render_affiliates_tab(): void {
+		$affiliates = get_users(
+			[
+				'meta_key'   => 'wchs_is_affiliate',
+				'meta_value' => '1',
+				'number'     => 50,
+				'orderby'    => 'registered',
+				'order'      => 'DESC',
+			]
+		);
+		?>
+		<form method="POST" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" autocomplete="off">
+			<?php wp_nonce_field( 'wchs_save_settings', 'wchs_nonce' ); ?>
+			<input type="hidden" name="action" value="wchs_save_settings" />
+			<input type="hidden" name="wchs_tab" value="affiliates" />
+
+			<h2>Add Affiliate <?php echo self::hint_icon( 'Creates a WordPress login + a 15% unlimited coupon. Email is saved in the coupon Description (and meta) so Forgot coupon / portal login recovery works. Affiliates use /affiliate-tracker.' ); ?></h2>
+
+			<div class="wchs-grid" style="max-width:640px">
+				<div class="wchs-field">
+					<label for="affiliate_name">Full name</label>
+					<input type="text" id="affiliate_name" name="affiliate_name" required maxlength="80" />
+				</div>
+				<div class="wchs-field">
+					<label for="affiliate_email">Email</label>
+					<input type="email" id="affiliate_email" name="affiliate_email" required />
+				</div>
+				<div class="wchs-field">
+					<label for="affiliate_password">Password <?php echo self::hint_icon( 'Share this with the affiliate, or tell them to use Forgot password on the portal.' ); ?></label>
+					<input type="text" id="affiliate_password" name="affiliate_password" required minlength="8" autocomplete="new-password" />
+				</div>
+				<div class="wchs-field">
+					<label for="affiliate_coupon_code">Coupon code <?php echo self::hint_icon( 'Exact code to create (e.g. SARAH15). Must be unique.' ); ?></label>
+					<input type="text" id="affiliate_coupon_code" name="affiliate_coupon_code" required maxlength="50" placeholder="SARAH15" style="text-transform:uppercase" />
+				</div>
+			</div>
+
+			<p class="description" style="max-width:640px;margin:8px 0 16px">
+				Coupon is created as <strong>15% off</strong>, unlimited usage. Description is set to the email so manual recovery matches the storefront portal.
+			</p>
+
+			<button type="submit" class="wchs-btn wchs-btn--primary">Create affiliate</button>
+		</form>
+
+		<h2 style="margin-top:36px">Recent affiliates</h2>
+		<?php if ( empty( $affiliates ) ) : ?>
+			<p class="description">No affiliates created yet.</p>
+		<?php else : ?>
+			<table class="widefat striped" style="max-width:900px">
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Email</th>
+						<th>Username</th>
+						<th>Coupon</th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $affiliates as $user ) : ?>
+						<?php
+						$code = (string) get_user_meta( $user->ID, 'wchs_affiliate_coupon_code', true );
+						$edit = get_edit_user_link( $user->ID );
+						?>
+						<tr>
+							<td>
+								<?php if ( $edit ) : ?>
+									<a href="<?php echo esc_url( $edit ); ?>"><?php echo esc_html( $user->display_name ); ?></a>
+								<?php else : ?>
+									<?php echo esc_html( $user->display_name ); ?>
+								<?php endif; ?>
+							</td>
+							<td><?php echo esc_html( $user->user_email ); ?></td>
+							<td><code><?php echo esc_html( $user->user_login ); ?></code></td>
+							<td><?php echo $code ? '<code>' . esc_html( $code ) . '</code>' : '—'; ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php endif; ?>
 		<?php
 	}
 

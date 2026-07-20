@@ -224,13 +224,48 @@ function wchs_affiliate_resolve_user_coupon( \WP_User $user ): ?\WC_Coupon {
 
 /**
  * Create or attach a 15% affiliate coupon; description = email.
+ *
+ * @param string $preferred_code Optional exact coupon code (admin create). Empty = auto name-15.
  */
-function wchs_affiliate_ensure_coupon( int $user_id, string $name, string $email ): \WC_Coupon|\WP_Error {
+function wchs_affiliate_ensure_coupon( int $user_id, string $name, string $email, string $preferred_code = '' ): \WC_Coupon|\WP_Error {
 	if ( ! class_exists( '\WC_Coupon' ) ) {
 		return new \WP_Error( 'unavailable', 'Coupons are unavailable.', [ 'status' => 503 ] );
 	}
 
 	$email = wchs_affiliate_normalize_email( $email );
+	$preferred_code = trim( $preferred_code );
+
+	if ( '' !== $preferred_code ) {
+		$code = function_exists( 'wc_format_coupon_code' )
+			? wc_format_coupon_code( $preferred_code )
+			: strtolower( preg_replace( '/[^A-Za-z0-9_-]/', '', $preferred_code ) ?? '' );
+		if ( '' === $code || strlen( $code ) > 50 ) {
+			return new \WP_Error( 'invalid_code', 'Enter a valid coupon code (letters, numbers, dashes).', [ 'status' => 400 ] );
+		}
+		if ( wchs_affiliate_coupon_code_exists( $code ) ) {
+			return new \WP_Error( 'code_exists', 'That coupon code already exists. Choose a different code.', [ 'status' => 409 ] );
+		}
+
+		$coupon = new \WC_Coupon();
+		$coupon->set_code( $code );
+		$coupon->set_discount_type( 'percent' );
+		$coupon->set_amount( 15 );
+		$coupon->set_individual_use( false );
+		$coupon->set_usage_limit( 0 );
+		$coupon->set_usage_limit_per_user( 0 );
+		$coupon->set_limit_usage_to_x_items( null );
+		$coupon->set_free_shipping( false );
+		$coupon->set_description( $email );
+		$coupon->update_meta_data( '_wchs_affiliate_email', $email );
+		$coupon->update_meta_data( '_wchs_affiliate_user_id', $user_id );
+		$id = $coupon->save();
+		if ( ! $id ) {
+			return new \WP_Error( 'coupon_create_failed', 'Could not create affiliate coupon.', [ 'status' => 500 ] );
+		}
+		update_user_meta( $user_id, 'wchs_affiliate_coupon_code', $coupon->get_code() );
+		return $coupon;
+	}
+
 	$existing = wchs_affiliate_find_coupons_by_email( $email );
 	if ( ! empty( $existing ) ) {
 		$coupon = $existing[0];
@@ -262,6 +297,73 @@ function wchs_affiliate_ensure_coupon( int $user_id, string $name, string $email
 
 	update_user_meta( $user_id, 'wchs_affiliate_coupon_code', $coupon->get_code() );
 	return $coupon;
+}
+
+/**
+ * Admin/self-serve: create WP user + affiliate coupon.
+ *
+ * @param array{name:string,email:string,password:string,coupon_code?:string} $args
+ * @return array{user_id:int,code:string,email:string}|\WP_Error
+ */
+function wchs_affiliate_create_account( array $args ): array|\WP_Error {
+	$name     = trim( (string) ( $args['name'] ?? '' ) );
+	$email    = wchs_affiliate_normalize_email( (string) ( $args['email'] ?? '' ) );
+	$password = (string) ( $args['password'] ?? '' );
+	$code_in  = trim( (string) ( $args['coupon_code'] ?? '' ) );
+
+	if ( strlen( $name ) < 2 || strlen( $name ) > 80 ) {
+		return new \WP_Error( 'invalid_name', 'Enter the affiliate full name.' );
+	}
+	if ( ! is_email( $email ) ) {
+		return new \WP_Error( 'invalid_email', 'Enter a valid email address.' );
+	}
+	if ( strlen( $password ) < 8 ) {
+		return new \WP_Error( 'weak_password', 'Password must be at least 8 characters.' );
+	}
+	if ( email_exists( $email ) ) {
+		return new \WP_Error( 'email_exists', 'An account with that email already exists.' );
+	}
+
+	$login_base = sanitize_user( current( explode( '@', $email ) ), true );
+	if ( '' === $login_base ) {
+		$login_base = 'affiliate';
+	}
+	$login = $login_base;
+	$n     = 1;
+	while ( username_exists( $login ) && $n < 100 ) {
+		$login = $login_base . $n;
+		++$n;
+	}
+
+	$user_id = wp_insert_user(
+		[
+			'user_login'   => $login,
+			'user_email'   => $email,
+			'user_pass'    => $password,
+			'display_name' => $name,
+			'first_name'   => $name,
+			'role'         => get_role( 'customer' ) ? 'customer' : 'subscriber',
+		]
+	);
+	if ( is_wp_error( $user_id ) ) {
+		return $user_id;
+	}
+
+	update_user_meta( (int) $user_id, 'wchs_is_affiliate', '1' );
+
+	$coupon = wchs_affiliate_ensure_coupon( (int) $user_id, $name, $email, $code_in );
+	if ( is_wp_error( $coupon ) ) {
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+		wp_delete_user( (int) $user_id );
+		return $coupon;
+	}
+
+	return [
+		'user_id' => (int) $user_id,
+		'code'    => $coupon->get_code(),
+		'email'   => $email,
+		'login'   => $login,
+	];
 }
 
 /**
@@ -297,56 +399,31 @@ function wchs_rest_affiliate_register( \WP_REST_Request $request ) {
 	$email    = wchs_affiliate_normalize_email( (string) $request->get_param( 'email' ) );
 	$password = (string) $request->get_param( 'password' );
 
-	if ( strlen( $name ) < 2 || strlen( $name ) > 80 ) {
-		return new \WP_Error( 'invalid_name', 'Enter your full name.', [ 'status' => 400 ] );
-	}
-	if ( ! is_email( $email ) ) {
-		return new \WP_Error( 'invalid_email', 'Enter a valid email address.', [ 'status' => 400 ] );
-	}
-	if ( strlen( $password ) < 8 ) {
-		return new \WP_Error( 'weak_password', 'Password must be at least 8 characters.', [ 'status' => 400 ] );
-	}
-	if ( email_exists( $email ) ) {
-		return new \WP_Error( 'email_exists', 'An account with that email already exists. Please log in.', [ 'status' => 409 ] );
-	}
-
-	$login_base = sanitize_user( current( explode( '@', $email ) ), true );
-	if ( '' === $login_base ) {
-		$login_base = 'affiliate';
-	}
-	$login = $login_base;
-	$n     = 1;
-	while ( username_exists( $login ) && $n < 100 ) {
-		$login = $login_base . $n;
-		++$n;
-	}
-
-	$user_id = wp_insert_user(
+	$created = wchs_affiliate_create_account(
 		[
-			'user_login'   => $login,
-			'user_email'   => $email,
-			'user_pass'    => $password,
-			'display_name' => $name,
-			'first_name'   => $name,
-			'role'         => get_role( 'customer' ) ? 'customer' : 'subscriber',
+			'name'     => $name,
+			'email'    => $email,
+			'password' => $password,
 		]
 	);
-	if ( is_wp_error( $user_id ) ) {
-		return new \WP_Error( 'register_failed', $user_id->get_error_message(), [ 'status' => 400 ] );
+	if ( is_wp_error( $created ) ) {
+		$status = 400;
+		$code   = $created->get_error_code();
+		if ( 'email_exists' === $code ) {
+			$status = 409;
+		} elseif ( 'unavailable' === $code ) {
+			$status = 503;
+		}
+		return new \WP_Error( $code, $created->get_error_message(), [ 'status' => $status ] );
 	}
 
-	update_user_meta( (int) $user_id, 'wchs_is_affiliate', '1' );
-
-	$coupon = wchs_affiliate_ensure_coupon( (int) $user_id, $name, $email );
-	if ( is_wp_error( $coupon ) ) {
-		return $coupon;
+	wp_set_current_user( (int) $created['user_id'] );
+	wp_set_auth_cookie( (int) $created['user_id'], true );
+	$user = get_userdata( (int) $created['user_id'] );
+	if ( $user ) {
+		do_action( 'wp_login', $user->user_login, $user );
 	}
 
-	wp_set_current_user( (int) $user_id );
-	wp_set_auth_cookie( (int) $user_id, true );
-	do_action( 'wp_login', $login, get_userdata( (int) $user_id ) );
-
-	$user = get_userdata( (int) $user_id );
 	return rest_ensure_response(
 		[
 			'ok'      => true,
