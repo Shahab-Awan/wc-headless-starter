@@ -21,7 +21,7 @@
 	import {
 		initGTM, trackPageView, initGA4,
 		initOmnisend, trackOmnisendPageViewed,
-		initKlaviyo, initMetaPixel, initTikTokPixel, initPinterestTag,
+		initKlaviyo, initTikTokPixel, initPinterestTag,
 		initClarity, initHotjar, initGoogleAds,
 		trackCustomerLabsBridgePageView,
 	} from '$lib/analytics';
@@ -245,7 +245,6 @@
 			if (config.data.klaviyo_public_key && !suppressLandingPopups) {
 				initKlaviyo(config.data.klaviyo_public_key);
 			}
-			if (config.data.meta_pixel_id) initMetaPixel(config.data.meta_pixel_id);
 			if (config.data.tiktok_pixel_id) initTikTokPixel(config.data.tiktok_pixel_id);
 			if (config.data.pinterest_tag_id) initPinterestTag(config.data.pinterest_tag_id);
 			if (config.data.clarity_project_id) initClarity(config.data.clarity_project_id);

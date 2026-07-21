@@ -464,7 +464,6 @@ class CartStore {
 				a.trackAddToCart(item);
 				a.trackOmnisendAddedProductToCart(item);
 				a.trackKlaviyoAddedToCart(item);
-				a.trackMetaAddToCart(item);
 				a.trackTikTokAddToCart(item);
 				a.trackPinterestAddToCart(item);
 				a.trackTriplePixelAddToCart(item);

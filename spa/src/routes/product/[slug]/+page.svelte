@@ -298,7 +298,6 @@
 						a.trackViewItem(product!);
 						a.trackOmnisendViewedProduct(p);
 						a.trackKlaviyoViewedProduct(p);
-						a.trackMetaViewContent(p);
 						a.trackTikTokViewContent(p);
 					});
 				}
@@ -423,7 +422,6 @@
 			a.trackViewItem({ id: v.id, name: p.name, prices: v.prices, permalink: p.permalink, images: p.images });
 			a.trackOmnisendViewedProduct(pl);
 			a.trackKlaviyoViewedProduct(pl);
-			a.trackMetaViewContent(pl);
 			a.trackTikTokViewContent(pl);
 		});
 	});

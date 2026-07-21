@@ -26,8 +26,6 @@ declare global {
 		omnisend: unknown[];
 		klaviyo: unknown[];
 		_learnq: unknown[];
-		fbq: ((...args: unknown[]) => void) & { callMethod?: unknown; push?: unknown; loaded?: boolean; version?: string; queue?: unknown[] };
-		_fbq: unknown;
 		ttq: {
 			load: (id: string) => void;
 			page: () => void;
@@ -532,55 +530,6 @@ export function trackKlaviyoPlacedOrder(o: PixelOrder): void {
 			RowTotal: priceAsNumber(li.totals.line_total, meta),
 		})),
 	}]);
-}
-
-// ── Meta Pixel (Facebook / Instagram) ──────────────────────────────────
-let metaInitialized = false;
-export function initMetaPixel(pixelId: string): void {
-	if (metaInitialized || !pixelId || typeof window === 'undefined') return;
-	metaInitialized = true;
-	// Standard Meta snippet — upstream-maintained shim
-	/* eslint-disable */
-	// @ts-expect-error — Meta shim defines fbq/n properties dynamically
-	!(function (f: any, b: any, e: any, v: any, n: any, t: any, s: any) { if (f.fbq) return; n = f.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments) }; if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0'; n.queue = []; t = b.createElement(e); t.async = !0; t.src = v; s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s) })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
-	/* eslint-enable */
-	window.fbq('init', pixelId);
-	window.fbq('track', 'PageView');
-}
-export function trackMetaViewContent(p: PixelProduct): void {
-	window.fbq?.('track', 'ViewContent', {
-		content_ids: [String(p.id)],
-		content_name: p.name,
-		content_type: 'product',
-		value: priceAsNumber(p.prices.price, p.prices),
-		currency: p.prices.currency_code || 'USD',
-	});
-}
-export function trackMetaAddToCart(i: PixelCartItem): void {
-	window.fbq?.('track', 'AddToCart', {
-		content_ids: [String(i.id)],
-		content_name: i.name,
-		content_type: 'product',
-		value: priceAsNumber(i.price, i) * i.quantity,
-		currency: 'USD',
-	});
-}
-export function trackMetaInitiateCheckout(cartTotalCents: number, itemCount: number): void {
-	window.fbq?.('track', 'InitiateCheckout', {
-		num_items: itemCount,
-		value: cartTotalCents / 100,
-		currency: 'USD',
-	});
-}
-export function trackMetaPurchase(o: PixelOrder): void {
-	const meta = o.totals;
-	window.fbq?.('track', 'Purchase', {
-		content_ids: o.items.map((li) => String(li.id)),
-		content_type: 'product',
-		value: priceAsNumber(o.totals.total_price, meta),
-		currency: o.totals.currency_code,
-		num_items: o.items.reduce((n, li) => n + li.quantity, 0),
-	});
 }
 
 // ── TikTok Pixel ───────────────────────────────────────────────────────

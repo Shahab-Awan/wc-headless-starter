@@ -9,7 +9,6 @@
 		trackOmnisendPlacedOrder,
 		trackKlaviyoPlacedOrder,
 		identifyKlaviyoContact,
-		trackMetaPurchase,
 		trackTikTokCompletePayment,
 		identifyTikTokContact,
 		trackPinterestCheckout,
@@ -104,7 +103,6 @@
 				trackPurchase(orderData);
 				trackOmnisendPlacedOrder(orderData);
 				trackKlaviyoPlacedOrder(orderData);
-				trackMetaPurchase(orderData);
 				trackTikTokCompletePayment(orderData);
 				trackPinterestCheckout(orderData);
 				if (config.data.google_ads_conversion_id && config.data.google_ads_conversion_label) {
