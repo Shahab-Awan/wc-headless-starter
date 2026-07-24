@@ -7,6 +7,111 @@ const WHY_ALYVE_BRIDGE_HOSTS = new Set(['alyveresearch.com']);
 
 export const BRIDGE_PAGE_PATH = '/why-alyve';
 
+const CL_UID_COOKIE = 'cl852373hycz6u_uid';
+const CL_UTM_COOKIE = 'cl852373hycz6u_utmParams';
+
+function readCookie(name: string): string | null {
+	if (!browser) return null;
+	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const match = document.cookie.match(new RegExp(`(?:^|; )${escaped}=([^;]*)`));
+	if (!match?.[1]) return null;
+	try {
+		return decodeURIComponent(match[1]);
+	} catch {
+		return match[1];
+	}
+}
+
+function parseUtmParamsCookie(raw: string | null): Record<string, string> | null {
+	if (!raw) return null;
+
+	const asRecord = (input: unknown): Record<string, string> | null => {
+		if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+		const out: Record<string, string> = {};
+		for (const [key, val] of Object.entries(input as Record<string, unknown>)) {
+			if (val == null || val === '') continue;
+			if (typeof val === 'object' && val !== null && 'v' in val) {
+				const v = (val as { v: unknown }).v;
+				if (v == null || v === '') continue;
+				out[key] = String(v);
+			} else {
+				out[key] = String(val);
+			}
+		}
+		return Object.keys(out).length ? out : null;
+	};
+
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+			const root = parsed as Record<string, unknown>;
+			const nested = asRecord(root.utm_params ?? root.utmParams);
+			if (nested) return nested;
+			const flat = asRecord(parsed);
+			if (flat) return flat;
+		}
+	} catch {
+		/* not JSON — try querystring */
+	}
+
+	try {
+		const qs = raw.startsWith('?') ? raw.slice(1) : raw;
+		const params = new URLSearchParams(qs);
+		const out: Record<string, string> = {};
+		for (const [key, val] of params) {
+			if (val) out[key] = val;
+		}
+		return Object.keys(out).length ? out : null;
+	} catch {
+		return null;
+	}
+}
+
+function isFacebookUtmSource(utms: Record<string, string>): boolean {
+	const source = (utms.utm_source || utms.source || '').toLowerCase();
+	return source.includes('facebook') || source === 'fb' || source.startsWith('fb_');
+}
+
+/**
+ * Stamp CustomerLabs tracking onto a CTA URL:
+ * 1) if cl852373hycz6u_uid exists → ?cluid=
+ * 2) if cl852373hycz6u_utmParams has facebook utm_source → append all utm_* params
+ */
+export function withClTrackingParams(href: string): string {
+	if (!browser || !href) return href;
+	if (href === '#' || href.startsWith('mailto:') || href.startsWith('tel:')) return href;
+
+	let url: URL;
+	try {
+		url = new URL(href, window.location.href);
+	} catch {
+		return href;
+	}
+
+	const cluid = readCookie(CL_UID_COOKIE) || window.CLabsgbVar?.generalProps?.uid || '';
+	if (cluid) {
+		url.searchParams.set('cluid', String(cluid));
+	}
+
+	const utms = parseUtmParamsCookie(readCookie(CL_UTM_COOKIE));
+	if (utms && isFacebookUtmSource(utms)) {
+		for (const [key, val] of Object.entries(utms)) {
+			if (!val) continue;
+			if (key.toLowerCase().startsWith('utm_')) {
+				url.searchParams.set(key, val);
+			}
+		}
+		url.searchParams.set('utm_medium', '.alyveresearch.com');
+	}
+
+	return url.href;
+}
+
+/** Bridge rewrite + CustomerLabs cluid / Facebook UTM stamping. */
+export function bridgeAwareHrefWithClTracking(href: string): string {
+	return withClTrackingParams(bridgeAwareHref(href));
+}
+
 export function normalizeHost(hostname: string): string {
 	return hostname.toLowerCase().replace(/^www\./, '');
 }

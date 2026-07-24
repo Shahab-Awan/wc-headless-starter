@@ -8,7 +8,8 @@
 		ReviewsListicleModuleConfig,
 		SpacingPreset,
 	} from '$lib/config.svelte';
-	import { bridgeAwareHref } from '$lib/bridge-domain';
+	import { browser } from '$app/environment';
+	import { bridgeAwareHref, bridgeAwareHrefWithClTracking } from '$lib/bridge-domain';
 	import { icons as listicleIcons } from '$lib/icons';
 	import PromoOffer from '$lib/components/PromoOffer.svelte';
 	import OrderHandling from '$lib/components/OrderHandling.svelte';
@@ -249,6 +250,24 @@
 
 	const showHeroCta = $derived(Boolean(heroCtaLabel && heroCtaHref));
 
+	/** Cookies load async via CustomerLabs — tick until cluid/utm cookies appear. */
+	let clTrackingTick = $state(0);
+	$effect(() => {
+		if (!browser || !showHeroCta) return;
+		let tries = 0;
+		const id = setInterval(() => {
+			clTrackingTick += 1;
+			const hasUid = document.cookie.includes('cl852373hycz6u_uid=');
+			if (hasUid || ++tries >= 50) clearInterval(id);
+		}, 100);
+		return () => clearInterval(id);
+	});
+
+	const heroCtaTrackedHref = $derived.by(() => {
+		void clTrackingTick;
+		return bridgeAwareHrefWithClTracking(heroCtaHref);
+	});
+
 	const TRUST_STRIP_ICONS = ['lab', 'shield', 'check'] as const;
 
 	const showEditorialHero = $derived(
@@ -384,7 +403,7 @@
 								<h1 class="listicle__editorial-headline">{heroHeadline}</h1>
 
 								{#if showHeroCta}
-									<a class="listicle__hero-cta" href={bridgeAwareHref(heroCtaHref)}>
+									<a class="listicle__hero-cta" href={heroCtaTrackedHref}>
 										{heroCtaLabel}
 									</a>
 								{/if}
