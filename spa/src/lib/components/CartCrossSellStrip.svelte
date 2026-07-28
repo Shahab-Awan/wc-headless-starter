@@ -159,11 +159,17 @@
 		return cached.some((v) => canPurchase(v));
 	}
 
-	function addButtonLabel(product: StoreProduct, isAdding: boolean, justAdded: boolean): string {
+	function addButtonLabel(
+		product: StoreProduct,
+		isAdding: boolean,
+		justAdded: boolean,
+		currentMinor: number
+	): string {
 		if (isAdding) return 'Adding…';
 		if (justAdded) return 'Added';
-		if (product.has_options && !canDirectAdd(product)) return 'Select';
-		return 'Add';
+		const price = formatMoneyInt(currentMinor);
+		if (product.has_options && !canDirectAdd(product)) return `Select · ${price}`;
+		return `Add · ${price}`;
 	}
 
 	async function handleAddClick(e: Event, product: StoreProduct, context: 'sidebar' | 'strip' = 'strip') {
@@ -534,10 +540,7 @@
 		{#if isSidebar}
 			<div class="cart-xsell__list" role="list">
 				{#each products.slice(0, CART_CROSS_SELL_TARGET_COUNT) as product (product.id)}
-					{@const cro = product.extensions?.wchs_cro}
-					{@const regular = cro?.regular_price ?? Number(product.prices.regular_price)}
 					{@const current = Number(product.prices.price)}
-					{@const onSale = regular > current}
 					{@const isAdding = addingId === product.id}
 					{@const justAdded = !!justAddedIds[product.id]}
 					<article
@@ -557,12 +560,6 @@
 							</span>
 							<span class="cart-xsell__body-stack">
 								<span class="cart-xsell__title">{product.name}</span>
-								<span class="cart-xsell__price tabular-nums">
-									<span class="cart-xsell__price-now">{formatMoneyInt(current)}</span>
-									{#if onSale}
-										<span class="cart-xsell__price-was">{formatMoneyInt(regular)}</span>
-									{/if}
-								</span>
 							</span>
 							<button
 								type="button"
@@ -572,7 +569,7 @@
 								aria-busy={isAdding}
 								onclick={(e) => void handleAddClick(e, product, 'sidebar')}
 							>
-								{addButtonLabel(product, isAdding, justAdded)}
+								{addButtonLabel(product, isAdding, justAdded, current)}
 							</button>
 						</div>
 					</article>
@@ -582,10 +579,7 @@
 		<div class="cart-xsell__viewport" bind:this={viewportEl}>
 			<div class="cart-xsell__track" bind:this={trackEl} role="list">
 			{#each products.slice(0, CART_CROSS_SELL_TARGET_COUNT) as product (product.id)}
-				{@const cro = product.extensions?.wchs_cro}
-				{@const regular = cro?.regular_price ?? Number(product.prices.regular_price)}
 				{@const current = Number(product.prices.price)}
-				{@const onSale = regular > current}
 				{@const isAdding = addingId === product.id}
 				{@const justAdded = !!justAddedIds[product.id]}
 				{@const s = getState(product)}
@@ -653,10 +647,10 @@
 								</div>
 								<button
 									type="button"
-									class="cart-xsell__add-btn"
+									class="cart-xsell__add-btn cart-xsell__add-btn--priced"
 									class:just-added={justAdded || s.justAdded}
 									disabled={isAdding || !canOfferAdd(product)}
-									aria-label="Add {product.name} to cart"
+									aria-label="Add {product.name} to cart for {formatMoneyInt(current)}"
 									aria-busy={isAdding}
 									onmousedown={(e) => e.stopPropagation()}
 									onclick={(e) => void miniAdd(e, product)}
@@ -666,18 +660,12 @@
 									{:else if justAdded || s.justAdded}
 										✓
 									{:else}
-										+
+										<span class="tabular-nums">{formatMoneyInt(current)}</span>
 									{/if}
 								</button>
 							</div>
 							<div class="cart-xsell__body">
 								<p class="cart-xsell__title">{product.name}</p>
-								<p class="cart-xsell__price tabular-nums">
-									<span class="cart-xsell__price-now">{formatMoneyInt(current)}</span>
-									{#if onSale}
-										<span class="cart-xsell__price-was">{formatMoneyInt(regular)}</span>
-									{/if}
-								</p>
 							</div>
 						</div>
 					{:else}
@@ -694,12 +682,6 @@
 						</div>
 						<div class="cart-xsell__body">
 							<p class="cart-xsell__title">{product.name}</p>
-							<p class="cart-xsell__price tabular-nums">
-								<span class="cart-xsell__price-now">{formatMoneyInt(current)}</span>
-								{#if onSale}
-									<span class="cart-xsell__price-was">{formatMoneyInt(regular)}</span>
-								{/if}
-							</p>
 							<button
 								type="button"
 								class="cart-xsell__cta cart-xsell__cta--compact"
@@ -709,7 +691,7 @@
 								onmousedown={(e) => e.stopPropagation()}
 								onclick={(e) => void handleAddClick(e, product, 'strip')}
 							>
-								{addButtonLabel(product, isAdding, justAdded)}
+								{addButtonLabel(product, isAdding, justAdded, current)}
 							</button>
 						</div>
 					</div>
@@ -925,19 +907,6 @@
 		color: var(--accent);
 		text-align: center;
 	}
-	.cart-xsell--sidebar .cart-xsell__price {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 2px;
-		width: 100%;
-	}
-	.cart-xsell--sidebar .cart-xsell__price-now {
-		font-size: 14px;
-	}
-	.cart-xsell--sidebar .cart-xsell__price-was {
-		font-size: 11px;
-	}
 	.cart-xsell__head {
 		padding: 0 24px;
 	}
@@ -1030,26 +999,6 @@
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 		min-height: 28px;
-	}
-	.cart-xsell__price {
-		margin: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 2px;
-	}
-	.cart-xsell__price-now {
-		font-size: 12px;
-		font-weight: 600;
-		color: var(--fg);
-		line-height: 1.2;
-	}
-	.cart-xsell__price-was {
-		color: var(--fg-muted);
-		font-weight: 450;
-		font-size: 11px;
-		line-height: 1.2;
-		text-decoration: line-through;
 	}
 	/* Mini step controls — overlaid at top of image */
 	.cart-xsell__controls {
@@ -1145,6 +1094,15 @@
 		cursor: pointer;
 		touch-action: manipulation;
 		transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
+	}
+	.cart-xsell__add-btn--priced {
+		width: auto;
+		min-width: 36px;
+		height: 28px;
+		padding: 0 8px;
+		font-size: 11px;
+		font-weight: 650;
+		letter-spacing: -0.02em;
 	}
 	.cart-xsell__add-btn:hover:not(:disabled) {
 		background: transparent;

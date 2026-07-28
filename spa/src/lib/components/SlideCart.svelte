@@ -776,12 +776,6 @@
 		font-size: 10px;
 		line-height: 11px;
 	}
-	.fkcart-upsell-mobile :global(.cart-xsell__price-now) {
-		font-size: 11px;
-	}
-	.fkcart-upsell-mobile :global(.cart-xsell__price-was) {
-		font-size: 10px;
-	}
 	.fkcart-main {
 		flex: 1 1 420px;
 		min-width: 0;
