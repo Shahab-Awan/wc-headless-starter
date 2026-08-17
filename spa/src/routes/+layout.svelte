@@ -27,8 +27,10 @@
 	} from '$lib/analytics';
 	import {
 		bridgeAwareHref,
+		bridgeAwareHrefWithClTracking,
 		getActiveBridgeLandingPath,
 		isBridgePagePath,
+		stampBridgeOutboundAnchors,
 		shouldHandOffBridgeNavigation,
 		shouldSuppressLandingPopups,
 	} from '$lib/bridge-domain';
@@ -206,11 +208,21 @@
 			if (!anchor) return;
 			const dest = shouldHandOffBridgeNavigation(anchor.getAttribute('href') ?? '');
 			if (!dest) return;
+			anchor.setAttribute('href', dest);
+			if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+			if (anchor.target === '_blank') return;
 			e.preventDefault();
 			e.stopPropagation();
 			window.location.href = dest;
 		};
 		document.addEventListener('click', onBridgeLinkClick, true);
+
+		let clStampTries = 0;
+		const clStampTimer = window.setInterval(() => {
+			stampBridgeOutboundAnchors();
+			const hasUid = document.cookie.includes('cl852373hycz6u_uid=');
+			if (hasUid || ++clStampTries >= 50) window.clearInterval(clStampTimer);
+		}, 100);
 
 		// Async init — fire and forget. Every step is resilient:
 		// config.load() has its own try/catch (always sets ready=true).
@@ -421,6 +433,7 @@
 		document.addEventListener('keydown', onDrawerKey);
 
 		return () => {
+			window.clearInterval(clStampTimer);
 			document.removeEventListener('click', onBridgeLinkClick, true);
 			document.body.removeEventListener('added_to_cart', bumpCart);
 			document.body.removeEventListener('removed_from_cart', bumpCart);
@@ -466,6 +479,7 @@
 			}
 			if (isBridgePagePath(pathname)) {
 				trackCustomerLabsBridgePageView();
+				stampBridgeOutboundAnchors();
 			}
 			consumeOpenCartIntent(to.url);
 		}
@@ -569,7 +583,7 @@
 		</a>
 
 		{#if whyAlyveCta}
-			<a class="site-header__landing-cta" href={bridgeAwareHref(whyAlyveCta.href)}>
+			<a class="site-header__landing-cta" href={bridgeAwareHrefWithClTracking(whyAlyveCta.href)}>
 				{whyAlyveCta.label}
 			</a>
 		{/if}

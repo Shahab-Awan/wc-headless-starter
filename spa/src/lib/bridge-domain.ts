@@ -171,17 +171,23 @@ export function bridgeAwareHref(href: string): string {
 	const main = mainStorefrontOrigin();
 	if (!main) return href;
 
+	const currentHost = normalizeHost(window.location.hostname);
+	const mainHost = normalizeHost(new URL(main).hostname);
 	const linkHost = normalizeHost(url.hostname);
 
-	if (linkHost !== normalizeHost(window.location.hostname)) {
+	if (linkHost !== currentHost && linkHost !== mainHost) {
 		return href;
 	}
 
-	if (isLocalBridgeLandingPath(url.pathname)) {
+	if (linkHost === currentHost && isLocalBridgeLandingPath(url.pathname)) {
 		return href;
 	}
 
-	return `${main.replace(/\/$/, '')}${url.pathname}${url.search}${url.hash}`;
+	if (linkHost === currentHost) {
+		return withClTrackingParams(`${main.replace(/\/$/, '')}${url.pathname}${url.search}${url.hash}`);
+	}
+
+	return withClTrackingParams(url.href);
 }
 
 export function isBridgePagePath(path: string): boolean {
@@ -207,13 +213,35 @@ export function shouldHandOffBridgeNavigation(href: string): string | null {
 	const main = mainStorefrontOrigin();
 	if (!main) return null;
 
-	if (normalizeHost(url.hostname) !== normalizeHost(window.location.hostname)) {
+	const currentHost = normalizeHost(window.location.hostname);
+	const mainHost = normalizeHost(new URL(main).hostname);
+	const linkHost = normalizeHost(url.hostname);
+
+	if (linkHost !== currentHost && linkHost !== mainHost) {
 		return null;
 	}
 
-	if (isLocalBridgeLandingPath(url.pathname)) {
+	if (linkHost === currentHost && isLocalBridgeLandingPath(url.pathname)) {
 		return null;
 	}
 
-	return `${main.replace(/\/$/, '')}${url.pathname}${url.search}${url.hash}`;
+	const dest =
+		linkHost === currentHost
+			? `${main.replace(/\/$/, '')}${url.pathname}${url.search}${url.hash}`
+			: url.href;
+
+	return withClTrackingParams(dest);
+}
+
+/** Rewrite outbound landing CTAs so href inspect + click both carry cluid / UTMs. */
+export function stampBridgeOutboundAnchors(root: ParentNode = document): void {
+	if (!browser || !isBridgeDomain()) return;
+	const anchors = root.querySelectorAll('a[href]');
+	for (const node of anchors) {
+		const anchor = node as HTMLAnchorElement;
+		const href = anchor.getAttribute('href');
+		if (!href) continue;
+		const dest = shouldHandOffBridgeNavigation(href);
+		if (dest) anchor.setAttribute('href', dest);
+	}
 }

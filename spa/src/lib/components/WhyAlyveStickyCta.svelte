@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import { bridgeAwareHref } from '$lib/bridge-domain';
+	import { bridgeAwareHrefWithClTracking } from '$lib/bridge-domain';
 
 	let {
 		label,
@@ -53,7 +53,7 @@
 	aria-label="Call to action"
 	aria-hidden={heroCtaInView}
 >
-	<a class="why-alyve-sticky__btn" href={bridgeAwareHref(href)} tabindex={heroCtaInView ? -1 : undefined}>{label}</a>
+	<a class="why-alyve-sticky__btn" href={bridgeAwareHrefWithClTracking(href)} tabindex={heroCtaInView ? -1 : undefined}>{label}</a>
 </div>
 
 <style>

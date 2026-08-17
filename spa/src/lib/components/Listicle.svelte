@@ -9,7 +9,7 @@
 		SpacingPreset,
 	} from '$lib/config.svelte';
 	import { browser } from '$app/environment';
-	import { bridgeAwareHref, bridgeAwareHrefWithClTracking } from '$lib/bridge-domain';
+	import { bridgeAwareHrefWithClTracking } from '$lib/bridge-domain';
 	import { icons as listicleIcons } from '$lib/icons';
 	import PromoOffer from '$lib/components/PromoOffer.svelte';
 	import OrderHandling from '$lib/components/OrderHandling.svelte';
@@ -476,7 +476,7 @@
 									{/if}
 									{#if showCta}
 										<p class="listicle__cta-wrap">
-											<a href={bridgeAwareHref(config.cta_href!.trim())} class="listicle__cta">{config.cta_label!.trim()}</a>
+											<a href={bridgeAwareHrefWithClTracking(config.cta_href!.trim())} class="listicle__cta">{config.cta_label!.trim()}</a>
 										</p>
 									{/if}
 								</div>
@@ -533,7 +533,7 @@
 									<figure class="listicle__coa">
 										<a
 											class="listicle__coa-card"
-											href={bridgeAwareHref(coaEmbedHref())}
+											href={bridgeAwareHrefWithClTracking(coaEmbedHref())}
 										>
 											<span class="listicle__coa-thumb">
 												{#if coaEmbedImage()}
