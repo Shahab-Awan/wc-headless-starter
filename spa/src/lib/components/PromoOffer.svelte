@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { ModuleResolved, PromoOfferModuleConfig, SpacingPreset } from '$lib/config.svelte';
-	import { bridgeAwareHrefWithClTracking } from '$lib/bridge-domain';
+	import { bridgeAwareHrefWithClTracking, bridgeAwareAssetUrl } from '$lib/bridge-domain';
 
 	let {
 		config,
@@ -92,7 +92,7 @@
 			<div class="promo-offer__split">
 				<div class="promo-offer__media">
 					{#if config.image}
-						<img src={config.image} alt={config.image_alt || ''} loading={embedded ? 'eager' : 'lazy'} />
+						<img src={bridgeAwareAssetUrl(config.image)} alt={config.image_alt || ''} loading={embedded ? 'eager' : 'lazy'} />
 					{:else}
 						<div class="promo-offer__media-placeholder" aria-hidden="true"></div>
 					{/if}

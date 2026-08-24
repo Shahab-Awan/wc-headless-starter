@@ -149,6 +149,44 @@ export function mainStorefrontOrigin(): string {
 	return '';
 }
 
+/**
+ * On bridge hosts (alyveresearch.com), load main-store media same-origin.
+ * Absolute `https://alyvepeptides.com/wp-content/...` URLs often break there
+ * (hotlink protection / captcha edge). Relative `/wp-content/...` hits the
+ * same public_html and works.
+ */
+export function bridgeAwareAssetUrl(url: string | null | undefined): string {
+	if (!url) return '';
+	const raw = String(url).trim();
+	if (!raw) return '';
+	if (!browser || !isBridgeDomain()) return raw;
+	if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
+	if (raw.startsWith('data:') || raw.startsWith('blob:')) return raw;
+
+	try {
+		const absolute = new URL(raw, window.location.origin);
+		const path = absolute.pathname;
+		if (
+			!path.startsWith('/wp-content/') &&
+			!path.startsWith('/wp-includes/') &&
+			!path.startsWith('/_app/')
+		) {
+			return raw;
+		}
+
+		const main = mainStorefrontOrigin();
+		const mainHost = main ? normalizeHost(new URL(main).hostname) : '';
+		const linkHost = normalizeHost(absolute.hostname);
+		const currentHost = normalizeHost(window.location.hostname);
+		if (linkHost === currentHost || (mainHost && linkHost === mainHost)) {
+			return `${path}${absolute.search}${absolute.hash}`;
+		}
+	} catch {
+		// keep original
+	}
+	return raw;
+}
+
 function isLocalBridgeLandingPath(pathname: string): boolean {
 	const path = pathname.replace(/\/$/, '') || '/';
 	if (path === BRIDGE_PAGE_PATH) return true;

@@ -9,7 +9,7 @@
 		SpacingPreset,
 	} from '$lib/config.svelte';
 	import { browser } from '$app/environment';
-	import { bridgeAwareHrefWithClTracking } from '$lib/bridge-domain';
+	import { bridgeAwareHrefWithClTracking, bridgeAwareAssetUrl } from '$lib/bridge-domain';
 	import { icons as listicleIcons } from '$lib/icons';
 	import PromoOffer from '$lib/components/PromoOffer.svelte';
 	import OrderHandling from '$lib/components/OrderHandling.svelte';
@@ -62,7 +62,7 @@
 		resolved?.accent_color ? `--accent: ${resolved.accent_color};` : ''
 	);
 
-	const bgImage = $derived(config.bg_image?.trim() || '');
+	const bgImage = $derived(bridgeAwareAssetUrl(config.bg_image?.trim() || ''));
 	const heroBackdrop = $derived.by((): 'modern' | 'photo' => {
 		const mode = config.hero_backdrop === 'photo' ? 'photo' : 'modern';
 		if (mode === 'photo' && bgImage) return 'photo';
@@ -74,9 +74,9 @@
 	const DEFAULT_VIAL =
 		'/wp-content/uploads/2026/05/e33abf7d-1bcf-42ea-b324-c777cec4006d.webp';
 
-	const vialLeftTop = $derived(config.vial_primary?.trim() || DEFAULT_VIAL);
-	const vialRightTop = $derived(config.vial_secondary?.trim() || DEFAULT_VIAL);
-	const vialLeftBottom = $derived(config.vial_tertiary?.trim() || DEFAULT_VIAL);
+	const vialLeftTop = $derived(bridgeAwareAssetUrl(config.vial_primary?.trim() || DEFAULT_VIAL));
+	const vialRightTop = $derived(bridgeAwareAssetUrl(config.vial_secondary?.trim() || DEFAULT_VIAL));
+	const vialLeftBottom = $derived(bridgeAwareAssetUrl(config.vial_tertiary?.trim() || DEFAULT_VIAL));
 	const showHeroVials = $derived(
 		isModernBackdrop && Boolean(vialLeftTop || vialRightTop || vialLeftBottom)
 	);
@@ -308,7 +308,7 @@
 	}
 
 	function coaEmbedImage(): string {
-		return config.coa_embed_image?.trim() || '';
+		return bridgeAwareAssetUrl(config.coa_embed_image?.trim() || '');
 	}
 
 	function coaEmbedHref(): string {
@@ -457,7 +457,7 @@
 						<div class="listicle__hero-media">
 							{#if config.hero_image?.trim()}
 								<img
-									src={config.hero_image.trim()}
+									src={bridgeAwareAssetUrl(config.hero_image.trim())}
 									alt={config.hero_image_alt?.trim() || ''}
 									loading="eager"
 								/>
@@ -577,7 +577,7 @@
 							<div class="listicle__media">
 								{#if item.image?.trim()}
 									<img
-										src={item.image.trim()}
+										src={bridgeAwareAssetUrl(item.image.trim())}
 										alt={item.image_alt?.trim() || ''}
 										loading="lazy"
 									/>

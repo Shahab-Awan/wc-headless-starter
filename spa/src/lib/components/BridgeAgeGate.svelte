@@ -8,7 +8,7 @@
 	import { page } from '$app/state';
 	import { config } from '$lib/config.svelte';
 	import { bridgeAgeGate } from '$lib/bridge-age-gate.svelte';
-	import { BRIDGE_PAGE_PATH } from '$lib/bridge-domain';
+	import { BRIDGE_PAGE_PATH, bridgeAwareAssetUrl } from '$lib/bridge-domain';
 
 	let panelEl = $state<HTMLDivElement | undefined>(undefined);
 	let canvasEl = $state<HTMLCanvasElement | undefined>(undefined);
@@ -18,10 +18,12 @@
 	const show = $derived(
 		onWhyAlyve && Boolean(gateConfig?.enabled) && bridgeAgeGate.open && bridgeAgeGate.checked
 	);
-	const bgImage = $derived((gateConfig?.bg_image ?? '').trim());
+	const bgImage = $derived(bridgeAwareAssetUrl(gateConfig?.bg_image ?? ''));
 	const useParticles = $derived(!bgImage);
 	const brandName = $derived(config.data.brand_name || 'Alyve');
-	const logoUrl = $derived(config.data.logo_url || config.data.logo_dark_url || '');
+	const logoUrl = $derived(
+		bridgeAwareAssetUrl(config.data.logo_url || config.data.logo_dark_url || '')
+	);
 
 	const showNote = $derived(Boolean((gateConfig?.note_title ?? '').trim() || (gateConfig?.note_content ?? '').trim()));
 	const leftLabel = $derived((gateConfig?.note_left_label ?? '').trim());

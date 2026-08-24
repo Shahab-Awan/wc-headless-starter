@@ -30,6 +30,7 @@
 		BRIDGE_PAGE_PATH,
 		bridgeAwareHref,
 		bridgeAwareHrefWithClTracking,
+		bridgeAwareAssetUrl,
 		getActiveBridgeLandingPath,
 		isBridgePagePath,
 		stampBridgeOutboundAnchors,
@@ -579,13 +580,13 @@
 					class="site-header__logo site-header__logo--size-{config.data.logo_size ?? 'standard'}"
 					class:site-header__logo--light-variant={config.data.logo_dark_url}
 					class:site-header__logo--auto-invert={config.data.logo_invert_on_dark && !config.data.logo_dark_url}
-					src={config.data.logo_url}
+					src={bridgeAwareAssetUrl(config.data.logo_url)}
 					alt={config.data.brand_name}
 				/>
 				{#if config.data.logo_dark_url}
 					<img
 						class="site-header__logo site-header__logo--dark-variant site-header__logo--size-{config.data.logo_size ?? 'standard'}"
-						src={config.data.logo_dark_url}
+						src={bridgeAwareAssetUrl(config.data.logo_dark_url)}
 						alt=""
 						aria-hidden="true"
 					/>
