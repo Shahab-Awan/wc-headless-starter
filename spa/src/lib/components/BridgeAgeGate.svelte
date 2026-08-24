@@ -1,23 +1,20 @@
 <script lang="ts">
 	/**
-	 * Full-page age gate for Alyve Research / why-alyve.
-	 * Layout mirrors Certified Pep-style entry: logo, RUO title, CTA,
-	 * then a generic standards note (no third-party review buttons).
+	 * Alyve Research /age-gate page UI.
+	 * Confirm → main storefront homepage with CustomerLabs cluid / UTM stitch.
 	 * Optional bg image; otherwise theme-colored animated particle canvas.
 	 */
-	import { page } from '$app/state';
 	import { config } from '$lib/config.svelte';
-	import { bridgeAgeGate } from '$lib/bridge-age-gate.svelte';
-	import { BRIDGE_PAGE_PATH, bridgeAwareAssetUrl } from '$lib/bridge-domain';
+	import {
+		bridgeAwareAssetUrl,
+		bridgeAwareHrefWithClTracking,
+		mainStorefrontOrigin
+	} from '$lib/bridge-domain';
 
 	let panelEl = $state<HTMLDivElement | undefined>(undefined);
 	let canvasEl = $state<HTMLCanvasElement | undefined>(undefined);
 
 	const gateConfig = $derived(config.data.homepage.bridge_age_gate);
-	const onWhyAlyve = $derived(page.url.pathname.replace(/\/$/, '') === BRIDGE_PAGE_PATH);
-	const show = $derived(
-		onWhyAlyve && Boolean(gateConfig?.enabled) && bridgeAgeGate.open && bridgeAgeGate.checked
-	);
 	const bgImage = $derived(bridgeAwareAssetUrl(gateConfig?.bg_image ?? ''));
 	const useParticles = $derived(!bgImage);
 	const brandName = $derived(config.data.brand_name || 'Alyve');
@@ -25,12 +22,19 @@
 		bridgeAwareAssetUrl(config.data.logo_url || config.data.logo_dark_url || '')
 	);
 
-	const showNote = $derived(Boolean((gateConfig?.note_title ?? '').trim() || (gateConfig?.note_content ?? '').trim()));
+	const showNote = $derived(
+		Boolean((gateConfig?.note_title ?? '').trim() || (gateConfig?.note_content ?? '').trim())
+	);
 	const leftLabel = $derived((gateConfig?.note_left_label ?? '').trim());
 	const leftText = $derived((gateConfig?.note_left_text ?? '').trim());
 	const rightLabel = $derived((gateConfig?.note_right_label ?? '').trim());
 	const rightText = $derived((gateConfig?.note_right_text ?? '').trim());
 	const showCallouts = $derived(Boolean(leftLabel || leftText || rightLabel || rightText));
+
+	const enterHref = $derived.by(() => {
+		const main = mainStorefrontOrigin().replace(/\/$/, '') || 'https://alyvepeptides.com';
+		return bridgeAwareHrefWithClTracking(`${main}/`);
+	});
 
 	type Dot = {
 		x: number;
@@ -54,8 +58,19 @@
 		alpha: number;
 	};
 
-	function confirm() {
-		bridgeAgeGate.accept(gateConfig?.version ?? 1);
+	function enterStore(event: MouseEvent) {
+		if (
+			event.defaultPrevented ||
+			event.button !== 0 ||
+			event.metaKey ||
+			event.ctrlKey ||
+			event.shiftKey ||
+			event.altKey
+		) {
+			return;
+		}
+		event.preventDefault();
+		window.location.href = enterHref;
 	}
 
 	function decline() {
@@ -65,20 +80,21 @@
 
 	$effect(() => {
 		if (typeof document === 'undefined') return;
-		document.body.classList.toggle('wchs-bridge-age-lock', show);
+		document.body.classList.add('wchs-bridge-age-lock');
+		return () => document.body.classList.remove('wchs-bridge-age-lock');
 	});
 
 	$effect(() => {
-		if (!show || !panelEl) return;
+		if (!panelEl) return;
 		const focusable = panelEl.querySelectorAll<HTMLElement>(
-			'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+			'a, button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 		);
 		const first = focusable[0];
 		requestAnimationFrame(() => first?.focus());
 	});
 
 	$effect(() => {
-		if (typeof window === 'undefined' || !show || !useParticles || !canvasEl) return;
+		if (typeof window === 'undefined' || !useParticles || !canvasEl) return;
 
 		const canvas = canvasEl;
 		const maybeCtx = canvas.getContext('2d');
@@ -264,12 +280,8 @@
 
 <div
 	class="bag"
-	class:bag--show={show}
 	class:bag--image={Boolean(bgImage)}
 	class:bag--particles={useParticles}
-	role="dialog"
-	aria-modal="true"
-	aria-hidden={!show}
 	aria-label={gateConfig?.title || 'Age verification'}
 >
 	{#if bgImage}
@@ -296,9 +308,9 @@
 			{/if}
 
 			<div class="bag__actions">
-				<button type="button" class="bag__confirm" onclick={confirm}>
+				<a class="bag__confirm" href={enterHref} onclick={enterStore}>
 					{gateConfig?.confirm_text || 'Enter Alyve Research'}
-				</button>
+				</a>
 				{#if gateConfig?.redirect_note}
 					<p class="bag__note">{gateConfig.redirect_note}</p>
 				{/if}
@@ -348,20 +360,6 @@
 		align-items: center;
 		justify-content: center;
 		padding: clamp(20px, 4vh, 40px) 16px;
-		opacity: 0;
-		pointer-events: none;
-		visibility: hidden;
-		transition:
-			opacity var(--dur-med, 0.28s) var(--ease-out, ease-out),
-			visibility 0s linear 0.28s;
-	}
-	.bag--show {
-		opacity: 1;
-		pointer-events: auto;
-		visibility: visible;
-		transition:
-			opacity var(--dur-med, 0.28s) var(--ease-out, ease-out),
-			visibility 0s;
 	}
 
 	.bag--particles {
@@ -505,6 +503,7 @@
 		font-weight: 700;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
+		text-decoration: none;
 		cursor: pointer;
 		transition:
 			opacity var(--dur-fast, 0.15s) var(--ease, ease),

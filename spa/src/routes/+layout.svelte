@@ -17,7 +17,6 @@
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import MaintenanceScreen from '$lib/components/MaintenanceScreen.svelte';
 	import SiteGate from '$lib/components/SiteGate.svelte';
-	import BridgeAgeGate from '$lib/components/BridgeAgeGate.svelte';
 	import { icons } from '$lib/icons';
 	import {
 		initGTM, trackPageView, initGA4,
@@ -27,7 +26,7 @@
 		trackCustomerLabsBridgePageView,
 	} from '$lib/analytics';
 	import {
-		BRIDGE_PAGE_PATH,
+		AGE_GATE_PAGE_PATH,
 		bridgeAwareHref,
 		bridgeAwareHrefWithClTracking,
 		bridgeAwareAssetUrl,
@@ -39,7 +38,6 @@
 	} from '$lib/bridge-domain';
 	import { isHome1LandingPath } from '$lib/home-1-landing';
 	import { getWhyAlyveCta } from '$lib/why-alyve-cta';
-	import { bridgeAgeGate } from '$lib/bridge-age-gate.svelte';
 	import {
 		applyLandingPopupSuppression,
 		shouldSkipLandingPopupScript,
@@ -66,9 +64,9 @@
 		Boolean(config.data.features?.dark_mode && config.data.header_show_toggle)
 	);
 
-	const logoOnlyHeader = $derived(
-		page.url.pathname.replace(/\/$/, '') === '/why-alyve'
-	);
+	const pathNorm = $derived(page.url.pathname.replace(/\/$/, '') || '/');
+	const logoOnlyHeader = $derived(pathNorm === '/why-alyve');
+	const isAgeGatePage = $derived(pathNorm === AGE_GATE_PAGE_PATH);
 
 	$effect(() => {
 		if (!browser || !config.ready) return;
@@ -378,11 +376,6 @@
 				config.data.gate_modal,
 				auth.isAdmin
 			);
-			bridgeAgeGate.resetForPath(
-				window.location.pathname.replace(/\/$/, '') === BRIDGE_PAGE_PATH,
-				config.data.homepage.bridge_age_gate,
-				auth.isAdmin
-			);
 
 			// Cart session — can fail in maintenance mode (503 from gated
 			// endpoints) or on network error. Non-critical: SPA still renders,
@@ -481,11 +474,6 @@
 			const pathname = to.url.pathname;
 			if (config.ready) {
 				applyLandingPopupSuppression(pathname, config.data.gate_modal, auth.isAdmin);
-			bridgeAgeGate.resetForPath(
-				pathname.replace(/\/$/, '') === BRIDGE_PAGE_PATH,
-				config.data.homepage.bridge_age_gate,
-				auth.isAdmin
-			);
 			}
 			trackPageView(pathname);
 			if (!shouldSuppressLandingPopups(pathname)) {
@@ -563,6 +551,7 @@
 {:else}
 	<AdminBar />
 
+	{#if !isAgeGatePage}
 	<div class="site-header-stack" class:has-admin-bar={auth.isAdmin}>
 		<AnnouncementBar />
 		<header
@@ -752,13 +741,17 @@
 			{/each}
 		</div>
 	{/if}
+	{/if}
 
+	{#if !isAgeGatePage}
 	<a class="skip-to-content" href="#main-content">Skip to content</a>
+	{/if}
 
 	<main id="main-content">
 		{@render children()}
 	</main>
 
+	{#if !isAgeGatePage}
 	<Footer />
 	{#if config.data.funnelkit_cart?.enabled}
 		<FunnelKitCartShell />
@@ -766,8 +759,8 @@
 		<SlideCart />
 	{/if}
 	<SiteGate />
-	<BridgeAgeGate />
 	<BackToTop />
+	{/if}
 {/if}
 
 <style>

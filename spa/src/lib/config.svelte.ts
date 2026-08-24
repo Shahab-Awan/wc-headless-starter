@@ -761,7 +761,7 @@ export type HomepageModule =
 export type HomepageConfig = {
 	hero: HomepageHeroConfig;
 	modules: HomepageModule[];
-	/** Alyve Research / why-alyve full-page age gate. */
+	/** Alyve Research /age-gate page copy (confirm → main storefront + CLUID). */
 	bridge_age_gate?: BridgeAgeGateConfig;
 };
 
@@ -1414,7 +1414,7 @@ const DEFAULTS: SiteConfig = {
 			confirm_text: 'Enter Alyve Research',
 			decline_text: '',
 			decline_url: 'https://google.com',
-			redirect_note: 'You will continue to the Alyve Research page',
+			redirect_note: 'You will continue to alyvepeptides.com',
 			note_title: 'A note about our standards',
 			note_content:
 				'Due to payment processor requirements, third-party review widgets are not shown on this page. Our materials remain independently verified and supplied for laboratory research use only.',

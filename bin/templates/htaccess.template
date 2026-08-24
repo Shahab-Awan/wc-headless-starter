@@ -10,16 +10,18 @@ RewriteBase /
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-# 1b. Landing domain — ONLY the Why Alyve page on alyveresearch.com.
+# 1b. Landing domain — Why Alyve + Age Gate on alyveresearch.com.
 #     Same SiteGround public_html as alyvepeptides.com (parked domain). No GoDaddy forwarding.
 #     - alyveresearch.com/  → alyveresearch.com/why-alyve (URL stays on this domain)
-#     - /shop, /, etc. on this domain → alyvepeptides.com (main store unchanged)
+#     - alyveresearch.com/age-gate stays on this domain (entry gate → main store)
+#     - /shop, etc. on this domain → alyvepeptides.com (main store unchanged)
 RewriteCond %{HTTP_HOST} ^www\.alyveresearch\.com$ [NC]
 RewriteRule ^ https://alyveresearch.com%{REQUEST_URI} [R=301,L]
 RewriteCond %{HTTP_HOST} ^alyveresearch\.com$ [NC]
 RewriteRule ^$ /why-alyve [R=301,L]
 RewriteCond %{HTTP_HOST} ^alyveresearch\.com$ [NC]
 RewriteCond %{REQUEST_URI} !^/why-alyve/?$ [NC]
+RewriteCond %{REQUEST_URI} !^/age-gate/?$ [NC]
 RewriteCond %{REQUEST_URI} !^/wp-json/ [NC]
 RewriteCond %{REQUEST_URI} !^/wp-content/ [NC]
 RewriteCond %{REQUEST_URI} !^/_app/ [NC]

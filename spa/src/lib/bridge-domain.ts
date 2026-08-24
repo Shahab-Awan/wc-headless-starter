@@ -2,10 +2,12 @@ import { browser } from '$app/environment';
 import { config } from '$lib/config.svelte';
 import { HOME_1_PATH, isHome1LandingPath } from '$lib/home-1-landing';
 
-/** Legacy Why Alyve bridge — alyveresearch.com serves /why-alyve only. */
+/** Legacy Why Alyve bridge — alyveresearch.com serves landing pages only. */
 const WHY_ALYVE_BRIDGE_HOSTS = new Set(['alyveresearch.com']);
 
 export const BRIDGE_PAGE_PATH = '/why-alyve';
+/** Alyve Research age-gate entry page — confirm hands off to main storefront. */
+export const AGE_GATE_PAGE_PATH = '/age-gate';
 
 const CL_UID_COOKIE = 'cl852373hycz6u_uid';
 const CL_UTM_COOKIE = 'cl852373hycz6u_utmParams';
@@ -190,6 +192,7 @@ export function bridgeAwareAssetUrl(url: string | null | undefined): string {
 function isLocalBridgeLandingPath(pathname: string): boolean {
 	const path = pathname.replace(/\/$/, '') || '/';
 	if (path === BRIDGE_PAGE_PATH) return true;
+	if (path === AGE_GATE_PAGE_PATH) return true;
 	if (isHome1LandingPath(path)) return true;
 	return false;
 }

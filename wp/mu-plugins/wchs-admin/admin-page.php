@@ -1460,7 +1460,7 @@ class AdminPage {
 	}
 
 	/**
-	 * Alyve Research (why-alyve bridge) full-page age gate defaults.
+	 * Alyve Research /age-gate page copy (standalone landing on alyveresearch.com).
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -1473,7 +1473,7 @@ class AdminPage {
 			'confirm_text'     => 'Enter Alyve Research',
 			'decline_text'     => '',
 			'decline_url'      => 'https://google.com',
-			'redirect_note'    => 'You will continue to the Alyve Research page',
+			'redirect_note'    => 'You will continue to alyvepeptides.com',
 			'note_title'       => 'A note about our standards',
 			'note_content'     => 'Due to payment processor requirements, third-party review widgets are not shown on this page. Our materials remain independently verified and supplied for laboratory research use only.',
 			'note_left_label'  => 'Lab verified',
@@ -4816,13 +4816,13 @@ class AdminPage {
 			</div></div><!-- /Hero Background -->
 
 			<div class="wchs-section wchs-section--collapsed">
-			<h2 class="wchs-section__toggle">Alyve Research age gate <?php echo self::hint_icon( 'Full-page gate shown before the Why Alyve / Alyve Research bridge landing. Confirm unlocks the page. Optional background image; when empty, animated particles are used.' ); ?></h2>
+			<h2 class="wchs-section__toggle">Alyve Research age gate <?php echo self::hint_icon( 'Standalone page at /age-gate on alyveresearch.com (same pattern as Why Alyve). Confirm sends visitors to the Alyve Peptides homepage with CustomerLabs CLUID/UTM stitching. Does not block /why-alyve. Optional background image; when empty, animated particles are used.' ); ?></h2>
 			<div class="wchs-section__body">
 			<div class="wchs-field">
 				<label class="wchs-toggle">
 					<input type="checkbox" name="bridge_age_gate_enabled" value="1" <?php checked( ! empty( $bag['enabled'] ) ); ?> />
 					<span class="wchs-toggle__track"><span class="wchs-toggle__thumb"></span></span>
-					<span>Enable age gate on Why Alyve / Alyve Research</span>
+					<span>Publish age-gate page settings (copy/media for /age-gate)</span>
 				</label>
 			</div>
 			<div class="wchs-field">
@@ -4865,7 +4865,7 @@ class AdminPage {
 			</div>
 			<div class="wchs-field">
 				<label>Redirect note <?php echo self::hint_icon( 'Small caption under the button (optional).' ); ?></label>
-				<input type="text" name="bridge_age_gate_redirect_note" value="<?php echo esc_attr( (string) ( $bag['redirect_note'] ?? '' ) ); ?>" class="regular-text" maxlength="120" placeholder="e.g. You will continue to the Alyve Research page" />
+				<input type="text" name="bridge_age_gate_redirect_note" value="<?php echo esc_attr( (string) ( $bag['redirect_note'] ?? '' ) ); ?>" class="regular-text" maxlength="120" placeholder="e.g. You will continue to alyvepeptides.com" />
 			</div>
 			<div class="wchs-field">
 				<label>Bottom note title <?php echo self::hint_icon( 'Generic standards / transparency block under the CTA. Leave blank to hide the whole note.' ); ?></label>
