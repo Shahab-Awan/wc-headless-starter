@@ -507,6 +507,10 @@ class AdminPage {
 			}
 		}
 		unset( $saved['fathers_day_mode'] );
+		$saved['bridge_age_gate'] = wp_parse_args(
+			is_array( $saved['bridge_age_gate'] ?? null ) ? $saved['bridge_age_gate'] : [],
+			self::bridge_age_gate_defaults()
+		);
 		return $saved;
 	}
 
@@ -1451,6 +1455,32 @@ class AdminPage {
 					],
 				],
 			],
+			'bridge_age_gate' => self::bridge_age_gate_defaults(),
+		];
+	}
+
+	/**
+	 * Alyve Research (why-alyve bridge) full-page age gate defaults.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function bridge_age_gate_defaults(): array {
+		return [
+			'enabled'          => false,
+			'bg_image'         => '',
+			'title'            => '21+ Research Use Only',
+			'content'          => '<p>Materials referenced on this site are supplied strictly for laboratory research and non-human use. By clicking Enter, you confirm that you are 21 years or older and understand these items are not for human consumption.</p>',
+			'confirm_text'     => 'Enter Alyve Research',
+			'decline_text'     => '',
+			'decline_url'      => 'https://google.com',
+			'redirect_note'    => 'You will continue to the Alyve Research page',
+			'note_title'       => 'A note about our standards',
+			'note_content'     => 'Due to payment processor requirements, third-party review widgets are not shown on this page. Our materials remain independently verified and supplied for laboratory research use only.',
+			'note_left_label'  => 'Lab verified',
+			'note_left_text'   => 'Third-party tested batches with documented purity.',
+			'note_right_label' => 'Research use only',
+			'note_right_text'  => 'Not for human consumption or clinical use.',
+			'version'          => 1,
 		];
 	}
 
@@ -2141,9 +2171,32 @@ class AdminPage {
 		$raw_json = json_decode( wp_unslash( $_POST['modules_json'] ?? '[]' ), true );
 		$modules  = self::parse_modules_from_post( is_array( $raw_json ) ? $raw_json : [], 'homepage' );
 
+		$bag_defaults = self::bridge_age_gate_defaults();
+		$bridge_age_gate = [
+			'enabled'          => ! empty( $_POST['bridge_age_gate_enabled'] ),
+			'bg_image'         => esc_url_raw( wp_unslash( $_POST['bridge_age_gate_bg_image'] ?? '' ) ),
+			'title'            => sanitize_text_field( wp_unslash( $_POST['bridge_age_gate_title'] ?? $bag_defaults['title'] ) ),
+			'content'          => wp_kses_post( wp_unslash( $_POST['bridge_age_gate_content'] ?? $bag_defaults['content'] ) ),
+			'confirm_text'     => sanitize_text_field( wp_unslash( $_POST['bridge_age_gate_confirm_text'] ?? $bag_defaults['confirm_text'] ) ),
+			'decline_text'     => sanitize_text_field( wp_unslash( $_POST['bridge_age_gate_decline_text'] ?? '' ) ),
+			'decline_url'      => esc_url_raw( wp_unslash( $_POST['bridge_age_gate_decline_url'] ?? $bag_defaults['decline_url'] ) ),
+			'redirect_note'    => sanitize_text_field( wp_unslash( $_POST['bridge_age_gate_redirect_note'] ?? '' ) ),
+			'note_title'       => sanitize_text_field( wp_unslash( $_POST['bridge_age_gate_note_title'] ?? $bag_defaults['note_title'] ) ),
+			'note_content'     => sanitize_textarea_field( wp_unslash( $_POST['bridge_age_gate_note_content'] ?? $bag_defaults['note_content'] ) ),
+			'note_left_label'  => sanitize_text_field( wp_unslash( $_POST['bridge_age_gate_note_left_label'] ?? $bag_defaults['note_left_label'] ) ),
+			'note_left_text'   => sanitize_text_field( wp_unslash( $_POST['bridge_age_gate_note_left_text'] ?? $bag_defaults['note_left_text'] ) ),
+			'note_right_label' => sanitize_text_field( wp_unslash( $_POST['bridge_age_gate_note_right_label'] ?? $bag_defaults['note_right_label'] ) ),
+			'note_right_text'  => sanitize_text_field( wp_unslash( $_POST['bridge_age_gate_note_right_text'] ?? $bag_defaults['note_right_text'] ) ),
+			'version'          => max( 1, (int) ( $_POST['bridge_age_gate_version'] ?? 1 ) ),
+		];
+		if ( $bridge_age_gate['confirm_text'] === '' ) {
+			$bridge_age_gate['confirm_text'] = (string) $bag_defaults['confirm_text'];
+		}
+
 		update_option( self::HOMEPAGE_OPTION, [
-			'hero'    => $hero,
-			'modules' => $modules,
+			'hero'            => $hero,
+			'modules'         => $modules,
+			'bridge_age_gate' => $bridge_age_gate,
 		] );
 	}
 
@@ -2631,7 +2684,7 @@ class AdminPage {
 			<?php elseif ( 'pages' === $tab ) : ?>
 				<?php $this->render_pages_tab( $pages_cfg['pages'] ); ?>
 			<?php else : ?>
-				<?php $this->render_homepage_tab( $hero, $modules ); ?>
+				<?php $this->render_homepage_tab( $hero, $modules, is_array( $homepage['bridge_age_gate'] ?? null ) ? $homepage['bridge_age_gate'] : [] ); ?>
 			<?php endif; ?>
 
 			<?php if ( $has_canvas ) : ?>
@@ -4329,13 +4382,14 @@ class AdminPage {
 	}
 
 
-	private function render_homepage_tab( array $hero, array $modules ): void {
+	private function render_homepage_tab( array $hero, array $modules, array $bridge_age_gate = [] ): void {
 		$categories = get_terms( [ 'taxonomy' => 'product_cat', 'hide_empty' => false ] );
 		$hero_content_mode = $hero['content_mode'] ?? 'text';
 		$hero_logo_source  = $hero['logo_source'] ?? 'site_logo';
 		$hero_logo_size    = $hero['logo_size'] ?? 'large';
 		$hero_logo_url     = $hero['logo_url'] ?? '';
 		$hero_logo_dark    = $hero['logo_dark_url'] ?? '';
+		$bag = wp_parse_args( $bridge_age_gate, self::bridge_age_gate_defaults() );
 		?>
 		<form method="POST" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<?php wp_nonce_field( 'wchs_save_settings', 'wchs_nonce' ); ?>
@@ -4760,6 +4814,100 @@ class AdminPage {
 			</div>
 
 			</div></div><!-- /Hero Background -->
+
+			<div class="wchs-section wchs-section--collapsed">
+			<h2 class="wchs-section__toggle">Alyve Research age gate <?php echo self::hint_icon( 'Full-page gate shown before the Why Alyve / Alyve Research bridge landing. Confirm unlocks the page. Optional background image; when empty, animated particles are used.' ); ?></h2>
+			<div class="wchs-section__body">
+			<div class="wchs-field">
+				<label class="wchs-toggle">
+					<input type="checkbox" name="bridge_age_gate_enabled" value="1" <?php checked( ! empty( $bag['enabled'] ) ); ?> />
+					<span class="wchs-toggle__track"><span class="wchs-toggle__thumb"></span></span>
+					<span>Enable age gate on Why Alyve / Alyve Research</span>
+				</label>
+			</div>
+			<div class="wchs-field">
+				<label>Age gate page bg image <?php echo self::hint_icon( 'Optional full-bleed background. Leave empty for the animated particle background.' ); ?></label>
+				<div class="wchs-media-field">
+					<input type="text" name="bridge_age_gate_bg_image" value="<?php echo esc_attr( (string) ( $bag['bg_image'] ?? '' ) ); ?>" class="wchs-media-url" placeholder="No image selected" />
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-select">Select</button>
+					<button type="button" class="wchs-btn wchs-btn--secondary wchs-media-remove" style="<?php echo empty( $bag['bg_image'] ) ? 'display:none' : ''; ?>">Remove</button>
+				</div>
+				<?php if ( ! empty( $bag['bg_image'] ) ) : ?>
+					<img class="wchs-media-preview" src="<?php echo esc_url( (string) $bag['bg_image'] ); ?>" alt="" />
+				<?php else : ?>
+					<img class="wchs-media-preview" src="" alt="" style="display:none" />
+				<?php endif; ?>
+			</div>
+			<div class="wchs-field">
+				<label>Title</label>
+				<input type="text" name="bridge_age_gate_title" value="<?php echo esc_attr( (string) ( $bag['title'] ?? '' ) ); ?>" class="regular-text" maxlength="120" />
+			</div>
+			<div class="wchs-field">
+				<label>Content <?php echo self::hint_icon( 'Supports basic HTML: &lt;b&gt;, &lt;i&gt;, &lt;a&gt;, &lt;p&gt;, &lt;br&gt;.' ); ?></label>
+				<?php
+				wp_editor(
+					(string) ( $bag['content'] ?? '' ),
+					'bridge_age_gate_content',
+					[
+						'textarea_name' => 'bridge_age_gate_content',
+						'textarea_rows' => 5,
+						'media_buttons' => false,
+						'teeny'         => true,
+						'quicktags'     => true,
+						'tinymce'       => false,
+					]
+				);
+				?>
+			</div>
+			<div class="wchs-field">
+				<label>Confirm button text</label>
+				<input type="text" name="bridge_age_gate_confirm_text" value="<?php echo esc_attr( (string) ( $bag['confirm_text'] ?? '' ) ); ?>" class="regular-text" maxlength="60" />
+			</div>
+			<div class="wchs-field">
+				<label>Redirect note <?php echo self::hint_icon( 'Small caption under the button (optional).' ); ?></label>
+				<input type="text" name="bridge_age_gate_redirect_note" value="<?php echo esc_attr( (string) ( $bag['redirect_note'] ?? '' ) ); ?>" class="regular-text" maxlength="120" placeholder="e.g. You will continue to the Alyve Research page" />
+			</div>
+			<div class="wchs-field">
+				<label>Bottom note title <?php echo self::hint_icon( 'Generic standards / transparency block under the CTA. Leave blank to hide the whole note.' ); ?></label>
+				<input type="text" name="bridge_age_gate_note_title" value="<?php echo esc_attr( (string) ( $bag['note_title'] ?? '' ) ); ?>" class="regular-text" maxlength="120" />
+			</div>
+			<div class="wchs-field">
+				<label>Bottom note body</label>
+				<textarea name="bridge_age_gate_note_content" rows="3" class="large-text" maxlength="500"><?php echo esc_textarea( (string) ( $bag['note_content'] ?? '' ) ); ?></textarea>
+			</div>
+			<div class="wchs-field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+				<div>
+					<label>Left callout label</label>
+					<input type="text" name="bridge_age_gate_note_left_label" value="<?php echo esc_attr( (string) ( $bag['note_left_label'] ?? '' ) ); ?>" maxlength="60" />
+				</div>
+				<div>
+					<label>Right callout label</label>
+					<input type="text" name="bridge_age_gate_note_right_label" value="<?php echo esc_attr( (string) ( $bag['note_right_label'] ?? '' ) ); ?>" maxlength="60" />
+				</div>
+			</div>
+			<div class="wchs-field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+				<div>
+					<label>Left callout text</label>
+					<input type="text" name="bridge_age_gate_note_left_text" value="<?php echo esc_attr( (string) ( $bag['note_left_text'] ?? '' ) ); ?>" maxlength="140" />
+				</div>
+				<div>
+					<label>Right callout text</label>
+					<input type="text" name="bridge_age_gate_note_right_text" value="<?php echo esc_attr( (string) ( $bag['note_right_text'] ?? '' ) ); ?>" maxlength="140" />
+				</div>
+			</div>
+			<div class="wchs-field">
+				<label>Decline button text <?php echo self::hint_icon( 'Leave empty to hide.' ); ?></label>
+				<input type="text" name="bridge_age_gate_decline_text" value="<?php echo esc_attr( (string) ( $bag['decline_text'] ?? '' ) ); ?>" class="regular-text" maxlength="60" />
+			</div>
+			<div class="wchs-field">
+				<label>Decline URL</label>
+				<input type="url" name="bridge_age_gate_decline_url" value="<?php echo esc_attr( (string) ( $bag['decline_url'] ?? '' ) ); ?>" class="regular-text" placeholder="https://google.com" />
+			</div>
+			<div class="wchs-field">
+				<label>Content version <?php echo self::hint_icon( 'Increment to re-show the gate after copy changes.' ); ?></label>
+				<input type="number" name="bridge_age_gate_version" value="<?php echo (int) ( $bag['version'] ?? 1 ); ?>" min="1" style="width:80px" />
+			</div>
+			</div></div>
 
 			<h2>Modules Below Hero</h2>
 			<div class="wchs-modlist" data-context="homepage">

@@ -761,6 +761,28 @@ export type HomepageModule =
 export type HomepageConfig = {
 	hero: HomepageHeroConfig;
 	modules: HomepageModule[];
+	/** Alyve Research / why-alyve full-page age gate. */
+	bridge_age_gate?: BridgeAgeGateConfig;
+};
+
+export type BridgeAgeGateConfig = {
+	enabled: boolean;
+	/** Optional full-bleed background image URL. Empty → animated particles. */
+	bg_image: string;
+	title: string;
+	content: string;
+	confirm_text: string;
+	decline_text: string;
+	decline_url: string;
+	redirect_note: string;
+	/** Generic standards note (replaces review-platform buttons). */
+	note_title: string;
+	note_content: string;
+	note_left_label: string;
+	note_left_text: string;
+	note_right_label: string;
+	note_right_text: string;
+	version: number;
 };
 
 export type PdpFeatureItem = { icon: string; label: string };
@@ -1383,6 +1405,25 @@ const DEFAULTS: SiteConfig = {
 				},
 			},
 		],
+		bridge_age_gate: {
+			enabled: false,
+			bg_image: '',
+			title: '21+ Research Use Only',
+			content:
+				'<p>Materials referenced on this site are supplied strictly for laboratory research and non-human use. By clicking Enter, you confirm that you are 21 years or older and understand these items are not for human consumption.</p>',
+			confirm_text: 'Enter Alyve Research',
+			decline_text: '',
+			decline_url: 'https://google.com',
+			redirect_note: 'You will continue to the Alyve Research page',
+			note_title: 'A note about our standards',
+			note_content:
+				'Due to payment processor requirements, third-party review widgets are not shown on this page. Our materials remain independently verified and supplied for laboratory research use only.',
+			note_left_label: 'Lab verified',
+			note_left_text: 'Third-party tested batches with documented purity.',
+			note_right_label: 'Research use only',
+			note_right_text: 'Not for human consumption or clinical use.',
+			version: 1,
+		},
 	},
 	review_write_enabled: true,
 	turnstile_site_key: '',
@@ -1768,6 +1809,7 @@ function mergeFetchedHomepage(incoming: HomepageConfig | undefined): HomepageCon
 	const hp = incoming ?? base;
 	const rawHero = hp.hero ?? {};
 	const rawModules = Array.isArray(hp.modules) ? hp.modules : base.modules;
+	const rawGate = hp.bridge_age_gate ?? {};
 	return {
 		...base,
 		...hp,
@@ -1779,6 +1821,41 @@ function mergeFetchedHomepage(incoming: HomepageConfig | undefined): HomepageCon
 				...HERO_PRECISION_DEFAULTS,
 				...(rawHero.precision ?? {}),
 			},
+		},
+		bridge_age_gate: {
+			...base.bridge_age_gate!,
+			...rawGate,
+			enabled: Boolean((rawGate as BridgeAgeGateConfig).enabled ?? base.bridge_age_gate?.enabled),
+			bg_image: String((rawGate as BridgeAgeGateConfig).bg_image ?? base.bridge_age_gate?.bg_image ?? ''),
+			title: String((rawGate as BridgeAgeGateConfig).title ?? base.bridge_age_gate?.title ?? ''),
+			content: String((rawGate as BridgeAgeGateConfig).content ?? base.bridge_age_gate?.content ?? ''),
+			confirm_text: String(
+				(rawGate as BridgeAgeGateConfig).confirm_text ?? base.bridge_age_gate?.confirm_text ?? 'Enter Alyve Research'
+			),
+			decline_text: String((rawGate as BridgeAgeGateConfig).decline_text ?? ''),
+			decline_url: String(
+				(rawGate as BridgeAgeGateConfig).decline_url ?? base.bridge_age_gate?.decline_url ?? 'https://google.com'
+			),
+			redirect_note: String(
+				(rawGate as BridgeAgeGateConfig).redirect_note ?? base.bridge_age_gate?.redirect_note ?? ''
+			),
+			note_title: String((rawGate as BridgeAgeGateConfig).note_title ?? base.bridge_age_gate?.note_title ?? ''),
+			note_content: String(
+				(rawGate as BridgeAgeGateConfig).note_content ?? base.bridge_age_gate?.note_content ?? ''
+			),
+			note_left_label: String(
+				(rawGate as BridgeAgeGateConfig).note_left_label ?? base.bridge_age_gate?.note_left_label ?? ''
+			),
+			note_left_text: String(
+				(rawGate as BridgeAgeGateConfig).note_left_text ?? base.bridge_age_gate?.note_left_text ?? ''
+			),
+			note_right_label: String(
+				(rawGate as BridgeAgeGateConfig).note_right_label ?? base.bridge_age_gate?.note_right_label ?? ''
+			),
+			note_right_text: String(
+				(rawGate as BridgeAgeGateConfig).note_right_text ?? base.bridge_age_gate?.note_right_text ?? ''
+			),
+			version: Math.max(1, Number((rawGate as BridgeAgeGateConfig).version ?? base.bridge_age_gate?.version ?? 1) || 1),
 		},
 		modules: mergeHomepageFeaturedProducts(
 			mergeHomepageTrustBar(

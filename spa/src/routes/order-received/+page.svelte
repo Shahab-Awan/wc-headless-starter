@@ -3,7 +3,7 @@
 	import { getOrder, getOrderPayment, type StoreOrder, type OrderPaymentInfo } from '$lib/wc/orders';
 	import { cart } from '$lib/wc/cart.svelte';
 	import { clearShadow } from '$lib/wc/shadow-cart';
-	import { clearCartToken } from '$lib/wc/store-api';
+	import { clearCartToken, request } from '$lib/wc/store-api';
 	import {
 		trackPurchase,
 		trackOmnisendPlacedOrder,
@@ -87,9 +87,6 @@
 		error = null;
 		loading = true;
 
-		clearShadow();
-		clearCartToken();
-
 		try {
 			const [orderData, paymentData] = await Promise.all([
 				getOrder(id, key, email ?? undefined),
@@ -141,10 +138,17 @@
 				firePurchase();
 			}
 
-			await cart.fetch();
+			// Empty the active Store API cart while the token still points at it,
+			// then wipe SPA persistence so shadow/LS backup cannot resurrect it.
+			await request('/cart/items', { method: 'DELETE' }).catch(() => {});
+			clearShadow();
+			clearCartToken();
+			await cart.fetch().catch(() => {});
 		} catch (e) {
 			if (loadId !== activeLoad) return;
 			error = e instanceof Error ? e.message : String(e);
+			clearShadow();
+			clearCartToken();
 		} finally {
 			if (loadId !== activeLoad) return;
 			loading = false;
