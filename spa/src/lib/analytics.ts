@@ -14,7 +14,7 @@
  */
 
 import { config } from '$lib/config.svelte';
-import { shouldSuppressLandingPopups } from '$lib/bridge-domain';
+import { isAlyveResearchDomain, shouldSuppressLandingPopups } from '$lib/bridge-domain';
 import type { StoreApiCart } from '$lib/wc/cart.svelte';
 import type { StoreOrder } from '$lib/wc/orders';
 export { isBridgePagePath } from '$lib/bridge-domain';
@@ -63,6 +63,9 @@ type EcomItem = {
 let initialized = false;
 let gtagBootstrapped = false;
 let ga4MeasurementId = '';
+
+/** GA4 property for alyveresearch.com only (main store uses admin-configured ID). */
+export const ALYVE_RESEARCH_GA4_MEASUREMENT_ID = 'G-V9W2KP8D1M';
 
 function ensureGtag(primaryScriptId: string): void {
 	if (typeof window === 'undefined' || !primaryScriptId) return;
@@ -264,6 +267,15 @@ export function initGA4(measurementId: string): void {
 	ga4MeasurementId = measurementId;
 	ensureGtag(measurementId);
 	window.gtag('config', measurementId);
+}
+
+/** Load GA4 for the current hostname — research domain uses a dedicated measurement ID. */
+export function initConfiguredGA4(configMeasurementId?: string): void {
+	if (isAlyveResearchDomain()) {
+		initGA4(ALYVE_RESEARCH_GA4_MEASUREMENT_ID);
+		return;
+	}
+	if (configMeasurementId) initGA4(configMeasurementId);
 }
 
 /**

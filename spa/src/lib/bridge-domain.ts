@@ -5,6 +5,14 @@ import { HOME_1_PATH, isHome1LandingPath } from '$lib/home-1-landing';
 /** Legacy Why Alyve bridge — alyveresearch.com serves landing pages only. */
 const WHY_ALYVE_BRIDGE_HOSTS = new Set(['alyveresearch.com']);
 
+export function isAlyveResearchDomain(hostname?: string): boolean {
+	if (!hostname) {
+		if (!browser) return false;
+		hostname = window.location.hostname;
+	}
+	return WHY_ALYVE_BRIDGE_HOSTS.has(normalizeHost(hostname));
+}
+
 export const BRIDGE_PAGE_PATH = '/why-alyve';
 /** Alyve Research age-gate entry page — confirm hands off to main storefront. */
 export const AGE_GATE_PAGE_PATH = '/age-gate';
