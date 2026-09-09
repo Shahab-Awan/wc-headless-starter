@@ -62,6 +62,21 @@ window._learnq = window._learnq || [];
 		<?php
 	}
 
+	// ── Meta Pixel (Facebook / Instagram) ──────────────────────────────
+	$meta_pixel = function_exists( 'wchs_meta_pixel_id' )
+		? wchs_meta_pixel_id()
+		: (string) ( $s['meta_pixel_id'] ?? '' );
+	if ( $meta_pixel ) {
+		$mp = esc_js( $meta_pixel );
+		?>
+<script data-wchs-meta>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init','<?php echo $mp; ?>');
+fbq('track','PageView');
+</script>
+		<?php
+	}
+
 	// ── TikTok Pixel ───────────────────────────────────────────────────
 	$tiktok = (string) ( $s['tiktok_pixel_id'] ?? '' );
 	if ( $tiktok ) {
@@ -141,23 +156,35 @@ add_action( 'wp_footer', function () {
 	if ( ! is_checkout() || is_wc_endpoint_url( 'order-received' ) ) return;
 	$s = wchs_pixels_get_settings();
 	$has_klav = ! empty( $s['klaviyo_public_key'] );
+	$has_meta = ( function_exists( 'wchs_meta_pixel_id' ) ? wchs_meta_pixel_id() : (string) ( $s['meta_pixel_id'] ?? '' ) ) !== '';
 	$has_tt   = ! empty( $s['tiktok_pixel_id'] );
 	$has_pin  = ! empty( $s['pinterest_tag_id'] );
-	if ( ! ( $has_klav || $has_tt || $has_pin ) ) return;
+	if ( ! ( $has_klav || $has_meta || $has_tt || $has_pin ) ) return;
 
 	// Gather cart data for InitiateCheckout values
 	$cart = WC()->cart;
 	$total_cents = $cart ? (int) round( (float) $cart->get_total( 'raw' ) * 100 ) : 0;
 	$item_count  = $cart ? (int) $cart->get_cart_contents_count() : 0;
+	$content_ids = [];
+	if ( $cart ) {
+		foreach ( $cart->get_cart() as $row ) {
+			$pid = (int) ( $row['variation_id'] ?: $row['product_id'] );
+			if ( $pid > 0 ) {
+				$content_ids[] = (string) $pid;
+			}
+		}
+	}
 	?>
 <script data-wchs-pixels-checkout>
 (function(){
   var $ = window.jQuery;
   var klav = <?php echo $has_klav ? 'true' : 'false'; ?>;
+  var meta = <?php echo $has_meta ? 'true' : 'false'; ?>;
   var tt   = <?php echo $has_tt ? 'true' : 'false'; ?>;
   var pin  = <?php echo $has_pin ? 'true' : 'false'; ?>;
   var totalCents = <?php echo (int) $total_cents; ?>;
   var itemCount = <?php echo (int) $item_count; ?>;
+  var contentIds = <?php echo wp_json_encode( array_values( array_unique( $content_ids ) ) ); ?>;
 
   function identify(){
     var email = document.querySelector('#billing_email')?.value || '';
@@ -191,6 +218,7 @@ add_action( 'wp_footer', function () {
   if ($) $(document.body).on('updated_checkout', wire);
 
   // Fire checkout-started events for each pixel that's enabled
+  if (meta && window.fbq) window.fbq('track', 'InitiateCheckout', { value: totalCents/100, currency: 'USD', content_ids: contentIds, content_type: 'product', num_items: itemCount });
   if (tt && window.ttq)   window.ttq.track('InitiateCheckout', { value: totalCents/100, currency: 'USD', contents: Array(itemCount).fill({}) });
   if (pin && window.pintrk) window.pintrk('track', 'checkout', { value: totalCents/100, order_quantity: itemCount, currency: 'USD' });
 })();
@@ -209,10 +237,11 @@ add_action( 'woocommerce_thankyou', function ( $order_id ) {
 	$s = wchs_pixels_get_settings();
 
 	$has_klav = ! empty( $s['klaviyo_public_key'] );
+	$has_meta = ( function_exists( 'wchs_meta_pixel_id' ) ? wchs_meta_pixel_id() : (string) ( $s['meta_pixel_id'] ?? '' ) ) !== '';
 	$has_tt   = ! empty( $s['tiktok_pixel_id'] );
 	$has_pin  = ! empty( $s['pinterest_tag_id'] );
 	$has_gads = ! empty( $s['google_ads_conversion_id'] ) && ! empty( $s['google_ads_conversion_label'] );
-	if ( ! ( $has_klav || $has_tt || $has_pin || $has_gads ) ) return;
+	if ( ! ( $has_klav || $has_meta || $has_tt || $has_pin || $has_gads ) ) return;
 
 	$items = [];
 	$content_ids = [];
@@ -236,6 +265,9 @@ add_action( 'woocommerce_thankyou', function ( $order_id ) {
 	$total = (float) $order->get_total();
 	$currency = $order->get_currency();
 	$email = $order->get_billing_email();
+	$meta_event_id = function_exists( 'wchs_meta_event_id' )
+		? wchs_meta_event_id( 'Purchase', (int) $order_id )
+		: ( 'wchs_meta_Purchase_' . (int) $order_id );
 
 	$gads_send_to = $has_gads
 		? esc_js( $s['google_ads_conversion_id'] . '/' . $s['google_ads_conversion_label'] )
@@ -249,6 +281,7 @@ add_action( 'woocommerce_thankyou', function ( $order_id ) {
   var currency = <?php echo wp_json_encode( $currency ); ?>;
   var email = <?php echo wp_json_encode( $email ); ?>;
   var orderId = <?php echo wp_json_encode( (string) $order_id ); ?>;
+  var metaEventId = <?php echo wp_json_encode( $meta_event_id ); ?>;
 
   <?php if ( $has_klav ) : ?>
   if (window.klaviyo) {
@@ -260,6 +293,19 @@ add_action( 'woocommerce_thankyou', function ( $order_id ) {
       return { ProductID: li.id, ProductName: li.name, Quantity: li.quantity, ItemPrice: li.price, RowTotal: li.price * li.quantity };
     });
     window.klaviyo.push(['track', 'Placed Order', { $event_id: orderId, $value: total, ItemNames: items.map(function(li){return li.name;}), Items: klavItems }]);
+  }
+  <?php endif; ?>
+  <?php if ( $has_meta ) : ?>
+  if (window.fbq) {
+    window.fbq('track', 'Purchase', {
+      value: total,
+      currency: currency,
+      content_ids: contentIds,
+      content_type: 'product',
+      contents: items.map(function(li){ return { id: li.id, quantity: li.quantity, item_price: li.price }; }),
+      num_items: <?php echo (int) $num_items; ?>,
+      order_id: orderId
+    }, { eventID: metaEventId });
   }
   <?php endif; ?>
   <?php if ( $has_tt ) : ?>

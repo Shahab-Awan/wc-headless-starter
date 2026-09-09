@@ -89,8 +89,14 @@ plugin settings. Product catalog sync and order/customer sync run automatically.
 Meta Pixel, Google Ads, TikTok Pixel, Pinterest Tag, Snap Pixel.
 
 ### Pattern
-All work via GTM. Install GTM container ID in WP Admin → WCHS → Integrations.
-In GTM, add the pixel's own tag and map our DataLayer events:
+Meta Pixel is first-class: set `META_PIXEL_ID` / admin `meta_pixel_id` for the
+browser Pixel (SPA + WP checkout), and `META_CAPI_TOKEN` (or
+`WCHS_META_CAPI_TOKEN` in wp-config) for server-side Purchase on payment
+confirmation. Same Pixel ID + shared `event_id` for deduplication.
+
+Other ad pixels (Google Ads, TikTok, Pinterest) also work via GTM. Install GTM
+container ID in WP Admin → WCHS → Integrations. In GTM, add the pixel's own
+tag and map our DataLayer events:
 
 | Our event | Pixel event equivalent |
 |---|---|

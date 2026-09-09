@@ -79,7 +79,7 @@ else
   for var in DOMAIN SPA_URL BRAND_NAME \
              EASYPOST_API_KEY GOOGLE_MAPS_API_KEY \
              TURNSTILE_SITE_KEY TURNSTILE_SECRET_KEY \
-             GTM_ID META_PIXEL_ID TIKTOK_PIXEL_ID PINTEREST_TAG_ID \
+             GTM_ID META_PIXEL_ID META_CAPI_TOKEN TIKTOK_PIXEL_ID PINTEREST_TAG_ID \
              KLAVIYO_PUBLIC_KEY OMNISEND_BRAND_ID \
              CLARITY_PROJECT_ID HOTJAR_SITE_ID \
              GOOGLE_ADS_CONVERSION_ID GOOGLE_ADS_CONVERSION_LABEL; do
@@ -108,7 +108,7 @@ if ! grep -q "Headless WC Starter - per-site configuration" wp-config.php; then
   else
     # Same bash-only fallback as the JSON case
     CONTENT=$(cat config/wp-config.constants.template)
-    for var in DOMAIN SPA_URL BRAND_NAME; do
+    for var in DOMAIN SPA_URL BRAND_NAME META_CAPI_TOKEN META_PIXEL_ID; do
       val="${!var:-}"
       val_esc="${val//\\/\\\\}"
       val_esc="${val_esc//\"/\\\"}"

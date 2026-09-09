@@ -3477,8 +3477,16 @@ class AdminPage {
 			</div>
 
 			<div class="wchs-field">
-				<label>Meta Pixel ID (Facebook / Instagram Ads) <?php echo self::hint_icon('Events Manager → Data Sources → your Pixel → Settings. Fires PageView, ViewContent, AddToCart, InitiateCheckout, Purchase.'); ?></label>
+				<label>Meta Pixel ID (Facebook / Instagram Ads) <?php echo self::hint_icon('Events Manager → Data Sources → your Pixel → Settings. Fires PageView, ViewContent, AddToCart, InitiateCheckout, Purchase on SPA + WP checkout. CAPI Purchase uses the same Pixel ID; set META_CAPI_TOKEN in .env (or WCHS_META_CAPI_TOKEN in wp-config) — never paste the token here.'); ?></label>
 				<input type="text" name="meta_pixel_id" value="<?php echo esc_attr( $settings['meta_pixel_id'] ?? '' ); ?>" placeholder="123456789012345" />
+				<?php if ( defined( 'WCHS_META_PIXEL_ID' ) && WCHS_META_PIXEL_ID ) : ?>
+					<p class="description">Override active from env/wp-config (<code>WCHS_META_PIXEL_ID</code> / <code>META_PIXEL_ID</code>).</p>
+				<?php endif; ?>
+				<?php if ( function_exists( 'wchs_meta_capi_token' ) && wchs_meta_capi_token() !== '' ) : ?>
+					<p class="description" style="color:#157347">Meta CAPI token detected from env/wp-config. Server-side Purchase will fire on payment confirmation.</p>
+				<?php elseif ( function_exists( 'wchs_meta_pixel_id' ) && wchs_meta_pixel_id() !== '' ) : ?>
+					<p class="description" style="color:#9a6700">Meta Pixel is set, but no CAPI token found. Add <code>META_CAPI_TOKEN</code> to .env (or <code>WCHS_META_CAPI_TOKEN</code> in wp-config) for server-side Purchase.</p>
+				<?php endif; ?>
 			</div>
 
 			<div class="wchs-field">

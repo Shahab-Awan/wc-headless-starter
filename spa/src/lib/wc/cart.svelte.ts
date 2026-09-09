@@ -464,11 +464,22 @@ class CartStore {
 				a.trackAddToCart(item);
 				a.trackOmnisendAddedProductToCart(item);
 				a.trackKlaviyoAddedToCart(item);
+				// Meta ads: skip auto-add noise (Checkout+ ship protect / free BAC).
+				if (!this.shouldSkipMetaAddToCart(added, analytics?.clicked_from)) {
+					a.trackMetaAddToCart(item);
+				}
 				a.trackTikTokAddToCart(item);
 				a.trackPinterestAddToCart(item);
 				a.trackTriplePixelAddToCart(item);
 			});
 		}
+	}
+
+	/** Meta AddToCart should reflect shopper product intent, not cart upsells. */
+	private shouldSkipMetaAddToCart(item: StoreApiCartItem, clickedFrom?: string): boolean {
+		if (this.isShippingProtectionItem(item)) return true;
+		if (item.extensions?.wchs_cro?.is_free_bac_gift) return true;
+		return clickedFrom === 'slide_cart_ship_protect_toggle';
 	}
 
 	private clearQtyDebounce(): void {
@@ -695,8 +706,15 @@ class CartStore {
 		const href = token ? config.checkoutUrl(token) : this.wpCheckoutBaseUrl();
 
 		if (token && this.cart?.items?.length && typeof window !== 'undefined') {
-			const { trackCustomerLabsCheckoutMade } = await import('$lib/analytics');
+			const { trackCustomerLabsCheckoutMade, trackMetaInitiateCheckout, trackTikTokInitiateCheckout } =
+				await import('$lib/analytics');
 			trackCustomerLabsCheckoutMade(this.cart!);
+			const productItems = this.cart!.items.filter((li) => !this.isShippingProtectionItem(li));
+			const totalCents = Number(this.cart!.totals?.total_price ?? 0);
+			const itemCount = productItems.reduce((n, li) => n + li.quantity, 0);
+			const contentIds = productItems.map((li) => String(li.id));
+			trackMetaInitiateCheckout(totalCents, itemCount, contentIds);
+			trackTikTokInitiateCheckout(totalCents, itemCount);
 		}
 
 		return href;

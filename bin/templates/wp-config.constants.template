@@ -12,6 +12,12 @@
 
 define( 'WCHS_BRAND_NAME',       '${BRAND_NAME}' );
 
+// Meta Conversions API — secret token from .env (META_CAPI_TOKEN).
+// Leave empty to disable server-side Purchase. Pixel ID can also be set via
+// META_PIXEL_ID → WCHS settings seed, or WCHS_META_PIXEL_ID below.
+define( 'WCHS_META_CAPI_TOKEN',  '${META_CAPI_TOKEN}' );
+// define( 'WCHS_META_PIXEL_ID', '${META_PIXEL_ID}' );
+
 // Optional legacy/custom-origin overrides. Normal production sites should
 // stay in same-origin mode and let WCHS follow home/siteurl automatically.
 // define( 'WCHS_SPA_URL',          '${SPA_URL}' );

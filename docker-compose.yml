@@ -44,6 +44,8 @@ services:
       WORDPRESS_DB_PASSWORD: ${MYSQL_DB_PASSWORD:?set in .env}
       WORDPRESS_DB_NAME: ${MYSQL_DB_NAME:?set in .env}
       WORDPRESS_DEBUG: 1
+      META_PIXEL_ID: ${META_PIXEL_ID:-}
+      META_CAPI_TOKEN: ${META_CAPI_TOKEN:-}
       WORDPRESS_CONFIG_EXTRA: |
         define( 'WP_MEMORY_LIMIT', '512M' );
         define( 'WP_MAX_MEMORY_LIMIT', '512M' );
