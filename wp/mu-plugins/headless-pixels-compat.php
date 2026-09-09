@@ -72,7 +72,11 @@ window._learnq = window._learnq || [];
 <script data-wchs-meta>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','<?php echo $mp; ?>');
+<<<<<<< HEAD
 fbq('track','PageView');
+=======
+fbq('trackSingle','<?php echo $mp; ?>','PageView');
+>>>>>>> 6214c31 (meta pixel set)
 </script>
 		<?php
 	}
@@ -219,6 +223,7 @@ add_action( 'wp_footer', function () {
 
   // Fire checkout-started events for each pixel that's enabled
   if (meta && window.fbq) window.fbq('track', 'InitiateCheckout', { value: totalCents/100, currency: 'USD', content_ids: contentIds, content_type: 'product', num_items: itemCount });
+  if (meta && window.fbq) window.fbq('trackSingle', '<?php echo esc_js( function_exists( 'wchs_meta_pixel_id' ) ? wchs_meta_pixel_id() : (string) ( $s['meta_pixel_id'] ?? '' ) ); ?>', 'InitiateCheckout', { value: totalCents/100, currency: 'USD', content_ids: contentIds, content_type: 'product', num_items: itemCount });
   if (tt && window.ttq)   window.ttq.track('InitiateCheckout', { value: totalCents/100, currency: 'USD', contents: Array(itemCount).fill({}) });
   if (pin && window.pintrk) window.pintrk('track', 'checkout', { value: totalCents/100, order_quantity: itemCount, currency: 'USD' });
 })();
@@ -282,6 +287,7 @@ add_action( 'woocommerce_thankyou', function ( $order_id ) {
   var email = <?php echo wp_json_encode( $email ); ?>;
   var orderId = <?php echo wp_json_encode( (string) $order_id ); ?>;
   var metaEventId = <?php echo wp_json_encode( $meta_event_id ); ?>;
+  var metaPixelId = <?php echo wp_json_encode( function_exists( 'wchs_meta_pixel_id' ) ? wchs_meta_pixel_id() : (string) ( $s['meta_pixel_id'] ?? '' ) ); ?>;
 
   <?php if ( $has_klav ) : ?>
   if (window.klaviyo) {
@@ -296,8 +302,8 @@ add_action( 'woocommerce_thankyou', function ( $order_id ) {
   }
   <?php endif; ?>
   <?php if ( $has_meta ) : ?>
-  if (window.fbq) {
-    window.fbq('track', 'Purchase', {
+  if (window.fbq && metaPixelId) {
+    window.fbq('trackSingle', metaPixelId, 'Purchase', {
       value: total,
       currency: currency,
       content_ids: contentIds,
