@@ -331,12 +331,8 @@ function wchs_meta_capi_maybe_purchase( $order_id ): void {
 	if ( ! ( $order instanceof \WC_Order ) ) {
 		return;
 	}
-<<<<<<< HEAD
-	// Only paid / processing / completed — skip pending/failed/cancelled.
-=======
 	// Payment confirmation only — not thank-you page views.
 	// Covers card gateways (payment_complete) and status flips to paid states.
->>>>>>> 6214c31 (meta pixel set)
 	if ( ! $order->is_paid() && ! $order->has_status( [ 'processing', 'completed' ] ) ) {
 		return;
 	}

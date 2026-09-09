@@ -235,17 +235,20 @@
 
 			// Non-blocking setup (doesn't need auth or cart) — each init
 			// no-ops when its ID is empty. Order is intentional: GTM first
-			// (may create window.dataLayer used by Google Ads), then the
-			// rest in dashboard-tab order.
+			// (may create window.dataLayer used by Google Ads), then Meta
+			// early so CustomerLabs' shared fbq race can't drop our Pixel ID.
+			// Other vendors unchanged.
 			if (config.data.gtm_id) initGTM(config.data.gtm_id);
 			if (config.data.ga4_measurement_id) initGA4(config.data.ga4_measurement_id);
+			if (config.data.meta_pixel_id) {
+				try { initMetaPixel(config.data.meta_pixel_id); } catch { /* Meta only */ }
+			}
 			if (config.data.omnisend_brand_id && !suppressLandingPopups) {
 				initOmnisend(config.data.omnisend_brand_id);
 			}
 			if (config.data.klaviyo_public_key && !suppressLandingPopups) {
 				initKlaviyo(config.data.klaviyo_public_key);
 			}
-			if (config.data.meta_pixel_id) initMetaPixel(config.data.meta_pixel_id);
 			if (config.data.tiktok_pixel_id) initTikTokPixel(config.data.tiktok_pixel_id);
 			if (config.data.pinterest_tag_id) initPinterestTag(config.data.pinterest_tag_id);
 			if (config.data.clarity_project_id) initClarity(config.data.clarity_project_id);

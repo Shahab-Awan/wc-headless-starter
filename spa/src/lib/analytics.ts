@@ -547,8 +547,72 @@ export function trackKlaviyoPlacedOrder(o: PixelOrder): void {
 // Browser Pixel only — CAPI access token stays server-side (wp-config / .env).
 // Same Pixel ID as headless-meta-capi.php. Purchase eventID must match for
 // Meta dedupe: wchs_meta_Purchase_{orderId}.
+//
+// CustomerLabs (and similar) also load fbevents.js / share window.fbq. Their
+// loader can win the race and drop a queued init for our Pixel ID. We only
+// touch OUR pixel (init + trackSingle) and briefly re-assert until it sticks.
 let metaPixelInitialized = false;
 let metaPixelId = '';
+let metaPageViewSent = false;
+let metaAssertTimer: ReturnType<typeof setInterval> | null = null;
+
+function metaPixelRegistered(pixelId: string): boolean {
+	if (typeof window === 'undefined' || !window.fbq) return false;
+	try {
+		const getState = (window.fbq as Window['fbq'] & {
+			getState?: () => { pixels?: Array<{ id?: string | number }> };
+		}).getState;
+		if (typeof getState !== 'function') return false;
+		const pixels = getState.call(window.fbq)?.pixels ?? [];
+		return pixels.some((p) => String(p?.id ?? '') === pixelId);
+	} catch {
+		return false;
+	}
+}
+
+function ensureMetaFbqStub(): void {
+	/* eslint-disable */
+	(function (f: any, b: Document, e: string, v: string, n?: any, t?: any, s?: any) {
+		if (f.fbq) return;
+		n = f.fbq = function () {
+			n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+		};
+		if (!f._fbq) f._fbq = n;
+		n.push = n;
+		n.loaded = true;
+		n.version = '2.0';
+		n.queue = [];
+		t = b.createElement(e);
+		t.async = true;
+		t.src = v;
+		s = b.getElementsByTagName(e)[0];
+		s?.parentNode?.insertBefore(t, s);
+	})(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+	/* eslint-enable */
+}
+
+/** Register only WCHS Meta Pixel ID — never removes/replaces other fbq pixels. */
+function assertMetaPixel(): void {
+	if (!metaPixelId || typeof window === 'undefined') return;
+	ensureMetaFbqStub();
+	if (!window.fbq) return;
+
+	const getState = (window.fbq as Window['fbq'] & {
+		getState?: () => { pixels?: Array<{ id?: string | number }> };
+	}).getState;
+	const loaded = typeof getState === 'function';
+
+	if (!metaPixelRegistered(metaPixelId)) {
+		window.fbq('init', metaPixelId);
+		// Real fbq without our ID means a later loader dropped our init — PageView again.
+		if (loaded) metaPageViewSent = false;
+	}
+
+	if (!metaPageViewSent && (!loaded || metaPixelRegistered(metaPixelId))) {
+		metaPageViewSent = true;
+		metaTrack('PageView');
+	}
+}
 
 function metaTrack(
 	eventName: string,
@@ -569,26 +633,18 @@ export function initMetaPixel(pixelId: string): void {
 	if (!/^\d{10,20}$/.test(pixelId)) return;
 	metaPixelInitialized = true;
 	metaPixelId = pixelId;
-	/* eslint-disable */
-	(function (f: any, b: Document, e: string, v: string, n?: any, t?: any, s?: any) {
-		if (f.fbq) return;
-		n = f.fbq = function () {
-			n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-		};
-		if (!f._fbq) f._fbq = n;
-		n.push = n;
-		n.loaded = true;
-		n.version = '2.0';
-		n.queue = [];
-		t = b.createElement(e);
-		t.async = true;
-		t.src = v;
-		s = b.getElementsByTagName(e)[0];
-		s?.parentNode?.insertBefore(t, s);
-	})(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
-	/* eslint-enable */
-	window.fbq('init', pixelId);
-	metaTrack('PageView');
+	assertMetaPixel();
+
+	// Re-assert for a few seconds if CustomerLabs/GTM loads fbq after us.
+	const deadline = Date.now() + 10000;
+	if (metaAssertTimer) clearInterval(metaAssertTimer);
+	metaAssertTimer = setInterval(() => {
+		assertMetaPixel();
+		if (metaPixelRegistered(metaPixelId) || Date.now() > deadline) {
+			if (metaAssertTimer) clearInterval(metaAssertTimer);
+			metaAssertTimer = null;
+		}
+	}, 400);
 }
 export function trackMetaViewContent(p: PixelProduct): void {
 	metaTrack('ViewContent', {
