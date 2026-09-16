@@ -29,6 +29,7 @@ does NOT own, and gotchas worth knowing before you modify it.
 | [`headless-login-merge.php`](#headless-login-merge) | WC#55653 workaround — merge saved cart on login |
 | [`headless-login-return.php`](#headless-login-return) | `?return=` origin allowlist on wp-login |
 | [`headless-media.php`](#headless-media) | Prefer WebP as the output format for new JPEG / PNG uploads |
+| [`headless-meta-capi.php`](#headless-meta-capi) | Meta Conversions API — server-side Purchase on payment confirmation |
 | [`headless-offline-gateways.php`](#headless-offline-gateways) | CashApp/Venmo/PayPal.me/Zelle/Bitcoin gateways |
 | [`headless-omnisend-compat.php`](#headless-omnisend-compat) | Omnisend launcher + checkout tracking on WP surfaces |
 | [`headless-one-click-upsell.php`](#headless-one-click-upsell) | Post-purchase Stripe off-session upsell |
@@ -325,6 +326,30 @@ Does not own stock status itself — OOS products still show Out of stock.
 - Some older iOS Safari versions don't render WebP. WP serves original jpeg/png via `wp_get_original_image_url()` as a fallback on image tags — no action needed, but flag it if you add a new media surface that bypasses WP's image renderer.
 - The filter affects sub-size generation, not the originally uploaded file. The original always keeps its source format.
 - File: `wp/mu-plugins/headless-media.php`
+
+---
+
+## headless-meta-capi
+
+**Owns:**
+- Meta Conversions API Purchase on `woocommerce_payment_complete` /
+  `processing` / `completed` (deduped via order meta)
+- Resolves Pixel ID from `WCHS_META_PIXEL_ID` / `META_PIXEL_ID` env, else
+  `wchs_site_settings.meta_pixel_id`
+- Resolves access token from `WCHS_META_CAPI_TOKEN` / `META_CAPI_TOKEN` env
+  (never exposed to SPA or REST)
+
+**Depends on:** same Pixel ID as browser Pixel (`analytics.ts` +
+`headless-pixels-compat.php`); shared `event_id` format
+`wchs_meta_Purchase_{order_id}` for Meta deduplication
+
+**Doesn't own:** browser Pixel init / AddToCart / InitiateCheckout (those are
+SPA + pixels-compat)
+
+**Gotchas:**
+- Token must stay server-side. Recreate the WordPress container after changing
+  `.env` so `META_CAPI_TOKEN` is visible to PHP `getenv()`.
+- File: `wp/mu-plugins/headless-meta-capi.php`
 
 ---
 

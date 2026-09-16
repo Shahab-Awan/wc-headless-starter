@@ -26,6 +26,14 @@ declare global {
 		omnisend: unknown[];
 		klaviyo: unknown[];
 		_learnq: unknown[];
+		fbq: ((...args: unknown[]) => void) & {
+			callMethod?: (...args: unknown[]) => void;
+			queue?: unknown[];
+			loaded?: boolean;
+			version?: string;
+			push?: (...args: unknown[]) => void;
+		};
+		_fbq: Window['fbq'];
 		ttq: {
 			load: (id: string) => void;
 			page: () => void;
@@ -311,6 +319,9 @@ export function trackPageView(path: string, title?: string): void {
 		});
 	}
 	trackCustomerLabsVirtualPageview(path, pageTitle);
+	if (metaPixelInitialized) {
+		metaTrack('PageView');
+	}
 }
 
 /**
@@ -542,6 +553,167 @@ export function trackKlaviyoPlacedOrder(o: PixelOrder): void {
 			RowTotal: priceAsNumber(li.totals.line_total, meta),
 		})),
 	}]);
+}
+
+// ── Meta Pixel (Facebook / Instagram) ──────────────────────────────────
+// Browser Pixel only — CAPI access token stays server-side (wp-config / .env).
+// Same Pixel ID as headless-meta-capi.php. Purchase eventID must match for
+// Meta dedupe: wchs_meta_Purchase_{orderId}.
+//
+// CustomerLabs (and similar) also load fbevents.js / share window.fbq. Their
+// loader can win the race and drop a queued init for our Pixel ID. We only
+// touch OUR pixel (init + trackSingle) and briefly re-assert until it sticks.
+let metaPixelInitialized = false;
+let metaPixelId = '';
+let metaPageViewSent = false;
+let metaAssertTimer: ReturnType<typeof setInterval> | null = null;
+
+function metaPixelRegistered(pixelId: string): boolean {
+	if (typeof window === 'undefined' || !window.fbq) return false;
+	try {
+		const getState = (window.fbq as Window['fbq'] & {
+			getState?: () => { pixels?: Array<{ id?: string | number }> };
+		}).getState;
+		if (typeof getState !== 'function') return false;
+		const pixels = getState.call(window.fbq)?.pixels ?? [];
+		return pixels.some((p) => String(p?.id ?? '') === pixelId);
+	} catch {
+		return false;
+	}
+}
+
+function ensureMetaFbqStub(): void {
+	/* eslint-disable */
+	(function (f: any, b: Document, e: string, v: string, n?: any, t?: any, s?: any) {
+		if (f.fbq) return;
+		n = f.fbq = function () {
+			n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+		};
+		if (!f._fbq) f._fbq = n;
+		n.push = n;
+		n.loaded = true;
+		n.version = '2.0';
+		n.queue = [];
+		t = b.createElement(e);
+		t.async = true;
+		t.src = v;
+		s = b.getElementsByTagName(e)[0];
+		s?.parentNode?.insertBefore(t, s);
+	})(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+	/* eslint-enable */
+}
+
+/** Register only WCHS Meta Pixel ID — never removes/replaces other fbq pixels. */
+function assertMetaPixel(): void {
+	if (!metaPixelId || typeof window === 'undefined') return;
+	ensureMetaFbqStub();
+	if (!window.fbq) return;
+
+	const getState = (window.fbq as Window['fbq'] & {
+		getState?: () => { pixels?: Array<{ id?: string | number }> };
+	}).getState;
+	const loaded = typeof getState === 'function';
+
+	if (!metaPixelRegistered(metaPixelId)) {
+		window.fbq('init', metaPixelId);
+		// Real fbq without our ID means a later loader dropped our init — PageView again.
+		if (loaded) metaPageViewSent = false;
+	}
+
+	if (!metaPageViewSent && (!loaded || metaPixelRegistered(metaPixelId))) {
+		metaPageViewSent = true;
+		metaTrack('PageView');
+	}
+}
+
+function metaTrack(
+	eventName: string,
+	params?: Record<string, unknown>,
+	eventData?: { eventID?: string },
+): void {
+	if (!metaPixelId || typeof window === 'undefined' || !window.fbq) return;
+	// trackSingle keeps events on OUR pixel only when other pixels share fbq.
+	if (eventData?.eventID) {
+		window.fbq('trackSingle', metaPixelId, eventName, params ?? {}, eventData);
+	} else {
+		window.fbq('trackSingle', metaPixelId, eventName, params ?? {});
+	}
+}
+
+export function initMetaPixel(pixelId: string): void {
+	if (metaPixelInitialized || !pixelId || typeof window === 'undefined') return;
+	if (!/^\d{10,20}$/.test(pixelId)) return;
+	metaPixelInitialized = true;
+	metaPixelId = pixelId;
+	assertMetaPixel();
+
+	// Re-assert for a few seconds if CustomerLabs/GTM loads fbq after us.
+	const deadline = Date.now() + 10000;
+	if (metaAssertTimer) clearInterval(metaAssertTimer);
+	metaAssertTimer = setInterval(() => {
+		assertMetaPixel();
+		if (metaPixelRegistered(metaPixelId) || Date.now() > deadline) {
+			if (metaAssertTimer) clearInterval(metaAssertTimer);
+			metaAssertTimer = null;
+		}
+	}, 400);
+}
+export function trackMetaViewContent(p: PixelProduct): void {
+	metaTrack('ViewContent', {
+		content_ids: [String(p.id)],
+		content_name: p.name,
+		content_type: 'product',
+		value: priceAsNumber(p.prices.price, p.prices),
+		currency: p.prices.currency_code || 'USD',
+	});
+}
+export function trackMetaAddToCart(i: PixelCartItem): void {
+	const unit = priceAsNumber(i.price, i);
+	metaTrack('AddToCart', {
+		content_ids: [String(i.id)],
+		content_name: i.name,
+		content_type: 'product',
+		contents: [{ id: String(i.id), quantity: i.quantity, item_price: unit }],
+		value: unit * i.quantity,
+		currency: 'USD',
+		num_items: i.quantity,
+	});
+}
+export function trackMetaInitiateCheckout(
+	totalCents: number,
+	itemCount: number,
+	contentIds: string[] = [],
+): void {
+	metaTrack('InitiateCheckout', {
+		value: totalCents / 100,
+		currency: 'USD',
+		content_ids: contentIds,
+		content_type: 'product',
+		num_items: itemCount,
+	});
+}
+export function trackMetaPurchase(o: PixelOrder): void {
+	const meta = o.totals;
+	const contentIds = o.items.map((li) => String(li.id));
+	const numItems = o.items.reduce((n, li) => n + li.quantity, 0);
+	const eventID = `wchs_meta_Purchase_${o.id}`;
+	metaTrack(
+		'Purchase',
+		{
+			value: priceAsNumber(o.totals.total_price, meta),
+			currency: o.totals.currency_code,
+			content_ids: contentIds,
+			content_type: 'product',
+			contents: o.items.map((li) => ({
+				id: String(li.id),
+				quantity: li.quantity,
+				item_price: priceAsNumber(li.totals.line_total, meta) / Math.max(1, li.quantity),
+			})),
+			num_items: numItems,
+			order_id: String(o.id),
+		},
+		{ eventID },
+	);
 }
 
 // ── TikTok Pixel ───────────────────────────────────────────────────────

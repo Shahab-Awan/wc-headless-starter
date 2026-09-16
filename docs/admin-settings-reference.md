@@ -95,7 +95,7 @@ All IDs are plaintext in the option; empty string = integration disabled.
 | GTM ID | `gtm_id` | string | `''` | Google Tag Manager |
 | Omnisend brand ID | `omnisend_brand_id` | string (hex 20–32) | `''` | Omnisend launcher v2 |
 | Klaviyo public key | `klaviyo_public_key` | string | `''` | Klaviyo on-site JS |
-| Meta pixel ID | `meta_pixel_id` | string | `''` | Facebook/Instagram |
+| Meta pixel ID | `meta_pixel_id` | string | `''` | Facebook/Instagram. CAPI token is **not** stored here — use `META_CAPI_TOKEN` in `.env` or `WCHS_META_CAPI_TOKEN` in wp-config. |
 | TikTok pixel ID | `tiktok_pixel_id` | string | `''` | TikTok Pixel |
 | Pinterest tag ID | `pinterest_tag_id` | string | `''` | Pinterest Tag |
 | Clarity project ID | `clarity_project_id` | string | `''` | Microsoft Clarity |

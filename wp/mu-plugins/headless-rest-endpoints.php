@@ -2955,7 +2955,9 @@ function wchs_rest_config( \WP_REST_Request $request ) {
 		'ga4_measurement_id' => $site_settings['ga4_measurement_id'] ?? '',
 		'omnisend_brand_id'           => $site_settings['omnisend_brand_id'] ?? '',
 		'klaviyo_public_key'          => $site_settings['klaviyo_public_key'] ?? '',
-		'meta_pixel_id'               => $site_settings['meta_pixel_id'] ?? '',
+		'meta_pixel_id'               => function_exists( 'wchs_meta_pixel_id' )
+			? wchs_meta_pixel_id()
+			: ( $site_settings['meta_pixel_id'] ?? '' ),
 		'tiktok_pixel_id'             => $site_settings['tiktok_pixel_id'] ?? '',
 		'pinterest_tag_id'            => $site_settings['pinterest_tag_id'] ?? '',
 		'clarity_project_id'          => $site_settings['clarity_project_id'] ?? '',
