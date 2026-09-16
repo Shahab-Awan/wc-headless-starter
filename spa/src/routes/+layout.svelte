@@ -24,6 +24,7 @@
 		initKlaviyo, initTikTokPixel, initPinterestTag, initMetaPixel,
 		initClarity, initHotjar, initGoogleAds,
 		trackCustomerLabsBridgePageView,
+        initGA4,
 	} from '$lib/analytics';
 	import {
 		AGE_GATE_PAGE_PATH,
@@ -253,14 +254,11 @@
 			// early so CustomerLabs' shared fbq race can't drop our Pixel ID.
 			// Other vendors unchanged.
 			if (config.data.gtm_id) initGTM(config.data.gtm_id);
-<<<<<<< HEAD
 			initConfiguredGA4(config.data.ga4_measurement_id);
-=======
 			if (config.data.ga4_measurement_id) initGA4(config.data.ga4_measurement_id);
 			if (config.data.meta_pixel_id) {
 				try { initMetaPixel(config.data.meta_pixel_id); } catch { /* Meta only */ }
 			}
->>>>>>> e297b23b2bf184985f03c5c300cb6229a54f64d6
 			if (config.data.omnisend_brand_id && !suppressLandingPopups) {
 				initOmnisend(config.data.omnisend_brand_id);
 			}
