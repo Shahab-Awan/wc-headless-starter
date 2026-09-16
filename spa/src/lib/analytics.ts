@@ -320,7 +320,7 @@ export function trackPageView(path: string, title?: string): void {
 	}
 	trackCustomerLabsVirtualPageview(path, pageTitle);
 	if (metaPixelInitialized) {
-		metaTrack('PageView');
+		fireMetaPageView(path);
 	}
 }
 
@@ -566,6 +566,8 @@ export function trackKlaviyoPlacedOrder(o: PixelOrder): void {
 let metaPixelInitialized = false;
 let metaPixelId = '';
 let metaPageViewSent = false;
+/** Dedupe PageView per path — init + afterNavigate both run on first paint. */
+let lastMetaPageViewPath: string | null = null;
 let metaAssertTimer: ReturnType<typeof setInterval> | null = null;
 
 function metaPixelRegistered(pixelId: string): boolean {
@@ -616,14 +618,25 @@ function assertMetaPixel(): void {
 
 	if (!metaPixelRegistered(metaPixelId)) {
 		window.fbq('init', metaPixelId);
-		// Real fbq without our ID means a later loader dropped our init — PageView again.
-		if (loaded) metaPageViewSent = false;
+		// Real fbq without our ID means a later loader dropped our init — allow one recovery PageView.
+		if (loaded) {
+			metaPageViewSent = false;
+			lastMetaPageViewPath = null;
+		}
 	}
 
 	if (!metaPageViewSent && (!loaded || metaPixelRegistered(metaPixelId))) {
-		metaPageViewSent = true;
-		metaTrack('PageView');
+		fireMetaPageView();
 	}
+}
+
+function fireMetaPageView(path?: string): void {
+	if (!metaPixelId || typeof window === 'undefined' || !window.fbq) return;
+	const p = path ?? window.location.pathname;
+	if (lastMetaPageViewPath === p) return;
+	lastMetaPageViewPath = p;
+	metaPageViewSent = true;
+	metaTrack('PageView');
 }
 
 function metaTrack(

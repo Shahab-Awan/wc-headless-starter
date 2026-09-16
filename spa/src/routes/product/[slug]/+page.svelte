@@ -238,11 +238,15 @@
 				if (cancelled) return;
 				product = loaded;
 
+				let seededDefaultVariation = false;
 				if (product && product.has_options && product.variations.length) {
 					variations = await getVariations(product.variations.map((v) => v.id));
 					if (cancelled) return;
 					const defaults = findPurchasableDefaultSelection(product, variations);
-					if (defaults) selection = defaults;
+					if (defaults) {
+						selection = defaults;
+						seededDefaultVariation = true;
+					}
 				}
 
 				const ids = product?.extensions?.wchs_cro?.cross_sell_ids ?? [];
@@ -298,8 +302,12 @@
 						a.trackViewItem(product!);
 						a.trackOmnisendViewedProduct(p);
 						a.trackKlaviyoViewedProduct(p);
-						a.trackMetaViewContent(p);
-						a.trackTikTokViewContent(p);
+						// Variable PDPs with a default size: variation $effect owns Meta/TikTok
+						// ViewContent so we don't double-fire parent + variation on first paint.
+						if (!seededDefaultVariation) {
+							a.trackMetaViewContent(p);
+							a.trackTikTokViewContent(p);
+						}
 					});
 				}
 			} catch (e) {
@@ -327,12 +335,11 @@
 		variations.find((v) => v.id === selectedVariationId) ?? null
 	);
 
-	// Re-fire GA4 view_item when the user picks a different variation so
-	// Meta Pixel / Omnisend / GA4 see accurate per-variation views. The
-	// initial product view fired in the slug $effect covers the parent; this adds
-	// re-fires on each variation selection. Guarded to skip the first
-	// eval (to avoid double-firing with the initial load) and skip
-	// re-fires for the same variation id.
+	// Re-fire view events when the user picks a different variation so
+	// Meta Pixel / Omnisend / GA4 see accurate per-variation views.
+	// When a default variation is seeded on load, this is the sole Meta/TikTok
+	// ViewContent for first paint (parent load skips those). Same variation
+	// id is not re-fired.
 	// Product JSON-LD schema derived from product + selected variation +
 	// review aggregate. Fed to <SEO />. Reflects the variation price when
 	// one is selected, otherwise the parent price (or price_range min

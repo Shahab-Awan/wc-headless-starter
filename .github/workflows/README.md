@@ -77,8 +77,9 @@ check out a known-good SHA, populate `.env`, then run
 ### Known limitations
 
 - SG Dynamic Cache sometimes takes a few seconds to reflect a flush.
-  The smoke-test step hits the origin directly via `curl -H Host:` on
-  the site's own 127.0.0.1, bypassing the edge cache. If the smoke
+  Smoke tests hit the public origin (`https://$SG_DOMAIN/...`) with a
+  cache-bust query. Localhost probes (`https://127.0.0.1` + Host header)
+  fail on this Alyve SG host (connection refused). If the smoke
   passes but the public site shows stale content, wait ~30s or hit the
   flush API again.
 - There is no deploy matrix in this fork. A failed workflow means the Alyve

@@ -55,9 +55,10 @@ EFFECTIVE_RETURN=$(ssh "$SSH_HOST" "cd $WP_PATH && wp eval 'if ( function_exists
 LEGACY_WCHS_SPA_URL=$(ssh "$SSH_HOST" "cd $WP_PATH && wp eval 'echo defined(\"WCHS_SPA_URL\") ? WCHS_SPA_URL : \"\";'" 2>/dev/null)
 LEGACY_WCHS_ALLOWED=$(ssh "$SSH_HOST" "cd $WP_PATH && wp eval 'echo defined(\"WCHS_ALLOWED_ORIGINS\") ? WCHS_ALLOWED_ORIGINS : \"\";'" 2>/dev/null)
 LEGACY_WCHS_RETURN=$(ssh "$SSH_HOST" "cd $WP_PATH && wp eval 'echo defined(\"WCHS_RETURN_ORIGINS\") ? WCHS_RETURN_ORIGINS : \"\";'" 2>/dev/null)
-ROBOTS_TXT=$(ssh "$SSH_HOST" "curl -sk -H 'Host: ${DOMAIN}' 'https://127.0.0.1/robots.txt?bust=$(date +%s)'" 2>/dev/null)
+# Prefer the public origin: some SG hosts refuse localhost HTTP/HTTPS.
+ROBOTS_TXT=$(ssh "$SSH_HOST" "curl -sk 'https://${DOMAIN}/robots.txt?bust=$(date +%s)'" 2>/dev/null)
 SITEMAP_URL=$(printf '%s' "$ROBOTS_TXT" | sed -n 's/^Sitemap:[[:space:]]*//p' | head -1)
-CONFIG_JSON=$(ssh "$SSH_HOST" "curl -sk -H 'Host: ${DOMAIN}' 'https://127.0.0.1/wp-json/wchs/v1/config?bust=$(date +%s)'" 2>/dev/null)
+CONFIG_JSON=$(ssh "$SSH_HOST" "curl -sk 'https://${DOMAIN}/wp-json/wchs/v1/config?bust=$(date +%s)'" 2>/dev/null)
 CONFIG_WP_ORIGIN=$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json,sys; data=json.load(sys.stdin); print(data.get("wp_origin",""))')
 CONFIG_SPA_ORIGIN=$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json,sys; data=json.load(sys.stdin); print(data.get("spa_origin",""))')
 CONFIG_ORIGIN_MODE=$(printf '%s' "$CONFIG_JSON" | python3 -c 'import json,sys; data=json.load(sys.stdin); print(data.get("origin_mode",""))')

@@ -128,10 +128,12 @@ jobs:
             bin/templates/htaccess.template \
             "sg-target:~/www/${SG_DOMAIN}/public_html/.htaccess"
 
+      # This SG host refuses localhost HTTP/HTTPS (curl exit 7 on 127.0.0.1).
+      # Probe the public origin with a cache-bust query instead.
       - name: Hydrate SPA shell SEO
         run: |
           CONFIG_FILE="$(mktemp)"
-          ssh sg-target "curl -sk -H 'Host: ${SG_DOMAIN}' 'https://127.0.0.1/wp-json/wchs/v1/config?bust=$RANDOM'" > "$CONFIG_FILE"
+          ssh sg-target "curl -sk 'https://${SG_DOMAIN}/wp-json/wchs/v1/config?bust=$RANDOM'" > "$CONFIG_FILE"
           python3 scripts/hydrate-spa-shell-seo.py \
             --index spa/build/index.html \
             --manifest spa/build/site.webmanifest \
@@ -176,7 +178,7 @@ jobs:
 
       - name: Smoke test Alyve
         run: |
-          RESP=$(ssh sg-target "curl -sk -H 'Host: ${SG_DOMAIN}' 'https://127.0.0.1/wp-json/wchs/v1/config?bust=$RANDOM'")
+          RESP=$(ssh sg-target "curl -sk 'https://${SG_DOMAIN}/wp-json/wchs/v1/config?bust=$RANDOM'")
           export RESP
           python3 - <<'PY'
           import json
@@ -209,7 +211,7 @@ jobs:
           PY
 
           for ROUTE in /account /shop; do
-            PROBE=$(ssh sg-target "curl -sk -o /dev/null -w '%{http_code} %{redirect_url}' -H 'Host: ${SG_DOMAIN}' 'https://127.0.0.1${ROUTE}'")
+            PROBE=$(ssh sg-target "curl -sk -o /dev/null -w '%{http_code} %{redirect_url}' 'https://${SG_DOMAIN}${ROUTE}?bust=$RANDOM'")
             STATUS="${PROBE%% *}"
             REDIRECT="${PROBE#* }"
             if [[ "$STATUS" != "200" || -n "$REDIRECT" ]]; then
@@ -220,7 +222,7 @@ jobs:
             echo "${ROUTE} serves the SPA shell"
           done
 
-          SHOP_HEADERS=$(ssh sg-target "curl -skI -H 'Host: ${SG_DOMAIN}' 'https://127.0.0.1/shop?seo-smoke=$RANDOM'")
+          SHOP_HEADERS=$(ssh sg-target "curl -skI 'https://${SG_DOMAIN}/shop?seo-smoke=$RANDOM'")
           if ! grep -qi '^x-wchs-seo-shell: 1' <<< "$SHOP_HEADERS"; then
             echo "::error::SEO shell smoke failed for /shop"
             echo "$SHOP_HEADERS"
@@ -229,7 +231,7 @@ jobs:
           echo "/shop served through WCHS SEO shell"
 
           for WP_ROUTE in /cart /checkout /my-account; do
-            WP_HEADERS=$(ssh sg-target "curl -skI -H 'Host: ${SG_DOMAIN}' 'https://127.0.0.1${WP_ROUTE}?seo-smoke=$RANDOM'")
+            WP_HEADERS=$(ssh sg-target "curl -skI 'https://${SG_DOMAIN}${WP_ROUTE}?seo-smoke=$RANDOM'")
             if grep -qi '^x-wchs-seo-shell:' <<< "$WP_HEADERS"; then
               echo "::error::WP-owned route was intercepted by WCHS SEO shell: ${WP_ROUTE}"
               echo "$WP_HEADERS"
